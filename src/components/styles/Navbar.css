@@ -1,0 +1,41 @@
+/* src/components/Navbar.css */
+.navbar {
+  height: 60px;
+  width: 100%;
+  background-color: var(--white);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 2rem;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
+}
+
+.navbar-logo {
+  height: 40px;
+}
+
+.navbar-user-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  font-weight: 500;
+}
+
+.logout-button {
+  background-color: var(--ceutec-red);
+  color: var(--white);
+  border: none;
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+
+.logout-button:hover {
+  background-color: var(--ceutec-dark-red);
+}

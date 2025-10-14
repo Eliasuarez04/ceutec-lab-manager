@@ -1,0 +1,52 @@
+/* src/pages/VerificarEmail.css */
+.verify-container {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+  background-color: var(--background-light);
+  padding: 1rem;
+}
+
+.verify-card {
+  background-color: var(--white);
+  padding: 2.5rem;
+  border-radius: 8px;
+  box-shadow: var(--box-shadow);
+  max-width: 600px;
+  text-align: center;
+}
+
+.verify-card h1 {
+  color: var(--primary-text);
+  margin-bottom: 1rem;
+}
+
+.verify-card p {
+  color: var(--secondary-text);
+  font-size: 1.1rem;
+  line-height: 1.6;
+}
+
+.resend-info {
+  font-size: 0.9rem !important;
+  font-style: italic;
+  margin-top: 1.5rem;
+}
+
+.login-button-verify {
+  border: none;
+  margin-top: 1rem;
+  background-color: var(--ceutec-red);
+  color: var(--white);
+  padding: 0.8rem 2rem;
+  border-radius: 5px;
+  text-decoration: none;
+  font-weight: bold;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.login-button-verify:hover {
+  background-color: var(--ceutec-dark-red);
+}

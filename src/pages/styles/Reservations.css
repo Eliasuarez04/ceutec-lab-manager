@@ -1,0 +1,168 @@
+/* src/pages/Reservations.css */
+
+.reservations-page {
+  max-width: 1400px; /* Permitir más ancho para el calendario */
+}
+
+.reservations-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 2rem;
+  flex-wrap: wrap;
+  gap: 1rem;
+}
+
+.reservations-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--primary-text);
+  margin: 0;
+}
+
+.lab-selector {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+
+.lab-selector label {
+  font-weight: 600;
+  font-size: 1.1rem;
+  color: var(--secondary-text);
+}
+
+.lab-selector select {
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  border: 2px solid var(--border-color);
+  font-size: 1rem;
+  font-weight: 500;
+  min-width: 300px;
+  transition: border-color 0.2s;
+}
+
+.lab-selector select:focus {
+  outline: none;
+  border-color: var(--ceutec-red);
+}
+
+.calendar-container {
+  background-color: var(--white);
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: 0 4px 6px rgba(0, 0, 0, 0.05);
+  border: 1px solid var(--border-color);
+}
+
+/* --- ESTILOS PARA SOBRESCRIBIR REACT-BIG-CALENDAR --- */
+
+/* Barra de herramientas (Hoy, Siguiente, Mes, Semana...) */
+.rbc-toolbar {
+  margin-bottom: 1.5rem !important;
+  font-family: inherit;
+}
+
+.rbc-toolbar .rbc-toolbar-label {
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.rbc-btn-group button {
+  border: 1px solid var(--border-color) !important;
+  color: var(--primary-text) !important;
+  transition: background-color 0.2s, color 0.2s;
+}
+
+.rbc-btn-group button:hover {
+  background-color: var(--background-light) !important;
+}
+
+.rbc-btn-group button.rbc-active {
+  background-color: var(--ceutec-red) !important;
+  color: white !important;
+  border-color: var(--ceutec-red) !important;
+}
+
+/* Cabecera de días (lun, mar, mié...) */
+.rbc-header {
+  border-bottom: 2px solid var(--border-color) !important;
+  padding: 0.75rem 0 !important;
+  font-weight: 600;
+}
+
+/* Color de fondo del día de hoy */
+.rbc-day-bg.rbc-today {
+  background-color: #f4f7fa;
+}
+
+/* Eventos */
+.rbc-event {
+  background-color: var(--ceutec-red) !important;
+  border: 1px solid var(--ceutec-dark-red) !important;
+  border-radius: 4px !important;
+  opacity: 0.9;
+  transition: opacity 0.2s;
+}
+.rbc-event:hover {
+  opacity: 1;
+}
+
+.rbc-event-label {
+  font-size: 0.8rem;
+}
+
+/* Selección de slot */
+.rbc-slot-selection {
+  background-color: rgba(200, 16, 46, 0.3) !important;
+}
+
+/* --- MODAL DE VISUALIZACIÓN --- */
+.view-modal-content p {
+  font-size: 1.1rem;
+  line-height: 1.6;
+  border-bottom: 1px solid #eee;
+  padding-bottom: 0.75rem;
+  margin-bottom: 0.75rem;
+}
+
+.view-modal-content p strong {
+  color: var(--secondary-text);
+  display: inline-block;
+  width: 120px;
+}
+
+.reservations-header {
+  align-items: flex-start; /* Alinear al inicio por si hay wrap */
+}
+
+.lab-selector-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem; /* Espacio entre el botón y el selector */
+  flex-wrap: wrap; /* Para que se adapte en pantallas pequeñas */
+}
+
+.import-button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: bold;
+  color: var(--ceutec-red);
+  background-color: transparent;
+  border: 2px solid var(--ceutec-red);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.import-button:hover {
+  background-color: var(--ceutec-red);
+  color: white;
+}
+
+/* Estilos para el input de archivo dentro del modal */
+.modal-form input[type="file"] {
+  border: 1px solid var(--border-color);
+  padding: 0.5rem;
+  border-radius: 5px;
+}

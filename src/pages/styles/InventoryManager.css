@@ -1,0 +1,311 @@
+/* src/pages/Admin/InventoryManager.css */
+
+/* --- Layout Principal --- */
+.manager-layout {
+  display: flex;
+  height: calc(100vh - 60px); /* Altura completa menos la navbar */
+  background-color: var(--background-light);
+}
+
+.sidebar {
+  width: 280px;
+  height: 1200px;
+  flex-shrink: 0;
+  background-color: var(--white);
+  border-right: 1px solid var(--border-color);
+  padding: 1.5rem 0.5rem;
+  
+}
+
+.sidebar-title {
+  font-size: 1.25rem;
+  margin-top: 0;
+  padding: 0 1rem 1rem 1rem;
+  color: var(--primary-text);
+  border-bottom: 2px solid var(--border-color);
+}
+
+.main-content {
+  flex-grow: 1;
+  padding: 2rem;
+  overflow-y: auto;
+}
+
+.placeholder-content {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+  text-align: center;
+  color: var(--secondary-text);
+}
+
+/* --- Lista de Laboratorios (Sidebar) --- */
+.lab-selector-list {
+  list-style: none;
+  padding: 0;
+  margin: 1rem 0;
+}
+
+.lab-selector-list li {
+  padding: 1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  transition: background-color 0.2s, color 0.2s;
+  color: var(--primary-text);
+}
+
+.lab-selector-list li:hover {
+  background-color: #f8f9fa; /* Gris muy claro */
+}
+
+.lab-selector-list li.active {
+  background-color: var(--ceutec-red);
+  color: var(--white);
+}
+
+/* --- Contenido Principal --- */
+.content-header {
+  margin-bottom: 2rem;
+}
+.content-header h1 {
+  margin: 0;
+  font-size: 2rem;
+  font-weight: 700;
+}
+.content-header p {
+  margin: 0.25rem 0 0;
+  color: var(--secondary-text);
+  font-size: 1.1rem;
+}
+
+.manager-card {
+  background-color: var(--white);
+  padding: 1.5rem 2rem;
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+  border: 1px solid #e9ecef;
+  margin-bottom: 2rem;
+}
+
+.card-title {
+  font-size: 1.2rem;
+  font-weight: 600;
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+}
+
+/* --- Formulario de Añadir Item --- */
+.add-item-form {
+  display: grid;
+  grid-template-columns: 3fr 1fr 1.5fr auto;
+  gap: 1rem;
+  align-items: center;
+}
+
+.add-item-form input, .add-item-form select {
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  font-size: 1rem;
+}
+
+.add-item-form button {
+  background-color: var(--ceutec-red);
+  color: var(--white);
+  border: none;
+  padding: 0.75rem 1.5rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: background-color 0.2s;
+}
+.add-item-form button:hover {
+  background-color: var(--ceutec-dark-red);
+}
+
+/* --- Tabla de Inventario --- */
+.inventory-table-manager {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.inventory-table-manager th, .inventory-table-manager td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid #e9ecef;
+}
+
+.inventory-table-manager th {
+  background-color: #f8f9fa;
+  font-weight: 600;
+  color: var(--secondary-text);
+  text-transform: uppercase;
+  font-size: 0.8rem;
+  letter-spacing: 0.5px;
+}
+
+.inventory-table-manager tbody tr:last-child td {
+  border-bottom: none;
+}
+
+.inventory-table-manager input, .inventory-table-manager select {
+  width: 100%;
+  padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+}
+
+.actions-cell {
+  display: flex;
+  gap: 0.5rem;
+}
+
+.actions-header {
+  text-align: right !important;
+}
+.actions-cell {
+  justify-content: flex-end;
+}
+
+.action-btn {
+  border: none;
+  padding: 0.4rem 0.8rem;
+  border-radius: 5px;
+  cursor: pointer;
+  font-weight: 500;
+  color: white;
+  transition: opacity 0.2s;
+}
+.action-btn:hover {
+  opacity: 0.85;
+}
+
+.edit-btn { background-color: #0d6efd; } /* Azul */
+.delete-btn { background-color: #dc3545; } /* Rojo */
+.save-btn { background-color: #198754; } /* Verde */
+.cancel-btn { background-color: #6c757d; } /* Gris */
+
+/* --- Status Badges --- */
+.status-badge {
+  padding: 0.3rem 0.8rem;
+  border-radius: 50px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--white);
+  display: inline-block;
+  text-align: center;
+  min-width: 90px;
+}
+.status-disponible { background-color: #198754; }
+.status-en-mantenimiento { background-color: #ffc107; color: var(--primary-text); }
+.status-fuera-de-servicio { background-color: #dc3545; }
+
+.no-items-message {
+  text-align: center;
+  padding: 2rem;
+  color: var(--secondary-text);
+}
+
+.sidebar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0 1rem 1rem 1rem;
+  border-bottom: 2px solid var(--border-color);
+}
+
+.sidebar-title {
+  padding: 0;
+  border-bottom: none; /* Quitamos el borde de aquí */
+}
+
+.add-lab-btn {
+  background-color: var(--ceutec-red);
+  color: white;
+  border: none;
+  font-weight: bold;
+  padding: 0.5rem 1rem;
+  border-radius: 5px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.add-lab-btn:hover {
+  background-color: var(--ceutec-dark-red);
+}
+
+.header-actions {
+  display: flex;
+  gap: 0.75rem;
+}
+
+/* --- ESTILOS PARA FORMULARIO DEL MODAL --- */
+.modal-form .form-group {
+  margin-bottom: 1.25rem;
+}
+
+.modal-form label {
+  display: block;
+  font-weight: 600;
+  margin-bottom: 0.5rem;
+  color: var(--secondary-text);
+}
+
+.modal-form input,
+.modal-form textarea {
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  font-size: 1rem;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 1rem;
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+
+.select-wrapper {
+  position: relative;
+  width: 100%;
+}
+
+/* Estilo base para el <select> */
+.modal-form select {
+  /* Apariencia y espaciado igual al de los inputs */
+  width: 100%;
+  padding: 0.75rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  font-size: 1rem;
+  background-color: white; /* Fondo blanco */
+
+  /* Ocultar la apariencia nativa del sistema operativo */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+
+  /* Dejar espacio a la derecha para nuestro ícono de flecha */
+  padding-right: 2.5rem;
+  cursor: pointer;
+}
+
+/* Pseudo-elemento para crear nuestro propio ícono de flecha */
+.select-wrapper::after {
+  content: '▼'; /* Puedes usar un ícono SVG o un carácter como este */
+  font-size: 0.8rem;
+  color: #888;
+  position: absolute;
+  right: 1rem;
+  top: 50%;
+  transform: translateY(-50%);
+  pointer-events: none; /* Evita que el ícono intercepte los clics */
+}

@@ -1,0 +1,85 @@
+/* src/pages/LabDetail.css */
+.back-link {
+  display: inline-block;
+  margin-bottom: 1.5rem;
+  color: var(--ceutec-red);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.back-link:hover {
+  text-decoration: underline;
+}
+
+.lab-header {
+  background-color: var(--white);
+  padding: 2rem;
+  border-radius: 8px;
+  box-shadow: var(--box-shadow);
+  margin-bottom: 2rem;
+}
+
+.lab-header h1 {
+  margin: 0 0 0.5rem 0;
+}
+
+.lab-location {
+  font-size: 1.2rem;
+  font-weight: 500;
+  color: var(--secondary-text);
+  margin: 0 0 1rem 0;
+}
+
+.lab-description {
+  font-size: 1rem;
+  color: var(--primary-text);
+  line-height: 1.6;
+}
+
+.inventory-section {
+  background-color: var(--white);
+  padding: 1.5rem;
+  border-radius: 8px;
+  box-shadow: var(--box-shadow);
+}
+
+.inventory-table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.inventory-table th, .inventory-table td {
+  padding: 1rem;
+  text-align: left;
+  border-bottom: 1px solid var(--border-color);
+}
+
+.inventory-table th {
+  background-color: var(--background-light);
+  font-weight: 600;
+}
+
+.inventory-table tbody tr:hover {
+  background-color: #f8f9fa;
+}
+
+.status-badge {
+  padding: 0.3rem 0.6rem;
+  border-radius: 12px;
+  font-weight: 600;
+  font-size: 0.8rem;
+  color: var(--white);
+}
+
+.status-disponible {
+  background-color: #28a745; /* Verde */
+}
+
+.status-en-mantenimiento {
+  background-color: #ffc107; /* Amarillo */
+  color: var(--primary-text);
+}
+
+.status-fuera-de-servicio {
+  background-color: #dc3545; /* Rojo */
+}

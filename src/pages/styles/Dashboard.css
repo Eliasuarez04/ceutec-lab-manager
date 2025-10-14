@@ -1,0 +1,69 @@
+/* src/pages/Dashboard.css */
+
+.dashboard-wrapper {
+  padding: 3rem 2rem;
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.dashboard-title {
+  font-size: 2.5rem;
+  font-weight: 700;
+  color: var(--primary-text);
+  margin-bottom: 2.5rem;
+}
+
+.dashboard-grid {
+  display: grid;
+  /* El grid se adaptará, mostrando 2 columnas si hay espacio, o 1 si no lo hay */
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 2rem;
+}
+
+.dashboard-card-link {
+  text-decoration: none;
+  color: inherit;
+  display: block;
+  background-color: var(--white);
+  border-radius: 8px;
+  border: 1px solid #e9ecef;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+  overflow: hidden; /* Para que el borde superior no se salga */
+  position: relative; /* Para el borde superior */
+  border-top: 4px solid transparent; /* Espacio para el borde de color */
+}
+
+.dashboard-card-link:hover {
+  transform: translateY(-5px);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+/* Borde rojo para la tarjeta de administrador */
+.dashboard-card-link.admin-card {
+  border-top-color: var(--ceutec-red);
+}
+
+.card-content {
+  padding: 2rem;
+  text-align: center;
+}
+
+.card-icon {
+  font-size: 3.5rem; /* Icono más grande */
+  margin-bottom: 1.5rem;
+  line-height: 1;
+}
+
+.card-title {
+  font-size: 1.4rem;
+  font-weight: 600;
+  margin: 0 0 0.75rem 0;
+}
+
+.card-description {
+  font-size: 1rem;
+  color: var(--secondary-text);
+  line-height: 1.5;
+  margin: 0;
+}
