@@ -11,8 +11,8 @@ const db = admin.firestore();
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: functions.config().gmail.email,
-    pass: functions.config().gmail.password,
+    user: process.env.GMAIL_EMAIL,
+    pass: process.env.GMAIL_PASSWORD,
   },
 });
 
@@ -37,7 +37,7 @@ exports.sendReservationEmail = functions.firestore
 
       // 2. PREPARAR CORREO PARA EL DOCENTE
       const teacherMailOptions = {
-        from: `Portal de Laboratorios Ceutec <${functions.config().gmail.email}>`,
+        from: `Portal de Laboratorios Ceutec <${process.env.GMAIL_EMAIL}>`,
         to: reservationData.userEmail,
         subject: "Confirmación de Reserva de Laboratorio",
         html: `
@@ -57,7 +57,7 @@ exports.sendReservationEmail = functions.firestore
 
       // 3. PREPARAR CORREO PARA LOS ADMINISTRADORES
       const adminMailOptions = {
-        from: `Notificaciones del Portal <${functions.config().gmail.email}>`,
+        from: `Notificaciones del Portal <${process.env.GMAIL_EMAIL}>`,
         to: admins.join(", "), // Enviar a todos los admins
         subject: `Nueva Reserva: ${reservationData.labName}`,
         html: `

@@ -23,4 +23,4 @@ yarn-debug.log*
 yarn-error.log*
 
 # Ignorar todos los archivos de entorno
-.env.*
+.env
