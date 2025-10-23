@@ -166,3 +166,8 @@
   padding: 0.5rem;
   border-radius: 5px;
 }
+
+.rbc-event.event-clase {
+  background-color: #555 !important; /* Un gris oscuro para las clases */
+  border-color: #333 !important;
+}

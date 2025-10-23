@@ -1,6 +1,6 @@
 // src/pages/Reservations.js
 import React, { useState, useEffect, useCallback } from 'react';
-import { useLocation } from 'react-router-dom'; // Importar useLocation
+import { useLocation } from 'react-router-dom';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
 import format from 'date-fns/format';
 import parse from 'date-fns/parse';
@@ -12,7 +12,7 @@ import { db } from '../firebaseConfig';
 import { collection, getDocs, query, where, writeBatch, doc, Timestamp, orderBy, addDoc, deleteDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
-import './styles/Reservations.css';
+import './styles/Reservations.css'; // Asegúrate que esta ruta es correcta
 import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
@@ -20,7 +20,25 @@ import * as XLSX from 'xlsx';
 
 const MySwal = withReactContent(Swal);
 
-// Configuración y mensajes (sin cambios)
+// --- SOLUCIÓN: DICCIONARIO DE MAPEO CORREGIDO ---
+// 'Clave' (izquierda): El valor EXACTO de la columna "espacio_aprendizaje" del Excel.
+// 'Valor' (derecha): El nombre EXACTO del laboratorio como está en tu base de datos (Firestore).
+// **¡ESTE ES EL ÚNICO LUGAR QUE NECESITAS EDITAR EN EL FUTURO!**
+const excelToFirestoreLabMap = {
+  'SN/FOT': 'Fotografía',
+  'SN/RD' : 'Laboratorio de Redes',
+  'SN/TRD': 'Taller de Redes',
+  'SN/QUI': 'Química',
+  'SN/DB1': 'Dibujo I',
+  'SN/DB2': 'Dibujo II',
+  'SN/DB3': 'Dibujo III',
+  'SN/MAC': 'MAC',
+  'SN/L08': 'Cómputo 08',
+  'SN/L07': 'Cómputo 07',
+};
+
+
+// Configuración y mensajes
 const locales = { 'es': es };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 const messages = {
@@ -28,6 +46,15 @@ const messages = {
   month: 'Mes', week: 'Semana', day: 'Día', agenda: 'Agenda', date: 'Fecha',
   time: 'Hora', event: 'Evento', noEventsInRange: 'No hay eventos en este rango.',
   showMore: total => `+ Ver más (${total})`
+};
+
+const getFacultyFromClassName = (className = '') => {
+    const name = className ? className.toLowerCase() : '';
+    if (name.includes('diseño') || name.includes('arte') || name.includes('animación') || name.includes('fotografía')) return 'Escuela de Arte y Diseño';
+    if (name.includes('ingeniería') || name.includes('cálculo') || name.includes('física') || name.includes('programación') || name.includes('redes') || name.includes('eléctrica')) return 'Facultad de Ingeniería';
+    if (name.includes('social') || name.includes('psicología') || name.includes('derecho')) return 'Facultad de Ciencias Sociales';
+    if (name.includes('salud') || name.includes('medicina') || name.includes('enfermería')) return 'Facultad de Ciencias de la Salud';
+    return 'Facultad por Determinar';
 };
 
 export default function Reservations() {
@@ -38,46 +65,33 @@ export default function Reservations() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('week');
   const [date, setDate] = useState(new Date());
-
   const location = useLocation();
-
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
-
   const [slotInfo, setSlotInfo] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [purpose, setPurpose] = useState('');
-
   const [importFile, setImportFile] = useState(null);
   const [periodStartDate, setPeriodStartDate] = useState('');
   const [periodEndDate, setPeriodEndDate] = useState('');
 
-  // --- SOLUCIÓN: LÓGICA DE PRESELECCIÓN MOVIDA DENTRO DEL useEffect ---
   useEffect(() => {
     const fetchLabs = async () => {
       const q = query(collection(db, 'laboratories'), where('status', '==', 'Disponible'), orderBy('name'));
       const querySnapshot = await getDocs(q);
       const labsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      
       const allLabsOption = { id: 'all', name: 'Todos los Laboratorios' };
       const availableLabs = [allLabsOption, ...labsData];
       setLabs(availableLabs);
-      
       const params = new URLSearchParams(location.search);
       const labIdFromUrl = params.get('labId');
       const labFromUrl = availableLabs.find(lab => lab.id === labIdFromUrl);
-
-      if (labFromUrl) {
-        setSelectedLab(labFromUrl);
-      } else {
-        setSelectedLab(allLabsOption);
-      }
+      setSelectedLab(labFromUrl || allLabsOption);
     };
     fetchLabs();
   }, [location.search]);
 
-  // Cargar reservas (sin cambios)
   const fetchReservations = useCallback(async () => {
     if (!selectedLab) return;
     setLoading(true);
@@ -103,8 +117,6 @@ export default function Reservations() {
     fetchReservations();
   }, [fetchReservations]);
 
-
-  // --- MANEJADORES DE EVENTOS DEL CALENDARIO ---
   const handleSelectSlot = (slot) => {
     if (selectedLab?.id === 'all') {
       toast.error("Por favor, selecciona un laboratorio específico para poder reservar.");
@@ -113,12 +125,12 @@ export default function Reservations() {
     if (slot.start < new Date()) return;
     const isOverlapping = reservations.some(event => slot.start < event.end && slot.end > event.start);
     if (isOverlapping) {
-      toast.error('Este horario ya está ocupado.');
+      toast.error('Este horario ya está ocupado por una clase o reserva.');
       return;
     }
     const startTime = slot.start;
     const endTime = new Date(startTime.getTime() + 90 * 60000);
-    setSlotInfo({ start: startTime, end: endTime });
+    setSlotInfo({ start: startTime, end: endTime, type: 'Practica' });
     setIsBookingModalOpen(true);
   };
 
@@ -127,23 +139,20 @@ export default function Reservations() {
     setIsViewModalOpen(true);
   };
 
-
-  // --- ACCIONES CRUD ---
   const handleCreateReservation = async (e) => {
     e.preventDefault();
     if (!purpose.trim() || !slotInfo) return;
     const newReservationData = {
-      labId: selectedLab.id, labName: selectedLab.name, userId: currentUser.uid,
-      userEmail: currentUser.email, startTime: Timestamp.fromDate(slotInfo.start),
-      endTime: Timestamp.fromDate(slotInfo.end), purpose: purpose.trim(),
+      type: slotInfo.type || 'Practica', labId: selectedLab.id, labName: selectedLab.name,
+      userId: currentUser.uid, userEmail: currentUser.email,
+      startTime: Timestamp.fromDate(slotInfo.start), endTime: Timestamp.fromDate(slotInfo.end),
+      purpose: purpose.trim(),
     };
     const promise = addDoc(collection(db, 'reservations'), newReservationData);
     toast.promise(promise, {
-      loading: 'Creando reserva...', success: '¡Reserva creada con éxito!',
-      error: 'Error al crear la reserva.',
+      loading: 'Creando reserva...', success: '¡Reserva creada con éxito!', error: 'Error al crear la reserva.',
     }).then(() => {
-      setIsBookingModalOpen(false); setPurpose('');
-      setSlotInfo(null); fetchReservations();
+      setIsBookingModalOpen(false); setPurpose(''); setSlotInfo(null); fetchReservations();
     });
   };
 
@@ -157,8 +166,7 @@ export default function Reservations() {
       if (result.isConfirmed) {
         const promise = deleteDoc(doc(db, "reservations", reservationId));
         toast.promise(promise, {
-          loading: 'Eliminando reserva...', success: 'Reserva eliminada correctamente.',
-          error: 'Error al eliminar la reserva.'
+          loading: 'Eliminando reserva...', success: 'Reserva eliminada.', error: 'Error al eliminar.'
         }).then(() => {
           setSelectedEvent(null); fetchReservations();
         });
@@ -166,7 +174,6 @@ export default function Reservations() {
     });
   };
 
-  // --- LÓGICA PARA LA IMPORTACIÓN DE EXCEL ---
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (file) { setImportFile(file); }
@@ -175,8 +182,7 @@ export default function Reservations() {
   const handleImportSubmit = async (e) => {
     e.preventDefault();
     if (!importFile || !periodStartDate || !periodEndDate) {
-      toast.error("Por favor, selecciona un archivo y el rango de fechas del período.");
-      return;
+      return toast.error("Por favor, selecciona un archivo y las fechas del período.");
     }
     const reader = new FileReader();
     reader.onload = async (event) => {
@@ -185,94 +191,110 @@ export default function Reservations() {
         const workbook = XLSX.read(data, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json(worksheet, { header: 1 });
-        const loadingToast = toast.loading("Procesando archivo... No cierres esta ventana.");
+        const jsonData = XLSX.utils.sheet_to_json(worksheet);
+        const loadingToast = toast.loading("Procesando carga académica...");
         const newReservations = [];
         const labsFromDB = labs.filter(lab => lab.id !== 'all');
-        const labNameToIdMap = new Map(labsFromDB.map(lab => [lab.name, lab.id]));
+        const labNameToIdMap = new Map(labsFromDB.map(lab => [lab.name.toLowerCase(), lab.id]));
         const dayMap = { '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 0 };
 
-        for (let i = 4; i < jsonData.length; i++) {
-          const row = jsonData[i];
-          const labName = row[1];
-          if (!labName) continue;
-          const labId = labNameToIdMap.get(labName);
-          if (!labId) {
-            console.warn(`Laboratorio "${labName}" del Excel no encontrado. Saltando...`);
-            continue;
-          }
-          const durationStr = row[2];
-          const timeStr = row[3];
-          if (!durationStr || !timeStr) continue;
-          const durationInMinutes = parseFloat(durationStr.toString().replace(/[^0-9.]/g, '')) * 60;
-          
-          for(let dayCol = 4; dayCol < row.length; dayCol++) {
-            const subject = row[dayCol];
-            if(subject) {
-              const dayHeader = String(jsonData[3][dayCol]);
-              const classDays = dayHeader.split('').map(d => dayMap[d]);
-              let currentDate = new Date(periodStartDate + 'T00:00:00');
-              let endDate = new Date(periodEndDate + 'T00:00:00');
-              
-              while(currentDate <= endDate) {
-                if(classDays.includes(currentDate.getDay())) {
-                  const [hours, minutesPart] = timeStr.split(':');
-                  const minutes = minutesPart.slice(0, 2);
-                  const ampm = minutesPart.slice(3);
-                  let hour = parseInt(hours);
-                  if (ampm === 'PM' && hour !== 12) hour += 12;
-                  if (ampm === 'AM' && hour === 12) hour = 0;
-                  const startTime = new Date(currentDate);
-                  startTime.setHours(hour, parseInt(minutes), 0, 0);
-                  const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
+        for (const row of jsonData) {
+                    const excelLabCode = String(row['espacio_aprendizaje'] || '').trim();
+                    if (!excelLabCode) continue;
 
-                  newReservations.push({
-                    labId, labName, userId: currentUser.uid, userEmail: 'carga.academica@unitec.edu.hn',
-                    purpose: subject, startTime: Timestamp.fromDate(startTime), endTime: Timestamp.fromDate(endTime),
-                  });
+                    const firestoreLabName = excelToFirestoreLabMap[excelLabCode];
+                    if (!firestoreLabName) {
+                        console.warn(`Código "${excelLabCode}" no reconocido. Saltando.`);
+                        continue;
+                    }
+
+                    const labId = labNameToIdMap.get(firestoreLabName.toLowerCase());
+                    if (!labId) {
+                        console.warn(`Laboratorio "${firestoreLabName}" no existe en la BD. Saltando.`);
+                        continue;
+                    }
+
+                    const daysStr = String(row['dias_habiles'] || '');
+                    const timeStr = String(row['hora'] || '');
+                    const durationInMinutes = 90;
+                    const subjectName = row['nombre_materia'];
+                    
+                    if (!daysStr || !timeStr || !subjectName) continue;
+
+                    const faculty = getFacultyFromClassName(subjectName);
+                    const career = row['nombre_areaacademicasCompactacion'];
+                    const teacherId = row['codigo_th'];
+                    const section = row['seccion'];
+                    const studentCount = row['matriculados'];
+                    const classDays = daysStr.split('').map(d => dayMap[d]).filter(d => d !== undefined);
+                    
+                    let currentDate = new Date(periodStartDate + 'T00:00:00');
+                    let endDate = new Date(periodEndDate + 'T00:00:00');
+
+                    while (currentDate <= endDate) {
+                        if (classDays.includes(currentDate.getDay())) {
+                            const timeParts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+                            if (!timeParts) continue;
+
+                            let [_, hours, minutes, modifier] = timeParts;
+                            hours = parseInt(hours);
+                            if (modifier.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+                            if (modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
+
+                            const startTime = new Date(currentDate);
+                            startTime.setHours(hours, parseInt(minutes), 0, 0);
+                            const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
+
+                            newReservations.push({
+                                type: 'Clase', labId, labName: firestoreLabName, purpose: subjectName,
+                                faculty, career, teacherId, section, studentCount,
+                                startTime: Timestamp.fromDate(startTime), endTime: Timestamp.fromDate(endTime),
+                                userEmail: 'Carga Académica',
+                            });
+                        }
+                        currentDate.setDate(currentDate.getDate() + 1);
+                    }
                 }
-                currentDate.setDate(currentDate.getDate() + 1);
-              }
+                
+                toast.dismiss(loadingToast);
+                if (newReservations.length === 0) {
+                  return toast.error("No se generaron reservas. Verifica los códigos en 'espacio_aprendizaje' y el formato del archivo.");
+                }
+
+                MySwal.fire({
+                  title: 'Confirmar Importación', text: `Se crearán ${newReservations.length} reservas de clase. ¿Continuar?`,
+                  icon: 'info', showCancelButton: true, confirmButtonColor: '#c8102e', cancelButtonColor: '#6c757d',
+                  confirmButtonText: 'Sí, importar', cancelButtonText: 'Cancelar'
+                }).then(async (result) => {
+                  if (result.isConfirmed) {
+                    const batch = writeBatch(db);
+                    newReservations.forEach(res => {
+                      const docRef = doc(collection(db, 'reservations'));
+                      batch.set(docRef, res);
+                    });
+                    const promise = batch.commit();
+                    await toast.promise(promise, {
+                      loading: 'Guardando reservas...', success: `¡${newReservations.length} reservas importadas!`, error: 'Error al guardar.'
+                    });
+                    setIsImportModalOpen(false); fetchReservations();
+                  }
+                });
+            } catch (error) {
+                console.error("Error al procesar el archivo:", error);
+                toast.error("Hubo un error al procesar el archivo. Revisa la consola.");
             }
-          }
-        }
-        toast.dismiss(loadingToast);
-        if (newReservations.length === 0) {
-          return toast.error("No se encontraron reservas válidas en el archivo. Verifica el formato.");
-        }
-        MySwal.fire({
-          title: 'Confirmar Importación', text: `Se crearán ${newReservations.length} nuevas reservas. ¿Deseas continuar?`,
-          icon: 'info', showCancelButton: true, confirmButtonColor: '#c8102e', cancelButtonColor: '#6c757d',
-          confirmButtonText: 'Sí, importar', cancelButtonText: 'Cancelar'
-        }).then(async (result) => {
-          if (result.isConfirmed) {
-            const batch = writeBatch(db);
-            newReservations.forEach(res => {
-              const docRef = doc(collection(db, 'reservations'));
-              batch.set(docRef, res);
-            });
-            const promise = batch.commit();
-            await toast.promise(promise, {
-              loading: 'Guardando reservas...',
-              success: `¡${newReservations.length} reservas importadas!`,
-              error: 'Error al guardar las reservas.'
-            });
-            setIsImportModalOpen(false); fetchReservations();
-          }
-        });
-      } catch (error) {
-        console.error("Error al procesar el archivo:", error);
-        toast.error("Hubo un error al procesar el archivo.");
-      }
+        };
+        reader.readAsArrayBuffer(importFile);
     };
-    reader.readAsArrayBuffer(importFile);
-  };
-  
+
+    const eventPropGetter = useCallback((event) => ({
+        ...(event.type === 'Clase' && { className: 'event-clase' }),
+    }), []);
+
+
   return (
-     <>
-      {/* --- MODAL PARA CREAR RESERVA (CORREGIDO) --- */}
+    <>
       <Modal isOpen={isBookingModalOpen} onClose={() => setIsBookingModalOpen(false)} title="Confirmar Reserva">
-        {/* SOLUCIÓN: Renderizar solo si slotInfo existe */}
         {slotInfo && (
           <form onSubmit={handleCreateReservation} className="modal-form">
             <p><strong>Laboratorio:</strong> {selectedLab?.name}</p>
@@ -290,14 +312,26 @@ export default function Reservations() {
         )}
       </Modal>
 
-      {/* --- MODAL PARA VER DETALLES DE RESERVA (CORREGIDO) --- */}
       <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title="Detalles de la Reserva">
-        {/* SOLUCIÓN: Renderizar solo si selectedEvent existe */}
         {selectedEvent && (
           <div className="view-modal-content">
+            <p><strong>Tipo:</strong> {selectedEvent.type || 'Practica'}</p>
             <p><strong>Laboratorio:</strong> {selectedEvent.labName}</p>
-            <p><strong>Reservado por:</strong> {selectedEvent.userEmail}</p>
-            <p><strong>Motivo:</strong> {selectedEvent.purpose}</p>
+            {selectedEvent.type === 'Clase' ? (
+              <>
+                <p><strong>Clase:</strong> {selectedEvent.purpose}</p>
+                <p><strong>Facultad:</strong> {selectedEvent.faculty}</p>
+                <p><strong>Carrera:</strong> {selectedEvent.career}</p>
+                <p><strong>Docente (TH):</strong> {selectedEvent.teacherId}</p>
+                <p><strong>Sección:</strong> {selectedEvent.section}</p>
+                <p><strong>Alumnos:</strong> {selectedEvent.studentCount}</p>
+              </>
+            ) : (
+              <>
+                <p><strong>Reservado por:</strong> {selectedEvent.userEmail}</p>
+                <p><strong>Motivo:</strong> {selectedEvent.purpose}</p>
+              </>
+            )}
             <p><strong>Fecha:</strong> {format(selectedEvent.start, 'dd/MM/yyyy')}</p>
             <p><strong>Horario:</strong> {`${format(selectedEvent.start, 'HH:mm')} - ${format(selectedEvent.end, 'HH:mm')}`}</p>
             {userData?.role === 'admin' && (
@@ -313,9 +347,10 @@ export default function Reservations() {
           </div>
         )}
       </Modal>
+
       <Modal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} title="Importar Carga Académica">
         <form onSubmit={handleImportSubmit} className="modal-form">
-          <p>Sube el archivo Excel con la carga académica. Asegúrate de que los nombres de los 'Espacios' coincidan con los nombres de los laboratorios en el sistema.</p>
+          <p>Sube el archivo Excel con la carga académica. Los códigos en 'espacio_aprendizaje' deben coincidir con la lista predefinida.</p>
           <div className="form-group">
             <label htmlFor="period-start">Fecha de Inicio del Período</label>
             <input id="period-start" type="date" value={periodStartDate} onChange={e => setPeriodStartDate(e.target.value)} required />
@@ -361,6 +396,7 @@ export default function Reservations() {
               date={date} onView={(newView) => setView(newView)} onNavigate={(newDate) => setDate(newDate)}
               views={['week', 'day']} step={30} timeslots={2}
               min={new Date(0, 0, 0, 7, 0, 0)} max={new Date(0, 0, 0, 22, 0, 0)}
+              eventPropGetter={eventPropGetter}
             />
           )}
         </div>
