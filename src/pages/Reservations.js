@@ -184,6 +184,9 @@ export default function Reservations() {
     if (!importFile || !periodStartDate || !periodEndDate) {
       return toast.error("Por favor, selecciona un archivo y las fechas del período.");
     }
+
+    setIsImportModalOpen(false);
+
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
@@ -226,6 +229,7 @@ export default function Reservations() {
                     const teacherId = row['codigo_th'];
                     const section = row['seccion'];
                     const studentCount = row['matriculados'];
+                    const teacherName = row['nombre']
                     const classDays = daysStr.split('').map(d => dayMap[d]).filter(d => d !== undefined);
                     
                     let currentDate = new Date(periodStartDate + 'T00:00:00');
@@ -247,7 +251,7 @@ export default function Reservations() {
 
                             newReservations.push({
                                 type: 'Clase', labId, labName: firestoreLabName, purpose: subjectName,
-                                faculty, career, teacherId, section, studentCount,
+                                faculty, career, teacherId, section, studentCount, teacherName,
                                 startTime: Timestamp.fromDate(startTime), endTime: Timestamp.fromDate(endTime),
                                 userEmail: 'Carga Académica',
                             });
@@ -276,7 +280,7 @@ export default function Reservations() {
                     await toast.promise(promise, {
                       loading: 'Guardando reservas...', success: `¡${newReservations.length} reservas importadas!`, error: 'Error al guardar.'
                     });
-                    setIsImportModalOpen(false); fetchReservations();
+                    fetchReservations();
                   }
                 });
             } catch (error) {
@@ -322,6 +326,7 @@ export default function Reservations() {
                 <p><strong>Clase:</strong> {selectedEvent.purpose}</p>
                 <p><strong>Facultad:</strong> {selectedEvent.faculty}</p>
                 <p><strong>Carrera:</strong> {selectedEvent.career}</p>
+                <p><strong>Nombre del Docente:</strong> {selectedEvent.teacherName}</p>
                 <p><strong>Docente (TH):</strong> {selectedEvent.teacherId}</p>
                 <p><strong>Sección:</strong> {selectedEvent.section}</p>
                 <p><strong>Alumnos:</strong> {selectedEvent.studentCount}</p>
