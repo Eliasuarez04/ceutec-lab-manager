@@ -13,6 +13,7 @@ import LabDetail from './pages/LabDetail';
 import Reservations from './pages/Reservations';
 import InventoryManager from './pages/Admin/InventoryManager';
 import Reportes from './pages/Reportes'; // La nueva página de reportes
+import MisReservas from './pages/MisReservas';
 
 // Importa los componentes de rutas
 import Layout from './components/Layout';
@@ -37,6 +38,7 @@ function AppContent() {
       <Route path="/laboratorios" element={<PrivateRoute><Layout><Laboratories /></Layout></PrivateRoute>} />
       <Route path="/laboratorios/:labId" element={<PrivateRoute><Layout><LabDetail /></Layout></PrivateRoute>} />
       <Route path="/reservas" element={<PrivateRoute><Layout><Reservations /></Layout></PrivateRoute>} />
+      <Route path="/mis-reservas" element={<PrivateRoute><Layout><MisReservas /></Layout></PrivateRoute>} />
       
       {/* --- RUTAS DE ADMINISTRADOR (Requieren rol 'admin') --- */}
       <Route

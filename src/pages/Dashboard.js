@@ -31,6 +31,14 @@ const TeacherDashboard = () => (
         <p className="card-description">Consulta la disponibilidad y reserva un laboratorio.</p>
       </div>
     </Link>
+     {/* --- NUEVA TARJETA "MIS RESERVAS" --- */}
+    <Link to="/mis-reservas" className="dashboard-card-link">
+      <div className="card-content">
+        <div className="card-icon">🧾</div>
+        <h2 className="card-title">Mis Reservas</h2>
+        <p className="card-description">Consulta tu historial y gestiona tus próximas reservas.</p>
+      </div>
+    </Link>
   </div>
 );
 
