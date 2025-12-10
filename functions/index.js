@@ -1,10 +1,9 @@
 // functions/index.js
-const { onDocumentCreated } = require("firebase-functions/v2/firestore");
+const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
 const { logger } = require("firebase-functions");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
 
-// Inicializar la app de Admin de Firebase a nivel global
 admin.initializeApp();
 const db = admin.firestore();
 
@@ -95,4 +94,75 @@ exports.sendReservationEmail = onDocumentCreated("reservations/{reservationId}",
   } catch (error) {
     logger.error("Error al enviar correos:", error);
   }
+});
+
+// --- NUEVA FUNCIÓN: Notificaciones de Inventario Bajo ---
+exports.checkStockLevels = onDocumentUpdated("laboratories/{labId}/equipment/{equipmentId}", async (event) => {
+  const beforeData = event.data.before.data();
+  const afterData = event.data.after.data();
+
+  // Obtener el umbral. Si no existe o es 0, no hacer nada.
+  const stockThreshold = afterData.stockThreshold;
+  if (!stockThreshold || stockThreshold <= 0) {
+    return null;
+  }
+
+  // LA CONDICIÓN CLAVE: Enviar alerta solo si la cantidad cruza el umbral hacia abajo
+  if (beforeData.quantity > stockThreshold && afterData.quantity <= stockThreshold) {
+    logger.log(`¡Alerta de stock bajo! Item: ${afterData.name}, Cantidad: ${afterData.quantity}, Umbral: ${stockThreshold}`);
+
+    // Inicializar transporter si no existe
+    if (!transporter) {
+      transporter = nodemailer.createTransport({
+        service: "gmail",
+        auth: {
+          user: process.env.GMAIL_EMAIL,
+          pass: process.env.GMAIL_PASSWORD,
+        },
+      });
+    }
+
+    // Obtener la lista de administradores
+    const admins = [];
+    try {
+      const adminQuery = await db.collection("users").where("role", "==", "admin").get();
+      adminQuery.forEach((doc) => admins.push(doc.data().email));
+    } catch (error) {
+      logger.error("Error al obtener administradores:", error);
+      return null;
+    }
+
+    if (admins.length === 0) {
+      logger.warn("No se encontraron administradores para notificar.");
+      return null;
+    }
+
+    // Preparar el correo de alerta
+    const mailOptions = {
+      from: `Alertas del Portal <${process.env.GMAIL_EMAIL}>`,
+      to: admins.join(", "),
+      subject: `⚠️ Alerta de Stock Bajo: ${afterData.name}`,
+      html: `
+        <h1>Alerta de Inventario Bajo</h1>
+        <p>El siguiente ítem ha alcanzado o caído por debajo de su umbral de alerta:</p>
+        <ul>
+          <li><strong>Laboratorio:</strong> ${afterData.labName || 'No especificado'}</li>
+          <li><strong>Ítem:</strong> ${afterData.name}</li>
+          <li><strong>Cantidad Actual:</strong> <strong style="color: red;">${afterData.quantity}</strong></li>
+          <li><strong>Umbral de Alerta:</strong> ${stockThreshold}</li>
+        </ul>
+        <p>Por favor, revisa el inventario para planificar la reposición.</p>
+      `,
+    };
+
+    // Enviar el correo
+    try {
+      await transporter.sendMail(mailOptions);
+      logger.log("Correo de alerta de stock bajo enviado a los administradores.");
+    } catch (error) {
+      logger.error("Error al enviar correo de alerta:", error);
+    }
+  }
+  
+  return null;
 });

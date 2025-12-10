@@ -309,3 +309,17 @@
   transform: translateY(-50%);
   pointer-events: none; /* Evita que el ícono intercepte los clics */
 }
+
+.threshold-badge {
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: var(--secondary-text);
+  background-color: var(--background-light);
+  padding: 0.3rem 0.6rem;
+  border-radius: 4px;
+}
+
+/* Ajustar el formulario de añadir para el nuevo campo */
+.add-item-form {
+  grid-template-columns: 2fr 1fr 1fr 1.5fr auto;
+}

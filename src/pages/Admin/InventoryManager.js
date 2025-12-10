@@ -2,25 +2,22 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { db } from '../../firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, writeBatch, getDoc, Timestamp } from 'firebase/firestore';
-import '../styles/InventoryManager.css'; // Asegúrate que la ruta a tu CSS es correcta
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal';
+import '../styles/InventoryManager.css'; // Asegúrate que la ruta a tu CSS es correcta
 import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
 
-// ===================================================================================
-// Helper: Componente para una fila de la tabla de inventario
-// ===================================================================================
-const formatStatusClass = (status) => status?.toLowerCase().replace(/\s+/g, '-') || '';
-
+// --- Componente para una fila de la tabla de inventario (ACTUALIZADO) ---
 const InventoryRow = ({ item, onUpdate, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedItem, setEditedItem] = useState({ ...item });
 
   const handleUpdate = () => {
+    // Solo actualizar si hay cambios
     if (JSON.stringify(item) !== JSON.stringify(editedItem)) {
       onUpdate(item.id, editedItem);
     }
@@ -37,6 +34,7 @@ const InventoryRow = ({ item, onUpdate, onDelete }) => {
       <tr>
         <td><input type="text" value={editedItem.name} onChange={(e) => setEditedItem({ ...editedItem, name: e.target.value })} /></td>
         <td><input type="number" min="0" value={editedItem.quantity} onChange={(e) => setEditedItem({ ...editedItem, quantity: Number(e.target.value) })} /></td>
+        <td><input type="number" min="0" value={editedItem.stockThreshold || 0} onChange={(e) => setEditedItem({ ...editedItem, stockThreshold: Number(e.target.value) })} /></td>
         <td>
           <select value={editedItem.status} onChange={(e) => setEditedItem({ ...editedItem, status: e.target.value })}>
             <option value="Disponible">Disponible</option>
@@ -56,40 +54,29 @@ const InventoryRow = ({ item, onUpdate, onDelete }) => {
     <tr>
       <td>{item.name}</td>
       <td>{item.quantity}</td>
-      <td>
-        <span className={`status-badge status-${formatStatusClass(item.status)}`}>
-          {item.status}
-        </span>
-      </td>
+      <td><span className="threshold-badge">{item.stockThreshold > 0 ? item.stockThreshold : 'N/A'}</span></td>
+      <td><span className={`status-badge status-${(item.status || '').toLowerCase().replace(/\s+/g, '-')}`}>{item.status}</span></td>
       <td className="actions-cell">
         <button onClick={() => setIsEditing(true)} className="action-btn edit-btn">Editar</button>
-        {/* PASAMOS EL ID Y EL NOMBRE A LA FUNCIÓN DE ELIMINACIÓN */}
         <button onClick={() => onDelete(item.id, item.name)} className="action-btn delete-btn">Eliminar</button>
       </td>
     </tr>
   );
 };
 
-
-// ===================================================================================
-// Componente Principal: InventoryManager
-// ===================================================================================
+// --- Componente Principal (ACTUALIZADO) ---
 export default function InventoryManager() {
-  // Estados para laboratorios e inventario
+  const { currentUser } = useAuth();
   const [labs, setLabs] = useState([]);
   const [selectedLab, setSelectedLab] = useState(null);
   const [equipment, setEquipment] = useState([]);
-  const [newEquipment, setNewEquipment] = useState({ name: '', quantity: 1, status: 'Disponible' });
+  const [newEquipment, setNewEquipment] = useState({ name: '', quantity: 1, status: 'Disponible', stockThreshold: 0 });
   const [isLoadingLabs, setIsLoadingLabs] = useState(false);
   const [isLoadingInventory, setIsLoadingInventory] = useState(false);
-
-  // Estados para los modales y el formulario de laboratorio
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [modalMode, setModalMode] = useState('add'); // 'add' o 'edit'
-  const [currentLabData, setCurrentLabData] = useState({ name: '', location: '', description: '' });
-  const { currentUser } = useAuth();
+  const [modalMode, setModalMode] = useState('add');
+  const [currentLabData, setCurrentLabData] = useState({ name: '', location: '', description: '', status: 'Disponible' });
 
-  // Cargar la lista de laboratorios
   const fetchLabs = useCallback(async () => {
     setIsLoadingLabs(true);
     const q = query(collection(db, 'laboratories'), orderBy('name'));
@@ -103,7 +90,6 @@ export default function InventoryManager() {
     fetchLabs();
   }, [fetchLabs]);
 
-  // Cargar inventario al seleccionar un laboratorio
   const fetchInventory = useCallback(async (labId) => {
     if (!labId) return;
     setIsLoadingInventory(true);
@@ -120,31 +106,29 @@ export default function InventoryManager() {
     fetchInventory(lab.id);
   };
 
-  // --- Funciones CRUD para EQUIPOS ---
   const handleAddEquipment = async (e) => {
     e.preventDefault();
-    if (!selectedLab || !newEquipment.name) return;
+    if (!selectedLab || !newEquipment.name.trim()) return;
+    const dataToAdd = {
+        ...newEquipment,
+        name: newEquipment.name.trim(),
+        labName: selectedLab.name
+    };
     const equipmentColRef = collection(db, 'laboratories', selectedLab.id, 'equipment');
-    const docRef = await addDoc(equipmentColRef, newEquipment);
-    
-    // --- AÑADIR LOG ---
+    const docRef = await addDoc(equipmentColRef, dataToAdd);
     const logData = {
       labId: selectedLab.id, labName: selectedLab.name, itemId: docRef.id,
-      itemName: newEquipment.name, userEmail: currentUser.email, changeType: 'Añadido',
-      quantityChange: newEquipment.quantity, newQuantity: newEquipment.quantity,
+      itemName: dataToAdd.name, userEmail: currentUser.email, changeType: 'Añadido',
+      quantityChange: dataToAdd.quantity, newQuantity: dataToAdd.quantity,
       timestamp: Timestamp.now()
     };
     await addDoc(collection(db, 'inventory_logs'), logData);
-    
-    setNewEquipment({ name: '', quantity: 1, status: 'Disponible' });
+    setNewEquipment({ name: '', quantity: 1, status: 'Disponible', stockThreshold: 0 });
     fetchInventory(selectedLab.id);
   };
 
-
   const handleUpdateEquipment = async (itemId, updatedData) => {
     const itemDocRef = doc(db, 'laboratories', selectedLab.id, 'equipment', itemId);
-    
-    // --- AÑADIR LOG (requiere leer el estado anterior) ---
     const docBefore = await getDoc(itemDocRef);
     if (docBefore.exists()) {
       const oldData = docBefore.data();
@@ -156,34 +140,23 @@ export default function InventoryManager() {
       };
       await addDoc(collection(db, 'inventory_logs'), logData);
     }
-
     await updateDoc(itemDocRef, updatedData);
     fetchInventory(selectedLab.id);
   };
   
-  // FUNCIÓN CORREGIDA: Acepta itemId e itemName
   const handleDeleteEquipment = (itemId, itemName) => {
     MySwal.fire({
-      title: `¿Eliminar "${itemName}"?`, // Usa itemName
-      text: "Esta acción no se puede revertir.",
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#c8102e',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'Sí, eliminar',
-      cancelButtonText: 'Cancelar'
+      title: `¿Eliminar "${itemName}"?`, text: "Esta acción no se puede revertir.", icon: 'warning',
+      showCancelButton: true, confirmButtonColor: '#c8102e', cancelButtonColor: '#6c757d',
+      confirmButtonText: 'Sí, eliminar', cancelButtonText: 'Cancelar'
     }).then(async (result) => {
       if (result.isConfirmed) {
         const itemDocRef = doc(db, 'laboratories', selectedLab.id, 'equipment', itemId);
         const docBefore = await getDoc(itemDocRef);
-        
         const promise = deleteDoc(itemDocRef);
         toast.promise(promise, {
-          loading: 'Eliminando equipo...',
-          success: `"${itemName}" eliminado correctamente.`,
-          error: 'Error al eliminar el equipo.'
+          loading: 'Eliminando equipo...', success: `"${itemName}" eliminado.`, error: 'Error al eliminar.'
         });
-        
         if (docBefore.exists()) {
           const oldData = docBefore.data();
           const logData = {
@@ -199,10 +172,9 @@ export default function InventoryManager() {
     });
   };
 
-  // --- Funciones para el MODAL de Laboratorios ---
   const openAddLabModal = () => {
     setModalMode('add');
-    setCurrentLabData({ name: '', location: '', description: '' });
+    setCurrentLabData({ name: '', location: '', description: '', status: 'Disponible' });
     setIsModalOpen(true);
   };
   
@@ -215,66 +187,49 @@ export default function InventoryManager() {
   const handleLabFormSubmit = async (e) => {
     e.preventDefault();
     if (!currentLabData.name.trim() || !currentLabData.location.trim()) return;
-
     const processedData = {
         name: currentLabData.name.trim(),
         location: currentLabData.location.trim(),
-        description: currentLabData.description.trim(),
+        description: (currentLabData.description || '').trim(),
         status: currentLabData.status || 'Disponible'
     };
-
     if (modalMode === 'add') {
       await addDoc(collection(db, 'laboratories'), processedData);
+      toast.success('Laboratorio creado con éxito.');
     } else {
       const labDocRef = doc(db, 'laboratories', currentLabData.id);
       const { id, ...dataToUpdate } = currentLabData; 
-      await updateDoc(labDocRef, {
-        name: dataToUpdate.name.trim(),
-        location: dataToUpdate.location.trim(),
-        description: dataToUpdate.description.trim(),
-        status: dataToUpdate.status || 'Disponible'
-      });
+      await updateDoc(labDocRef, dataToUpdate);
+      toast.success('Laboratorio actualizado con éxito.');
     }
-    
     setIsModalOpen(false);
     await fetchLabs(); 
   };
-
-  // FUNCIÓN CORREGIDA: Acepta labId y labName
+  
   const handleDeleteLab = (labId, labName) => {
     MySwal.fire({
-      title: `¿Eliminar el laboratorio "${labName}"?`, // Usa labName
-      html: "¡ADVERTENCIA! Esta acción también eliminará <b>TODO</b> su inventario y es irreversible.",
-      icon: 'error',
-      showCancelButton: true,
-      confirmButtonColor: '#c8102e',
-      cancelButtonColor: '#6c757d',
-      confirmButtonText: 'Sí, entiendo el riesgo, eliminar',
+      title: `¿Eliminar el laboratorio "${labName}"?`,
+      html: "¡ADVERTENCIA! Se eliminará TODO su inventario. Esta acción es irreversible.",
+      icon: 'error', showCancelButton: true, confirmButtonColor: '#c8102e',
+      cancelButtonColor: '#6c757d', confirmButtonText: 'Sí, eliminar todo',
       cancelButtonText: 'Cancelar'
     }).then(async (result) => {
       if (result.isConfirmed) {
-        const deletingToast = toast.loading(`Eliminando "${labName}" y todo su contenido...`);
+        const deletingToast = toast.loading(`Eliminando "${labName}" y su contenido...`);
         const labDocRef = doc(db, 'laboratories', labId);
-        
-        // Eliminar subcolecciones
         const equipmentColRef = collection(labDocRef, 'equipment');
         const equipmentSnapshot = await getDocs(equipmentColRef);
         const batch = writeBatch(db);
         equipmentSnapshot.docs.forEach(doc => batch.delete(doc.ref));
         await batch.commit();
-
-        // Eliminar el laboratorio principal
         await deleteDoc(labDocRef);
-        
         toast.dismiss(deletingToast);
         toast.success(`Laboratorio "${labName}" eliminado.`);
-        
         setSelectedLab(null);
         fetchLabs();
       }
     });
   };
-  
 
   return (
     <>
@@ -293,14 +248,13 @@ export default function InventoryManager() {
             <textarea id="labDescription" value={currentLabData.description || ''} onChange={(e) => setCurrentLabData({...currentLabData, description: e.target.value})} rows="3"></textarea>
           </div>
           <div className="form-group">
-          <label htmlFor="labStatus">Estado General del Laboratorio</label>
-          {/* --- ENVOLVER EL SELECT CON EL NUEVO DIV --- */}
-          <div className="select-wrapper">
-          <select id="labStatus" value={currentLabData.status || 'Disponible'} onChange={(e) => setCurrentLabData({...currentLabData, status: e.target.value})}>
-          <option value="Disponible">Disponible</option>
-          <option value="Mantenimiento">Mantenimiento</option>
-          </select>
-          </div>
+            <label htmlFor="labStatus">Estado General del Laboratorio</label>
+            <div className="select-wrapper">
+              <select id="labStatus" value={currentLabData.status || 'Disponible'} onChange={(e) => setCurrentLabData({...currentLabData, status: e.target.value})}>
+                <option value="Disponible">Disponible</option>
+                <option value="Mantenimiento">Mantenimiento</option>
+              </select>
+            </div>
           </div>
           <div className="modal-actions">
             <button type="button" className="action-btn cancel-btn" onClick={() => setIsModalOpen(false)}>Cancelar</button>
@@ -330,13 +284,9 @@ export default function InventoryManager() {
           {selectedLab ? (
             <>
               <div className="content-header">
-                <div>
-                  <h1>Gestionando: {selectedLab.name}</h1>
-                  <p>{selectedLab.location}</p>
-                </div>
+                <div><h1>Gestionando: {selectedLab.name}</h1><p>{selectedLab.location}</p></div>
                 <div className="header-actions">
                   <button className="action-btn edit-btn" onClick={() => openEditLabModal(selectedLab)}>Editar</button>
-                  {/* PASAMOS EL ID Y EL NOMBRE AL CLICKEAR ELIMINAR LAB */}
                   <button className="action-btn delete-btn" onClick={() => handleDeleteLab(selectedLab.id, selectedLab.name)}>Eliminar</button>
                 </div>
               </div>
@@ -345,7 +295,8 @@ export default function InventoryManager() {
                 <h3 className="card-title">Añadir Nuevo Equipo</h3>
                 <form onSubmit={handleAddEquipment} className="add-item-form">
                   <input type="text" placeholder="Nombre del equipo" value={newEquipment.name} onChange={(e) => setNewEquipment({ ...newEquipment, name: e.target.value })} required />
-                  <input type="number" min="1" value={newEquipment.quantity} onChange={(e) => setNewEquipment({ ...newEquipment, quantity: Number(e.target.value) })} required />
+                  <input type="number" placeholder="Cantidad" min="1" value={newEquipment.quantity} onChange={(e) => setNewEquipment({ ...newEquipment, quantity: Number(e.target.value) })} required />
+                  <input type="number" placeholder="Umbral Alerta" min="0" value={newEquipment.stockThreshold} onChange={(e) => setNewEquipment({ ...newEquipment, stockThreshold: Number(e.target.value) })} />
                   <select value={newEquipment.status} onChange={(e) => setNewEquipment({ ...newEquipment, status: e.target.value })}>
                     <option value="Disponible">Disponible</option>
                     <option value="En Mantenimiento">En Mantenimiento</option>
@@ -363,22 +314,16 @@ export default function InventoryManager() {
                       <tr>
                         <th>Equipo</th>
                         <th>Cantidad</th>
+                        <th>Umbral Alerta</th>
                         <th>Estado</th>
                         <th className="actions-header">Acciones</th>
                       </tr>
                     </thead>
                     <tbody>
                       {equipment.length > 0 ? equipment.map(item => (
-                        <InventoryRow 
-                          key={item.id} 
-                          item={item} 
-                          onUpdate={handleUpdateEquipment} 
-                          onDelete={handleDeleteEquipment} // Aquí InventoryRow llama a la función con los argumentos correctos
-                        />
+                        <InventoryRow key={item.id} item={item} onUpdate={handleUpdateEquipment} onDelete={handleDeleteEquipment} />
                       )) : (
-                        <tr>
-                          <td colSpan="4" className="no-items-message">No hay equipos registrados en este laboratorio.</td>
-                        </tr>
+                        <tr><td colSpan="5" className="no-items-message">No hay equipos registrados.</td></tr>
                       )}
                     </tbody>
                   </table>
@@ -388,7 +333,7 @@ export default function InventoryManager() {
           ) : (
             <div className="placeholder-content">
               <h2>Selecciona un laboratorio</h2>
-              <p>Elige un laboratorio de la lista para empezar a gestionar su inventario o crea uno nuevo.</p>
+              <p>Elige un laboratorio para gestionar su inventario o crea uno nuevo.</p>
             </div>
           )}
         </main>
