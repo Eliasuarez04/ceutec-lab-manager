@@ -108,6 +108,13 @@ const AdminDashboard = () => {
       <aside className="sidebar-area">
         <h2 className="sidebar-title">Acciones Rápidas</h2>
         <nav className="quick-nav">
+          <Link to="/admin/solicitudes" className="nav-link-item">
+            <span className="nav-icon">📋</span>
+            <div className="nav-text">
+              <h3>Gestionar Solicitudes</h3>
+              <p>Preparar y registrar entregas de material</p>
+            </div>
+          </Link>
           <Link to="/reservas" className="nav-link-item">
             <span className="nav-icon">🗓️</span>
             <div className="nav-text">

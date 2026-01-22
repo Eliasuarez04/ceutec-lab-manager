@@ -17,26 +17,18 @@ import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import * as XLSX from 'xlsx';
+import Select from 'react-select'; // Importar react-select
 
 const MySwal = withReactContent(Swal);
 
-// --- SOLUCIÓN: DICCIONARIO DE MAPEO CORREGIDO ---
-// 'Clave' (izquierda): El valor EXACTO de la columna "espacio_aprendizaje" del Excel.
-// 'Valor' (derecha): El nombre EXACTO del laboratorio como está en tu base de datos (Firestore).
-// **¡ESTE ES EL ÚNICO LUGAR QUE NECESITAS EDITAR EN EL FUTURO!**
+// --- DICCIONARIO DE MAPEO DE LABORATORIOS ---
 const excelToFirestoreLabMap = {
-  'SN/FOT': 'Fotografía',
-  'SN/RD' : 'Laboratorio de Redes',
-  'SN/TRD': 'Taller de Redes',
-  'SN/QUI': 'Química',
-  'SN/DB1': 'Dibujo I',
-  'SN/DB2': 'Dibujo II',
-  'SN/DB3': 'Dibujo III',
-  'SN/MAC': 'MAC',
-  'SN/L08': 'Cómputo 08',
-  'SN/L07': 'Cómputo 07',
+  'SN/FOT': 'Fotografía', 'SN/RD' : 'Laboratorio de Redes',
+  'SN/TRD': 'Taller de Redes', 'SN/QUI': 'Química',
+  'SN/DB1': 'Dibujo I', 'SN/DB2': 'Dibujo II',
+  'SN/DB3': 'Dibujo III', 'SN/MAC': 'MAC',
+  'SN/L08': 'Cómputo 08', 'SN/L07': 'Cómputo 07',
 };
-
 
 // Configuración y mensajes
 const locales = { 'es': es };
@@ -66,12 +58,15 @@ export default function Reservations() {
   const [view, setView] = useState('week');
   const [date, setDate] = useState(new Date());
   const location = useLocation();
+
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [slotInfo, setSlotInfo] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [purpose, setPurpose] = useState('');
+  const [availableInventory, setAvailableInventory] = useState([]);
+  const [selectedItems, setSelectedItems] = useState([]);
   const [importFile, setImportFile] = useState(null);
   const [periodStartDate, setPeriodStartDate] = useState('');
   const [periodEndDate, setPeriodEndDate] = useState('');
@@ -104,55 +99,95 @@ export default function Reservations() {
     const querySnapshot = await getDocs(q);
     const reservationsData = querySnapshot.docs.map(doc => {
       const data = doc.data();
-      const title = selectedLab.id === 'all'
-        ? `${data.labName}: ${data.purpose} (${data.userEmail.split('@')[0]})`
+      let title = data.type === 'Clase' 
+        ? `${data.purpose} - ${data.teacherName || 'Docente'}`
         : `${data.purpose} (${data.userEmail.split('@')[0]})`;
+      if (selectedLab.id === 'all' && data.labName) {
+        title = `${data.labName}: ${title}`;
+      }
       return { ...data, id: doc.id, start: data.startTime.toDate(), end: data.endTime.toDate(), title };
     });
     setReservations(reservationsData);
     setLoading(false);
   }, [selectedLab]);
 
-  useEffect(() => {
-    fetchReservations();
-  }, [fetchReservations]);
+  useEffect(() => { fetchReservations(); }, [fetchReservations]);
 
-  const handleSelectSlot = (slot) => {
-    if (selectedLab?.id === 'all') {
-      toast.error("Por favor, selecciona un laboratorio específico para poder reservar.");
-      return;
-    }
+  const handleSelectSlot = async (slot) => {
+    if (selectedLab?.id === 'all') { return toast.error("Selecciona un laboratorio para reservar."); }
     if (slot.start < new Date()) return;
     const isOverlapping = reservations.some(event => slot.start < event.end && slot.end > event.start);
-    if (isOverlapping) {
-      toast.error('Este horario ya está ocupado por una clase o reserva.');
-      return;
+    if (isOverlapping) { return toast.error('Este horario ya está ocupado.'); }
+    
+    const toastId = toast.loading('Cargando inventario...');
+    try {
+      const equipmentColRef = collection(db, 'laboratories', selectedLab.id, 'equipment');
+      const q = query(equipmentColRef, where('quantity', '>', 0));
+      const equipmentSnapshot = await getDocs(q);
+      const inventoryData = equipmentSnapshot.docs.map(doc => ({ 
+        id: doc.id, value: doc.id, label: `${doc.data().name} (Disp: ${doc.data().quantity})`,
+        ...doc.data()
+      }));
+      setAvailableInventory(inventoryData);
+      const startTime = slot.start;
+      const endTime = new Date(startTime.getTime() + 90 * 60000);
+      setSlotInfo({ start: startTime, end: endTime, type: 'Practica' });
+      setSelectedItems([]); 
+      setIsBookingModalOpen(true);
+    } catch (error) {
+      console.error("Error fetching inventory:", error);
+      toast.error("No se pudo cargar el inventario.");
+    } finally {
+      toast.dismiss(toastId);
     }
-    const startTime = slot.start;
-    const endTime = new Date(startTime.getTime() + 90 * 60000);
-    setSlotInfo({ start: startTime, end: endTime, type: 'Practica' });
-    setIsBookingModalOpen(true);
   };
 
-  const handleSelectEvent = (event) => {
-    setSelectedEvent(event);
-    setIsViewModalOpen(true);
+  const handleAddItemToSelection = (selectedOption) => {
+    if (selectedItems.find(item => item.id === selectedOption.id)) {
+      toast('Este ítem ya está en tu lista.', { icon: 'ℹ️' });
+      return;
+    }
+    setSelectedItems(prev => [...prev, { ...selectedOption, requestQuantity: 1 }]);
   };
+  
+  const handleItemQuantityChange = (itemId, value) => {
+    const quantity = parseInt(value, 10);
+    const item = selectedItems.find(i => i.id === itemId);
+    if (isNaN(quantity) || quantity < 1) {
+      setSelectedItems(prev => prev.filter(i => i.id !== itemId));
+    } else if (quantity > item.quantity) {
+      toast.error(`La cantidad máxima para ${item.name} es ${item.quantity}.`);
+      setSelectedItems(prev => prev.map(i => i.id === itemId ? { ...i, requestQuantity: item.quantity } : i));
+    } else {
+      setSelectedItems(prev => prev.map(i => i.id === itemId ? { ...i, requestQuantity: quantity } : i));
+    }
+  };
+
+  const handleRemoveItem = (itemId) => {
+    setSelectedItems(prev => prev.filter(i => i.id !== itemId));
+  };
+
+  const handleSelectEvent = (event) => { setSelectedEvent(event); setIsViewModalOpen(true); };
 
   const handleCreateReservation = async (e) => {
     e.preventDefault();
     if (!purpose.trim() || !slotInfo) return;
+    const itemsToSave = selectedItems.map(item => ({
+      itemId: item.id, itemName: item.name, quantity: item.requestQuantity,
+    }));
     const newReservationData = {
-      type: slotInfo.type || 'Practica', labId: selectedLab.id, labName: selectedLab.name,
+      type: 'Practica', labId: selectedLab.id, labName: selectedLab.name,
       userId: currentUser.uid, userEmail: currentUser.email,
       startTime: Timestamp.fromDate(slotInfo.start), endTime: Timestamp.fromDate(slotInfo.end),
       purpose: purpose.trim(),
+      requestedItems: itemsToSave,
+      fulfillmentStatus: itemsToSave.length > 0 ? 'Pendiente' : 'Sin Solicitud',
     };
     const promise = addDoc(collection(db, 'reservations'), newReservationData);
     toast.promise(promise, {
-      loading: 'Creando reserva...', success: '¡Reserva creada con éxito!', error: 'Error al crear la reserva.',
+      loading: 'Creando reserva...', success: '¡Reserva creada!', error: 'Error al crear la reserva.',
     }).then(() => {
-      setIsBookingModalOpen(false); setPurpose(''); setSlotInfo(null); fetchReservations();
+      setIsBookingModalOpen(false); setPurpose(''); setSlotInfo(null); setSelectedItems([]); fetchReservations();
     });
   };
 
@@ -184,9 +219,7 @@ export default function Reservations() {
     if (!importFile || !periodStartDate || !periodEndDate) {
       return toast.error("Por favor, selecciona un archivo y las fechas del período.");
     }
-
     setIsImportModalOpen(false);
-
     const reader = new FileReader();
     reader.onload = async (event) => {
       try {
@@ -202,99 +235,85 @@ export default function Reservations() {
         const dayMap = { '1': 1, '2': 2, '3': 3, '4': 4, '5': 5, '6': 6, '7': 0 };
 
         for (const row of jsonData) {
-                    const excelLabCode = String(row['espacio_aprendizaje'] || '').trim();
-                    if (!excelLabCode) continue;
+          const excelLabCode = String(row['espacio_aprendizaje'] || '').trim();
+          if (!excelLabCode) continue;
+          const firestoreLabName = excelToFirestoreLabMap[excelLabCode];
+          if (!firestoreLabName) { continue; }
+          const labId = labNameToIdMap.get(firestoreLabName.toLowerCase());
+          if (!labId) { continue; }
+          const daysStr = String(row['dias_habiles'] || '');
+          const timeStr = String(row['hora'] || '');
+          const durationStr = String(row['duracion_clase'] || '90');
+          const parsedDuration = parseInt(durationStr.replace(/[^0-9]/g, ''), 10);
+          const durationInMinutes = isNaN(parsedDuration) ? 90 : parsedDuration;
+          const subjectName = row['nombre_materia'];
+          if (!daysStr || !timeStr || !subjectName) continue;
+          const faculty = getFacultyFromClassName(subjectName);
+          const career = row['nombre_areaacademicasCompactacion'];
+          const teacherId = row['codigo_th'];
+          const teacherName = String(row['nombre'] || '').trim();
+          const section = row['seccion'];
+          const studentCount = row['matriculados'];
+          const classDays = daysStr.split('').map(d => dayMap[d]).filter(d => d !== undefined);
+          let currentDate = new Date(periodStartDate + 'T00:00:00');
+          let endDate = new Date(periodEndDate + 'T00:00:00');
 
-                    const firestoreLabName = excelToFirestoreLabMap[excelLabCode];
-                    if (!firestoreLabName) {
-                        console.warn(`Código "${excelLabCode}" no reconocido. Saltando.`);
-                        continue;
-                    }
-
-                    const labId = labNameToIdMap.get(firestoreLabName.toLowerCase());
-                    if (!labId) {
-                        console.warn(`Laboratorio "${firestoreLabName}" no existe en la BD. Saltando.`);
-                        continue;
-                    }
-
-                    const daysStr = String(row['dias_habiles'] || '');
-                    const timeStr = String(row['hora'] || '');
-                    const durationInMinutes = 90;
-                    const subjectName = row['nombre_materia'];
-                    
-                    if (!daysStr || !timeStr || !subjectName) continue;
-
-                    const faculty = getFacultyFromClassName(subjectName);
-                    const career = row['nombre_areaacademicasCompactacion'];
-                    const teacherId = row['codigo_th'];
-                    const section = row['seccion'];
-                    const studentCount = row['matriculados'];
-                    const teacherName = row['nombre']
-                    const classDays = daysStr.split('').map(d => dayMap[d]).filter(d => d !== undefined);
-                    
-                    let currentDate = new Date(periodStartDate + 'T00:00:00');
-                    let endDate = new Date(periodEndDate + 'T00:00:00');
-
-                    while (currentDate <= endDate) {
-                        if (classDays.includes(currentDate.getDay())) {
-                            const timeParts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
-                            if (!timeParts) continue;
-
-                            let [_, hours, minutes, modifier] = timeParts;
-                            hours = parseInt(hours);
-                            if (modifier.toUpperCase() === 'PM' && hours !== 12) hours += 12;
-                            if (modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
-
-                            const startTime = new Date(currentDate);
-                            startTime.setHours(hours, parseInt(minutes), 0, 0);
-                            const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
-
-                            newReservations.push({
-                                type: 'Clase', labId, labName: firestoreLabName, purpose: subjectName,
-                                faculty, career, teacherId, section, studentCount, teacherName,
-                                startTime: Timestamp.fromDate(startTime), endTime: Timestamp.fromDate(endTime),
-                                userEmail: 'Carga Académica',
-                            });
-                        }
-                        currentDate.setDate(currentDate.getDate() + 1);
-                    }
-                }
-                
-                toast.dismiss(loadingToast);
-                if (newReservations.length === 0) {
-                  return toast.error("No se generaron reservas. Verifica los códigos en 'espacio_aprendizaje' y el formato del archivo.");
-                }
-
-                MySwal.fire({
-                  title: 'Confirmar Importación', text: `Se crearán ${newReservations.length} reservas de clase. ¿Continuar?`,
-                  icon: 'info', showCancelButton: true, confirmButtonColor: '#c8102e', cancelButtonColor: '#6c757d',
-                  confirmButtonText: 'Sí, importar', cancelButtonText: 'Cancelar'
-                }).then(async (result) => {
-                  if (result.isConfirmed) {
-                    const batch = writeBatch(db);
-                    newReservations.forEach(res => {
-                      const docRef = doc(collection(db, 'reservations'));
-                      batch.set(docRef, res);
-                    });
-                    const promise = batch.commit();
-                    await toast.promise(promise, {
-                      loading: 'Guardando reservas...', success: `¡${newReservations.length} reservas importadas!`, error: 'Error al guardar.'
-                    });
-                    fetchReservations();
-                  }
-                });
-            } catch (error) {
-                console.error("Error al procesar el archivo:", error);
-                toast.error("Hubo un error al procesar el archivo. Revisa la consola.");
+          while (currentDate <= endDate) {
+            if (classDays.includes(currentDate.getDay())) {
+              const timeParts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
+              if (!timeParts) continue;
+              let [_, hours, minutes, modifier] = timeParts;
+              hours = parseInt(hours);
+              if (modifier.toUpperCase() === 'PM' && hours !== 12) hours += 12;
+              if (modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
+              const startTime = new Date(currentDate);
+              startTime.setHours(hours, parseInt(minutes), 0, 0);
+              const endTime = new Date(startTime.getTime() + durationInMinutes * 60000);
+              newReservations.push({
+                type: 'Clase', labId, labName: firestoreLabName, purpose: subjectName,
+                faculty, career, teacherId, teacherName, section, studentCount,
+                startTime: Timestamp.fromDate(startTime), endTime: Timestamp.fromDate(endTime),
+                userEmail: 'Carga Académica',
+              });
             }
-        };
-        reader.readAsArrayBuffer(importFile);
+            currentDate.setDate(currentDate.getDate() + 1);
+          }
+        }
+        
+        toast.dismiss(loadingToast);
+        if (newReservations.length === 0) {
+          return toast.error("No se generaron reservas.");
+        }
+
+        MySwal.fire({
+          title: 'Confirmar Importación', text: `Se crearán ${newReservations.length} reservas de clase. ¿Continuar?`,
+          icon: 'info', showCancelButton: true, confirmButtonColor: '#c8102e', cancelButtonColor: '#6c757d',
+          confirmButtonText: 'Sí, importar', cancelButtonText: 'Cancelar'
+        }).then(async (result) => {
+          if (result.isConfirmed) {
+            const batch = writeBatch(db);
+            newReservations.forEach(res => {
+              const docRef = doc(collection(db, 'reservations'));
+              batch.set(docRef, res);
+            });
+            const promise = batch.commit();
+            await toast.promise(promise, {
+              loading: 'Guardando reservas...', success: `¡${newReservations.length} reservas importadas!`, error: 'Error al guardar.'
+            });
+            fetchReservations();
+          }
+        });
+      } catch (error) {
+        console.error("Error al procesar el archivo:", error);
+        toast.error("Hubo un error al procesar el archivo.");
+      }
     };
-
-    const eventPropGetter = useCallback((event) => ({
-        ...(event.type === 'Clase' && { className: 'event-clase' }),
-    }), []);
-
+    reader.readAsArrayBuffer(importFile);
+  };
+  
+  const eventPropGetter = useCallback((event) => ({
+    ...(event.type === 'Clase' && { className: 'event-clase' }),
+  }), []);
 
   return (
     <>
@@ -305,12 +324,34 @@ export default function Reservations() {
             <p><strong>Fecha:</strong> {slotInfo.start.toLocaleDateString('es-ES', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}</p>
             <p><strong>Horario:</strong> {`${format(slotInfo.start, 'HH:mm')} - ${format(slotInfo.end, 'HH:mm')}`}</p>
             <div className="form-group">
-              <label htmlFor="purpose">Motivo de la Reserva (Ej: Clase, Proyecto)</label>
+              <label htmlFor="purpose">Motivo de la Reserva (Ej: Práctica, Proyecto)</label>
               <input id="purpose" type="text" value={purpose} onChange={(e) => setPurpose(e.target.value)} required />
+            </div>
+            <div className="inventory-request-section">
+              <h4>Solicitar Equipos/Insumos (Opcional)</h4>
+              <Select
+                options={availableInventory}
+                onChange={handleAddItemToSelection}
+                placeholder="Busca y selecciona un ítem..."
+                noOptionsMessage={() => 'No hay ítems disponibles.'}
+                value={null}
+              />
+              {selectedItems.length > 0 && (
+                <div className="selected-items-list">
+                  {selectedItems.map(item => (
+                    <div key={item.id} className="selected-item-row">
+                      <span className="item-name">{item.name}</span>
+                      <input type="number" min="1" max={item.quantity} value={item.requestQuantity}
+                        onChange={(e) => handleItemQuantityChange(item.id, e.target.value)} className="quantity-input" />
+                      <button type="button" onClick={() => handleRemoveItem(item.id)} className="remove-item-btn">&times;</button>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="modal-actions">
               <button type="button" className="action-btn cancel-btn" onClick={() => setIsBookingModalOpen(false)}>Cancelar</button>
-              <button type="submit" className="action-btn save-btn">Reservar Espacio</button>
+              <button type="submit" className="action-btn save-btn">Confirmar y Reservar</button>
             </div>
           </form>
         )}
@@ -324,12 +365,8 @@ export default function Reservations() {
             {selectedEvent.type === 'Clase' ? (
               <>
                 <p><strong>Clase:</strong> {selectedEvent.purpose}</p>
+                <p><strong>Docente:</strong> {selectedEvent.teacherName}</p>
                 <p><strong>Facultad:</strong> {selectedEvent.faculty}</p>
-                <p><strong>Carrera:</strong> {selectedEvent.career}</p>
-                <p><strong>Nombre del Docente:</strong> {selectedEvent.teacherName}</p>
-                <p><strong>Docente (TH):</strong> {selectedEvent.teacherId}</p>
-                <p><strong>Sección:</strong> {selectedEvent.section}</p>
-                <p><strong>Alumnos:</strong> {selectedEvent.studentCount}</p>
               </>
             ) : (
               <>
@@ -339,12 +376,15 @@ export default function Reservations() {
             )}
             <p><strong>Fecha:</strong> {format(selectedEvent.start, 'dd/MM/yyyy')}</p>
             <p><strong>Horario:</strong> {`${format(selectedEvent.start, 'HH:mm')} - ${format(selectedEvent.end, 'HH:mm')}`}</p>
+            {selectedEvent.requestedItems && selectedEvent.requestedItems.length > 0 && (
+              <div className="requested-items-view">
+                <h4>Material Solicitado</h4>
+                <ul>{selectedEvent.requestedItems.map(item => (<li key={item.itemId}>{item.quantity} x {item.itemName}</li>))}</ul>
+              </div>
+            )}
             {userData?.role === 'admin' && (
               <div className="modal-actions">
-                <button 
-                  className="action-btn delete-btn" 
-                  onClick={() => handleDeleteReservation(selectedEvent.id)}
-                >
+                <button className="action-btn delete-btn" onClick={() => handleDeleteReservation(selectedEvent.id)}>
                   Eliminar Reserva (Admin)
                 </button>
               </div>

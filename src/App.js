@@ -14,6 +14,7 @@ import Reservations from './pages/Reservations';
 import InventoryManager from './pages/Admin/InventoryManager';
 import Reportes from './pages/Reportes'; // La nueva página de reportes
 import MisReservas from './pages/MisReservas';
+import GestionSolicitudes from './pages/Admin/GestionSolicitudes';
 
 // Importa los componentes de rutas
 import Layout from './components/Layout';
@@ -58,6 +59,17 @@ function AppContent() {
           <PrivateRoute>
             <ProtectedRoute>
               <Layout><Reportes /></Layout>
+            </ProtectedRoute>
+          </PrivateRoute>
+        }
+      />
+
+      <Route
+        path="/admin/solicitudes"
+        element={
+          <PrivateRoute>
+            <ProtectedRoute>
+              <Layout><GestionSolicitudes /></Layout>
             </ProtectedRoute>
           </PrivateRoute>
         }

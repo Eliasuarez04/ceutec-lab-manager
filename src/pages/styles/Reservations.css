@@ -1,7 +1,7 @@
 /* src/pages/Reservations.css */
 
 .reservations-page {
-  max-width: 1400px; /* Permitir más ancho para el calendario */
+  max-width: 1400px;
 }
 
 .reservations-header {
@@ -10,7 +10,7 @@
   align-items: center;
   margin-bottom: 2rem;
   flex-wrap: wrap;
-  gap: 1rem;
+  gap: 1.5rem;
 }
 
 .reservations-title {
@@ -18,6 +18,30 @@
   font-weight: 700;
   color: var(--primary-text);
   margin: 0;
+}
+
+.lab-selector-actions {
+  display: flex;
+  align-items: center;
+  gap: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.import-button {
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: bold;
+  color: var(--ceutec-red);
+  background-color: transparent;
+  border: 2px solid var(--ceutec-red);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.2s ease-in-out;
+}
+
+.import-button:hover {
+  background-color: var(--ceutec-red);
+  color: white;
 }
 
 .lab-selector {
@@ -55,48 +79,37 @@
   border: 1px solid var(--border-color);
 }
 
-/* --- ESTILOS PARA SOBRESCRIBIR REACT-BIG-CALENDAR --- */
+/* --- ESTILOS PARA REACT-BIG-CALENDAR --- */
 
-/* Barra de herramientas (Hoy, Siguiente, Mes, Semana...) */
 .rbc-toolbar {
   margin-bottom: 1.5rem !important;
   font-family: inherit;
 }
-
 .rbc-toolbar .rbc-toolbar-label {
   font-size: 1.5rem;
   font-weight: 600;
 }
-
 .rbc-btn-group button {
   border: 1px solid var(--border-color) !important;
   color: var(--primary-text) !important;
   transition: background-color 0.2s, color 0.2s;
 }
-
 .rbc-btn-group button:hover {
   background-color: var(--background-light) !important;
 }
-
 .rbc-btn-group button.rbc-active {
   background-color: var(--ceutec-red) !important;
   color: white !important;
   border-color: var(--ceutec-red) !important;
 }
-
-/* Cabecera de días (lun, mar, mié...) */
 .rbc-header {
   border-bottom: 2px solid var(--border-color) !important;
   padding: 0.75rem 0 !important;
   font-weight: 600;
 }
-
-/* Color de fondo del día de hoy */
 .rbc-day-bg.rbc-today {
   background-color: #f4f7fa;
 }
-
-/* Eventos */
 .rbc-event {
   background-color: var(--ceutec-red) !important;
   border: 1px solid var(--ceutec-dark-red) !important;
@@ -104,15 +117,11 @@
   opacity: 0.9;
   transition: opacity 0.2s;
 }
-.rbc-event:hover {
-  opacity: 1;
+.rbc-event:hover { opacity: 1; }
+.rbc-event.event-clase {
+  background-color: #555 !important;
+  border-color: #333 !important;
 }
-
-.rbc-event-label {
-  font-size: 0.8rem;
-}
-
-/* Selección de slot */
 .rbc-slot-selection {
   background-color: rgba(200, 16, 46, 0.3) !important;
 }
@@ -125,49 +134,150 @@
   padding-bottom: 0.75rem;
   margin-bottom: 0.75rem;
 }
-
 .view-modal-content p strong {
   color: var(--secondary-text);
   display: inline-block;
   width: 120px;
 }
 
-.reservations-header {
-  align-items: flex-start; /* Alinear al inicio por si hay wrap */
+/* --- NUEVOS ESTILOS PARA LA SOLICITUD DE INVENTARIO EN EL MODAL --- */
+
+.inventory-request-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
 }
 
-.lab-selector-actions {
-  display: flex;
-  align-items: center;
-  gap: 1.5rem; /* Espacio entre el botón y el selector */
-  flex-wrap: wrap; /* Para que se adapte en pantallas pequeñas */
+.inventory-request-section h4 {
+  margin-top: 0;
+  margin-bottom: 1rem;
+  font-size: 1.1rem;
+  color: var(--primary-text);
 }
 
-.import-button {
-  padding: 0.75rem 1.5rem;
-  font-size: 1rem;
-  font-weight: bold;
-  color: var(--ceutec-red);
-  background-color: transparent;
-  border: 2px solid var(--ceutec-red);
+.inventory-list {
+  max-height: 200px;
+  overflow-y: auto;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1rem;
+  background-color: var(--background-light);
+  padding: 1rem;
   border-radius: 6px;
-  cursor: pointer;
-  transition: all 0.2s ease-in-out;
 }
 
-.import-button:hover {
-  background-color: var(--ceutec-red);
-  color: white;
+.inventory-item {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
 }
 
-/* Estilos para el input de archivo dentro del modal */
-.modal-form input[type="file"] {
-  border: 1px solid var(--border-color);
+.inventory-item label {
+  font-weight: 500;
+  font-size: 0.9rem;
+  color: var(--secondary-text);
+}
+
+.inventory-item input {
   padding: 0.5rem;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+  width: 100px;
+}
+
+@media (max-width: 600px) {
+  .inventory-list {
+    grid-template-columns: 1fr;
+  }
+}
+
+/* --- NUEVOS ESTILOS PARA VER ÍTEMS SOLICITADOS --- */
+.requested-items-view {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+.requested-items-view h4 {
+  margin: 0 0 1rem 0;
+  font-size: 1.1rem;
+}
+.requested-items-view ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+.requested-items-view li {
+  background-color: var(--background-light);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.inventory-request-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+.inventory-request-section h4 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+  color: var(--primary-text);
+}
+
+/* Lista de ítems seleccionados ("Factura") */
+.selected-items-list {
+  margin-top: 1.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 10px; /* Espacio para la barra de scroll */
+}
+
+.selected-item-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto; /* Nombre flexible, cantidad y botón fijos */
+  gap: 1rem;
+  align-items: center;
+  padding: 0.75rem;
+  border-radius: 6px;
+  background-color: var(--background-light);
+  margin-bottom: 0.5rem;
+}
+
+.item-name {
+  font-weight: 500;
+}
+
+.quantity-input {
+  width: 70px;
+  padding: 0.5rem;
+  text-align: center;
+  border: 1px solid var(--border-color);
   border-radius: 5px;
 }
 
-.rbc-event.event-clase {
-  background-color: #555 !important; /* Un gris oscuro para las clases */
-  border-color: #333 !important;
+.remove-item-btn {
+  background-color: transparent;
+  border: none;
+  color: var(--ceutec-red);
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 5px;
+}
+
+/* --- ESTILOS PARA VER ÍTEMS SOLICITADOS EN EL MODAL DE DETALLES --- */
+.requested-items-view {
+  margin-top: 1.5rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+.requested-items-view h4 { margin: 0 0 1rem 0; font-size: 1.1rem; }
+.requested-items-view ul { list-style: none; padding-left: 0; margin: 0; }
+.requested-items-view li {
+  background-color: var(--background-light);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
 }

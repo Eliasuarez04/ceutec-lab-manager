@@ -1,0 +1,123 @@
+/* src/pages/Admin/GestionSolicitudes.css */
+
+.tabs {
+  margin-bottom: 2rem;
+  border-bottom: 2px solid var(--border-color);
+}
+.tabs button {
+  padding: 1rem 1.5rem;
+  border: none;
+  background-color: transparent;
+  font-size: 1.1rem;
+  font-weight: 500;
+  cursor: pointer;
+  color: var(--secondary-text);
+  margin-bottom: -2px;
+}
+.tabs button.active {
+  color: var(--ceutec-red);
+  font-weight: 600;
+  border-bottom: 2px solid var(--ceutec-red);
+}
+
+.tab-content {
+  background-color: transparent; /* No necesitamos fondo blanco aquí */
+  padding: 0;
+  box-shadow: none;
+}
+
+.requests-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+  gap: 1.5rem;
+}
+
+.request-card {
+  background-color: var(--white);
+  border-radius: 8px;
+  box-shadow: var(--box-shadow);
+  display: flex;
+  flex-direction: column;
+}
+
+.request-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  padding: 1rem 1.5rem;
+  border-bottom: 1px solid var(--border-color);
+}
+.request-header h3 {
+  margin: 0 0 0.25rem 0;
+}
+.request-header p {
+  margin: 0;
+  color: var(--secondary-text);
+  font-size: 0.9rem;
+}
+
+.status-tag {
+  padding: 0.3rem 0.8rem;
+  border-radius: 50px;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: white;
+}
+.status-tag.pendiente { background-color: #ffc107; color: #333; }
+.status-tag.en-uso { background-color: #007bff; }
+
+.request-details {
+  padding: 1rem 1.5rem;
+}
+.request-details p {
+  margin: 0 0 0.5rem 0;
+}
+
+.items-list {
+  padding: 1rem 1.5rem;
+  flex-grow: 1;
+}
+.items-list h4 {
+  margin: 0 0 0.5rem 0;
+  font-size: 0.9rem;
+  text-transform: uppercase;
+  color: var(--secondary-text);
+}
+.items-list ul {
+  list-style: none;
+  padding-left: 0;
+  margin: 0;
+}
+.items-list li {
+  background-color: var(--background-light);
+  padding: 0.5rem 1rem;
+  border-radius: 4px;
+  margin-bottom: 0.5rem;
+}
+
+.card-actions {
+  padding: 1rem;
+  background-color: var(--background-light);
+  border-top: 1px solid var(--border-color);
+  text-align: right;
+  border-bottom-left-radius: 8px;
+  border-bottom-right-radius: 8px;
+}
+.action-button {
+  color: white;
+  border: none;
+  padding: 0.6rem 1.2rem;
+  border-radius: 5px;
+  font-weight: bold;
+  cursor: pointer;
+  transition: opacity 0.2s;
+}
+.action-button:hover {
+  opacity: 0.85;
+}
+.action-button.pending {
+  background-color: #007bff; /* Azul */
+}
+.action-button.in-use {
+  background-color: #198754; /* Verde */
+}
