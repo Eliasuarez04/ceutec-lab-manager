@@ -121,3 +121,87 @@
 .action-button.in-use {
   background-color: #198754; /* Verde */
 }
+
+/* ... (estilos existentes) ... */
+
+/* --- NUEVOS ESTILOS PARA EL MODAL DE CIERRE --- */
+
+.closure-form p {
+  font-size: 1rem;
+  color: var(--secondary-text);
+  margin-bottom: 1.5rem;
+}
+
+.closure-items-list {
+  max-height: 40vh;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+
+.closure-item-row {
+  background-color: var(--background-light);
+  padding: 1rem;
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  align-items: center;
+  gap: 1rem;
+}
+
+.item-info {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+.item-quantity {
+  font-size: 1.2rem;
+  font-weight: bold;
+  color: var(--ceutec-red);
+}
+.item-name {
+  font-weight: 500;
+}
+
+.item-status-selector {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.status-btn {
+  padding: 0.5rem 1rem;
+  border: 2px solid var(--border-color);
+  background-color: transparent;
+  cursor: pointer;
+  font-weight: 500;
+  transition: all 0.2s;
+}
+.status-btn.ok {
+  border-top-left-radius: 5px;
+  border-bottom-left-radius: 5px;
+}
+.status-btn.novelty {
+  border-top-right-radius: 5px;
+  border-bottom-right-radius: 5px;
+  border-left: none;
+}
+.status-btn.ok.active {
+  background-color: #198754;
+  border-color: #198754;
+  color: white;
+}
+.status-btn.novelty.active {
+  background-color: var(--ceutec-red);
+  border-color: var(--ceutec-red);
+  color: white;
+}
+
+.novelty-notes {
+  grid-column: 1 / -1; /* Ocupa todo el ancho */
+  width: 100%;
+  padding: 0.5rem;
+  border-radius: 5px;
+  border: 1px solid var(--border-color);
+  font-family: inherit;
+  margin-top: 0.5rem;
+}
