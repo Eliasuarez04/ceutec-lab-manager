@@ -1,5 +1,5 @@
 // src/pages/MisReservas.js
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebaseConfig';
@@ -46,7 +46,7 @@ export default function MisReservas() {
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
 
-  const fetchReservations = async () => {
+  const fetchReservations = useCallback(async () => {
     if (!currentUser) return;
     setLoading(true);
     try {
@@ -64,13 +64,11 @@ export default function MisReservas() {
     } finally {
       setLoading(false);
     }
-  };
+  }, [currentUser]); // <-- La dependencia de useCallback es currentUser
 
   useEffect(() => {
-    if (currentUser) {
-      fetchReservations();
-    }
-  }, [currentUser, fetchReservations]);
+    fetchReservations();
+  }, [fetchReservations]);
 
   const filteredReservations = useMemo(() => {
     const list = activeTab === 'upcoming'
