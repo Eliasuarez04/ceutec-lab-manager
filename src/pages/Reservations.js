@@ -17,17 +17,19 @@ import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import * as XLSX from 'xlsx';
-import Select from 'react-select'; // Importar react-select
+import Select from 'react-select';
 
 const MySwal = withReactContent(Swal);
 
 // --- DICCIONARIO DE MAPEO DE LABORATORIOS ---
 const excelToFirestoreLabMap = {
-  'SN/FOT': 'Fotografía', 'SN/RD' : 'Laboratorio de Redes',
+  'SN/FOT': 'Fotografía', 'SN/RD': 'Laboratorio de Redes',
   'SN/TRD': 'Taller de Redes', 'SN/QUI': 'Química',
   'SN/DB1': 'Dibujo I', 'SN/DB2': 'Dibujo II',
   'SN/DB3': 'Dibujo III', 'SN/MAC': 'MAC',
   'SN/L08': 'Cómputo 08', 'SN/L07': 'Cómputo 07',
+  'SC/201': 'Fotografía', 'SC/213': 'Dibujo I',
+  'SC/301': 'Taller de Redes', 'SC/306': 'Electrónica',
 };
 
 // Configuración y mensajes
@@ -41,24 +43,24 @@ const messages = {
 };
 
 const getFacultyFromClassName = (className = '') => {
-    const name = className ? className.toLowerCase() : '';
-    if (name.includes('diseño') || name.includes('arte') || name.includes('animación') || name.includes('fotografía')) return 'Escuela de Arte y Diseño';
-    if (name.includes('ingeniería') || name.includes('cálculo') || name.includes('física') || name.includes('programación') || name.includes('redes') || name.includes('eléctrica')) return 'Facultad de Ingeniería';
-    if (name.includes('social') || name.includes('psicología') || name.includes('derecho')) return 'Facultad de Ciencias Sociales';
-    if (name.includes('salud') || name.includes('medicina') || name.includes('enfermería')) return 'Facultad de Ciencias de la Salud';
-    return 'Facultad por Determinar';
+  const name = className ? className.toLowerCase() : '';
+  if (name.includes('diseño') || name.includes('arte') || name.includes('animación') || name.includes('fotografía')) return 'Escuela de Arte y Diseño';
+  if (name.includes('ingeniería') || name.includes('cálculo') || name.includes('física') || name.includes('programación') || name.includes('redes') || name.includes('eléctrica')) return 'Facultad de Ingeniería';
+  if (name.includes('social') || name.includes('psicología') || name.includes('derecho')) return 'Facultad de Ciencias Sociales';
+  if (name.includes('salud') || name.includes('medicina') || name.includes('enfermería')) return 'Facultad de Ciencias de la Salud';
+  return 'Facultad por Determinar';
 };
 
 export default function Reservations() {
   const { currentUser, userData } = useAuth();
   const [labs, setLabs] = useState([]);
+  const [labStatuses, setLabStatuses] = useState(new Map());
   const [selectedLab, setSelectedLab] = useState(null);
   const [reservations, setReservations] = useState([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState('week');
   const [date, setDate] = useState(new Date());
   const location = useLocation();
-
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
@@ -72,39 +74,37 @@ export default function Reservations() {
   const [periodEndDate, setPeriodEndDate] = useState('');
 
   useEffect(() => {
-    const fetchLabs = async () => {
-      const q = query(collection(db, 'laboratories'), where('status', '==', 'Disponible'), orderBy('name'));
+    const fetchLabsAndStatuses = async () => {
+      const q = query(collection(db, 'laboratories'), orderBy('name'));
       const querySnapshot = await getDocs(q);
-      const labsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const allLabsData = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const statuses = new Map(allLabsData.map(lab => [lab.id, lab.status]));
+      setLabStatuses(statuses);
       const allLabsOption = { id: 'all', name: 'Todos los Laboratorios' };
-      const availableLabs = [allLabsOption, ...labsData];
-      setLabs(availableLabs);
+      const availableForSelection = allLabsData.filter(lab => lab.status === 'Disponible');
+      const selectorLabs = [allLabsOption, ...availableForSelection];
+      setLabs(selectorLabs);
       const params = new URLSearchParams(location.search);
       const labIdFromUrl = params.get('labId');
-      const labFromUrl = availableLabs.find(lab => lab.id === labIdFromUrl);
+      const labFromUrl = selectorLabs.find(lab => lab.id === labIdFromUrl);
       setSelectedLab(labFromUrl || allLabsOption);
     };
-    fetchLabs();
+    fetchLabsAndStatuses();
   }, [location.search]);
 
   const fetchReservations = useCallback(async () => {
     if (!selectedLab) return;
     setLoading(true);
     let q;
-    if (selectedLab.id === 'all') {
-      q = query(collection(db, 'reservations'));
-    } else {
-      q = query(collection(db, 'reservations'), where('labId', '==', selectedLab.id));
-    }
+    if (selectedLab.id === 'all') { q = query(collection(db, 'reservations')); }
+    else { q = query(collection(db, 'reservations'), where('labId', '==', selectedLab.id)); }
     const querySnapshot = await getDocs(q);
     const reservationsData = querySnapshot.docs.map(doc => {
       const data = doc.data();
-      let title = data.type === 'Clase' 
+      let title = data.type === 'Clase'
         ? `${data.purpose} - ${data.teacherName || 'Docente'}`
         : `${data.purpose} (${data.userEmail.split('@')[0]})`;
-      if (selectedLab.id === 'all' && data.labName) {
-        title = `${data.labName}: ${title}`;
-      }
+      if (selectedLab.id === 'all' && data.labName) { title = `${data.labName}: ${title}`; }
       return { ...data, id: doc.id, start: data.startTime.toDate(), end: data.endTime.toDate(), title };
     });
     setReservations(reservationsData);
@@ -118,13 +118,13 @@ export default function Reservations() {
     if (slot.start < new Date()) return;
     const isOverlapping = reservations.some(event => slot.start < event.end && slot.end > event.start);
     if (isOverlapping) { return toast.error('Este horario ya está ocupado.'); }
-    
-    const toastId = toast.loading('Cargando inventario...');
+
+    const toastId = toast.loading('Cargando inventario disponible...');
     try {
       const equipmentColRef = collection(db, 'laboratories', selectedLab.id, 'equipment');
       const q = query(equipmentColRef, where('quantity', '>', 0));
       const equipmentSnapshot = await getDocs(q);
-      const inventoryData = equipmentSnapshot.docs.map(doc => ({ 
+      const inventoryData = equipmentSnapshot.docs.map(doc => ({
         id: doc.id, value: doc.id, label: `${doc.data().name} (Disp: ${doc.data().quantity})`,
         ...doc.data()
       }));
@@ -132,7 +132,7 @@ export default function Reservations() {
       const startTime = slot.start;
       const endTime = new Date(startTime.getTime() + 90 * 60000);
       setSlotInfo({ start: startTime, end: endTime, type: 'Practica' });
-      setSelectedItems([]); 
+      setSelectedItems([]);
       setIsBookingModalOpen(true);
     } catch (error) {
       console.error("Error fetching inventory:", error);
@@ -144,12 +144,11 @@ export default function Reservations() {
 
   const handleAddItemToSelection = (selectedOption) => {
     if (selectedItems.find(item => item.id === selectedOption.id)) {
-      toast('Este ítem ya está en tu lista.', { icon: 'ℹ️' });
-      return;
+      return toast('Este ítem ya está en tu lista.', { icon: 'ℹ️' });
     }
     setSelectedItems(prev => [...prev, { ...selectedOption, requestQuantity: 1 }]);
   };
-  
+
   const handleItemQuantityChange = (itemId, value) => {
     const quantity = parseInt(value, 10);
     const item = selectedItems.find(i => i.id === itemId);
@@ -262,7 +261,6 @@ export default function Reservations() {
             if (classDays.includes(currentDate.getDay())) {
               const timeParts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
               if (!timeParts) continue;
-              // eslint-disable-next-line
               let [_, hours, minutes, modifier] = timeParts;
               hours = parseInt(hours);
               if (modifier.toUpperCase() === 'PM' && hours !== 12) hours += 12;
@@ -280,7 +278,7 @@ export default function Reservations() {
             currentDate.setDate(currentDate.getDate() + 1);
           }
         }
-        
+
         toast.dismiss(loadingToast);
         if (newReservations.length === 0) {
           return toast.error("No se generaron reservas.");
@@ -311,10 +309,15 @@ export default function Reservations() {
     };
     reader.readAsArrayBuffer(importFile);
   };
-  
-  const eventPropGetter = useCallback((event) => ({
-    ...(event.type === 'Clase' && { className: 'event-clase' }),
-  }), []);
+
+  const eventPropGetter = useCallback((event) => {
+    let className = '';
+    if (event.type === 'Clase') { className = 'event-clase'; }
+    const labStatus = labStatuses.get(event.labId);
+    if (labStatus === 'Mantenimiento') { className += ' event-maintenance'; }
+    if (event.fulfillmentStatus === 'En Uso') { className += ' event-in-use'; }
+    return { className };
+  }, [labStatuses]);
 
   return (
     <>
@@ -322,7 +325,7 @@ export default function Reservations() {
         {slotInfo && (
           <form onSubmit={handleCreateReservation} className="modal-form">
             <p><strong>Laboratorio:</strong> {selectedLab?.name}</p>
-            <p><strong>Fecha:</strong> {slotInfo.start.toLocaleDateString('es-ES', {weekday: 'long', year: 'numeric', month: 'long', day: 'numeric'})}</p>
+            <p><strong>Fecha:</strong> {slotInfo.start.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
             <p><strong>Horario:</strong> {`${format(slotInfo.start, 'HH:mm')} - ${format(slotInfo.end, 'HH:mm')}`}</p>
             <div className="form-group">
               <label htmlFor="purpose">Motivo de la Reserva (Ej: Práctica, Proyecto)</label>

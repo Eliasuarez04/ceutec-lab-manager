@@ -80,53 +80,66 @@
 }
 
 /* --- ESTILOS PARA REACT-BIG-CALENDAR --- */
+.rbc-toolbar { margin-bottom: 1.5rem !important; font-family: inherit; }
+.rbc-toolbar .rbc-toolbar-label { font-size: 1.5rem; font-weight: 600; }
+.rbc-btn-group button { border: 1px solid var(--border-color) !important; color: var(--primary-text) !important; transition: background-color 0.2s, color 0.2s; }
+.rbc-btn-group button:hover { background-color: var(--background-light) !important; }
+.rbc-btn-group button.rbc-active { background-color: var(--ceutec-red) !important; color: white !important; border-color: var(--ceutec-red) !important; }
+.rbc-header { border-bottom: 2px solid var(--border-color) !important; padding: 0.75rem 0 !important; font-weight: 600; }
+.rbc-day-bg.rbc-today { background-color: #f4f7fa; }
+.rbc-slot-selection { background-color: rgba(200, 16, 46, 0.3) !important; }
 
-.rbc-toolbar {
-  margin-bottom: 1.5rem !important;
-  font-family: inherit;
+
+/* --- SOLUCIÓN: REESTRUCTURACIÓN DE ESTILOS DE EVENTOS --- */
+
+/* 1. Estilo base para TODOS los eventos */
+.rbc-event {
+  border-radius: 4px !important;
+  opacity: 0.95;
+  transition: opacity 0.2s;
+  padding: 2px 5px !important;
 }
-.rbc-toolbar .rbc-toolbar-label {
-  font-size: 1.5rem;
-  font-weight: 600;
+.rbc-event:hover {
+  opacity: 1;
 }
-.rbc-btn-group button {
-  border: 1px solid var(--border-color) !important;
-  color: var(--primary-text) !important;
-  transition: background-color 0.2s, color 0.2s;
+.rbc-event-label {
+  font-size: 0.8rem;
 }
-.rbc-btn-group button:hover {
-  background-color: var(--background-light) !important;
-}
-.rbc-btn-group button.rbc-active {
-  background-color: var(--ceutec-red) !important;
-  color: white !important;
-  border-color: var(--ceutec-red) !important;
-}
-.rbc-header {
-  border-bottom: 2px solid var(--border-color) !important;
-  padding: 0.75rem 0 !important;
-  font-weight: 600;
-}
-.rbc-day-bg.rbc-today {
-  background-color: #f4f7fa;
-}
+
+/* 2. Colores por defecto (Práctica Manual) */
 .rbc-event {
   background-color: var(--ceutec-red) !important;
   border: 1px solid var(--ceutec-dark-red) !important;
-  border-radius: 4px !important;
-  opacity: 0.9;
-  transition: opacity 0.2s;
-}
-.rbc-event:hover { opacity: 1; }
-.rbc-event.event-clase {
-  background-color: #555 !important;
-  border-color: #333 !important;
-}
-.rbc-slot-selection {
-  background-color: rgba(200, 16, 46, 0.3) !important;
 }
 
-/* --- MODAL DE VISUALIZACIÓN --- */
+/* 3. Estilo para Clases (sobrescribe el por defecto) */
+.rbc-event.event-clase {
+  background-color: #495057 !important; /* Gris oscuro */
+  border-color: #343a40 !important;
+}
+
+/* 4. Estilo para Material en Uso (sobrescribe el por defecto) */
+.rbc-event.event-in-use {
+  background-color: #007bff !important; /* Azul */
+  border-color: #0056b3 !important;
+}
+
+/* 5. Estilo para Mantenimiento (MÁXIMA PRIORIDAD - sobrescribe a TODOS los demás) */
+.rbc-event.event-maintenance {
+  background-color: #6c757d !important; /* Gris claro */
+  border-color: #5a6268 !important;
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(255, 255, 255, 0.1),
+    rgba(255, 255, 255, 0.1) 10px,
+    transparent 10px,
+    transparent 20px
+  );
+}
+
+
+/* --- MODAL DE VISUALIZACIÓN Y SOLICITUD --- */
+/* (El resto del archivo CSS no necesita cambios) */
 .view-modal-content p {
   font-size: 1.1rem;
   line-height: 1.6;
@@ -139,80 +152,6 @@
   display: inline-block;
   width: 120px;
 }
-
-/* --- NUEVOS ESTILOS PARA LA SOLICITUD DE INVENTARIO EN EL MODAL --- */
-
-.inventory-request-section {
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--border-color);
-}
-
-.inventory-request-section h4 {
-  margin-top: 0;
-  margin-bottom: 1rem;
-  font-size: 1.1rem;
-  color: var(--primary-text);
-}
-
-.inventory-list {
-  max-height: 200px;
-  overflow-y: auto;
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  background-color: var(--background-light);
-  padding: 1rem;
-  border-radius: 6px;
-}
-
-.inventory-item {
-  display: flex;
-  flex-direction: column;
-  gap: 0.5rem;
-}
-
-.inventory-item label {
-  font-weight: 500;
-  font-size: 0.9rem;
-  color: var(--secondary-text);
-}
-
-.inventory-item input {
-  padding: 0.5rem;
-  border: 1px solid var(--border-color);
-  border-radius: 5px;
-  width: 100px;
-}
-
-@media (max-width: 600px) {
-  .inventory-list {
-    grid-template-columns: 1fr;
-  }
-}
-
-/* --- NUEVOS ESTILOS PARA VER ÍTEMS SOLICITADOS --- */
-.requested-items-view {
-  margin-top: 1.5rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--border-color);
-}
-.requested-items-view h4 {
-  margin: 0 0 1rem 0;
-  font-size: 1.1rem;
-}
-.requested-items-view ul {
-  list-style: none;
-  padding-left: 0;
-  margin: 0;
-}
-.requested-items-view li {
-  background-color: var(--background-light);
-  padding: 0.5rem 1rem;
-  border-radius: 4px;
-  margin-bottom: 0.5rem;
-}
-
 .inventory-request-section {
   margin-top: 2rem;
   padding-top: 1.5rem;
@@ -224,18 +163,15 @@
   font-size: 1.1rem;
   color: var(--primary-text);
 }
-
-/* Lista de ítems seleccionados ("Factura") */
 .selected-items-list {
   margin-top: 1.5rem;
   max-height: 200px;
   overflow-y: auto;
-  padding-right: 10px; /* Espacio para la barra de scroll */
+  padding-right: 10px;
 }
-
 .selected-item-row {
   display: grid;
-  grid-template-columns: 1fr auto auto; /* Nombre flexible, cantidad y botón fijos */
+  grid-template-columns: 1fr auto auto;
   gap: 1rem;
   align-items: center;
   padding: 0.75rem;
@@ -243,11 +179,9 @@
   background-color: var(--background-light);
   margin-bottom: 0.5rem;
 }
-
 .item-name {
   font-weight: 500;
 }
-
 .quantity-input {
   width: 70px;
   padding: 0.5rem;
@@ -255,7 +189,6 @@
   border: 1px solid var(--border-color);
   border-radius: 5px;
 }
-
 .remove-item-btn {
   background-color: transparent;
   border: none;
@@ -266,8 +199,6 @@
   line-height: 1;
   padding: 0 5px;
 }
-
-/* --- ESTILOS PARA VER ÍTEMS SOLICITADOS EN EL MODAL DE DETALLES --- */
 .requested-items-view {
   margin-top: 1.5rem;
   padding-top: 1.5rem;
