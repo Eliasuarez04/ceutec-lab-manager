@@ -262,6 +262,7 @@ export default function Reservations() {
             if (classDays.includes(currentDate.getDay())) {
               const timeParts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
               if (!timeParts) continue;
+              // eslint-disable-next-line
               let [_, hours, minutes, modifier] = timeParts;
               hours = parseInt(hours);
               if (modifier.toUpperCase() === 'PM' && hours !== 12) hours += 12;

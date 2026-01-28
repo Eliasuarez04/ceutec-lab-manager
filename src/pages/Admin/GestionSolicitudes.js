@@ -1,7 +1,7 @@
 // src/pages/Admin/GestionSolicitudes.js
 import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../../firebaseConfig';
-import { collection, query, where, getDocs, orderBy, doc, updateDoc, runTransaction, Timestamp, addDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, updateDoc, runTransaction, Timestamp} from 'firebase/firestore';
 import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import Modal from '../../components/Modal';

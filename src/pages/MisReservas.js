@@ -70,7 +70,7 @@ export default function MisReservas() {
     if (currentUser) {
       fetchReservations();
     }
-  }, [currentUser]);
+  }, [currentUser, fetchReservations]);
 
   const filteredReservations = useMemo(() => {
     const list = activeTab === 'upcoming'
