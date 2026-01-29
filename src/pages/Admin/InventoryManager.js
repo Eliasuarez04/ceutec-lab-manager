@@ -8,7 +8,6 @@ import '../styles/InventoryManager.css';
 import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
-import { format } from 'date-fns';
 
 const MySwal = withReactContent(Swal);
 
