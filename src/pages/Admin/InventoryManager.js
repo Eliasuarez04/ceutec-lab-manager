@@ -4,10 +4,11 @@ import { db } from '../../firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, writeBatch, getDoc, Timestamp } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import Modal from '../../components/Modal';
-import '../styles/InventoryManager.css'; // Asegúrate que la ruta a tu CSS es correcta
+import '../styles/InventoryManager.css';
 import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import { format } from 'date-fns';
 
 const MySwal = withReactContent(Swal);
 
@@ -17,7 +18,6 @@ const InventoryRow = ({ item, onUpdate, onDelete }) => {
   const [editedItem, setEditedItem] = useState({ ...item });
 
   const handleUpdate = () => {
-    // Solo actualizar si hay cambios
     if (JSON.stringify(item) !== JSON.stringify(editedItem)) {
       onUpdate(item.id, editedItem);
     }
@@ -112,6 +112,7 @@ export default function InventoryManager() {
     const dataToAdd = {
         ...newEquipment,
         name: newEquipment.name.trim(),
+        name_uppercase: newEquipment.name.trim().toUpperCase(),
         labName: selectedLab.name
     };
     const equipmentColRef = collection(db, 'laboratories', selectedLab.id, 'equipment');
@@ -127,6 +128,7 @@ export default function InventoryManager() {
     fetchInventory(selectedLab.id);
   };
 
+  // --- SOLUCIÓN: FUNCIÓN handleUpdateEquipment CORREGIDA ---
   const handleUpdateEquipment = async (itemId, updatedData) => {
     const itemDocRef = doc(db, 'laboratories', selectedLab.id, 'equipment', itemId);
     const docBefore = await getDoc(itemDocRef);
@@ -139,8 +141,13 @@ export default function InventoryManager() {
         timestamp: Timestamp.now()
       };
       await addDoc(collection(db, 'inventory_logs'), logData);
-    }
-    await updateDoc(itemDocRef, updatedData);
+    } // <-- LA LLAVE QUE FALTABA ESTABA AQUÍ
+
+    const dataToUpdate = {
+      ...updatedData,
+      name_uppercase: updatedData.name.trim().toUpperCase()
+    };
+    await updateDoc(itemDocRef, dataToUpdate);
     fetchInventory(selectedLab.id);
   };
   

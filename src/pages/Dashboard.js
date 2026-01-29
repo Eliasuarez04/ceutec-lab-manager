@@ -2,13 +2,13 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { collection, query, where, getDocs, Timestamp, orderBy, limit } from 'firebase/firestore';
+import { collection, collectionGroup, query, where, getDocs, Timestamp, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Chart as ChartJS, ArcElement, Tooltip, Legend } from 'chart.js';
 import { Doughnut } from 'react-chartjs-2';
 import { format } from 'date-fns';
 import './styles/Dashboard.css';
-
+import toast from 'react-hot-toast';
 // Registrar los elementos necesarios para el gráfico
 ChartJS.register(ArcElement, Tooltip, Legend);
 
@@ -41,6 +41,71 @@ const TeacherDashboard = () => (
     </Link>
   </div>
 );
+
+
+const GlobalInventorySearch = () => {
+  const [searchTerm, setSearchTerm] = useState('');
+  const [results, setResults] = useState([]);
+  const [isSearching, setIsSearching] = useState(false);
+  const [hasSearched, setHasSearched] = useState(false);
+
+  const handleSearch = async (e) => {
+    e.preventDefault();
+    if (!searchTerm.trim()) { setResults([]); return; }
+    setIsSearching(true);
+    setHasSearched(true);
+    try {
+      // --- SOLUCIÓN: Buscar en el campo 'name_uppercase' ---
+      const searchQuery = searchTerm.trim().toUpperCase();
+      const equipmentQuery = query(
+        collectionGroup(db, 'equipment'),
+        where('name_uppercase', '>=', searchQuery),
+        where('name_uppercase', '<=', searchQuery + '\uf8ff')
+      );
+      const querySnapshot = await getDocs(equipmentQuery);
+      const searchResults = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setResults(searchResults);
+    } catch (error) {
+      console.error("Error en búsqueda global:", error);
+      toast.error("Error al realizar la búsqueda. Es posible que se necesite un nuevo índice en Firebase.");
+    } finally {
+      setIsSearching(false);
+    }
+  };
+
+  return (
+    <div className="dashboard-card full-width-card">
+      <h3>Búsqueda Global de Inventario</h3>
+      <form onSubmit={handleSearch} className="global-search-form">
+        <input type="text" placeholder="Buscar equipo por nombre..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        <button type="submit" disabled={isSearching}>{isSearching ? '...' : 'Buscar'}</button>
+      </form>
+      {hasSearched && (
+        <div className="search-results">
+          {isSearching ? <p>Buscando...</p> : (
+            results.length > 0 ? (
+              <div className="table-wrapper">
+                <table>
+                  <thead><tr><th>Equipo</th><th>Laboratorio</th><th>Cantidad</th></tr></thead>
+                  <tbody>
+                    {results.map(item => (
+                      <tr key={`${item.labName}-${item.id}`}>
+                        <td>{item.name}</td>
+                        <td>{item.labName}</td>
+                        <td>{item.quantity}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            ) : <p className="no-results">No se encontraron resultados para "{searchTerm}".</p>
+          )}
+        </div>
+      )}
+    </div>
+  );
+};
+
 
 // ===================================================================================
 // Componente: Vista del Dashboard para ADMINISTRADORES (Nuevo Diseño Profesional)
@@ -104,68 +169,29 @@ const AdminDashboard = () => {
 
   return (
     <div className="admin-dashboard-layout">
-      {/* --- COLUMNA IZQUIERDA: Tarjetas de Navegación --- */}
+      {/* --- COLUMNA IZQUIERDA: ACCIONES RÁPIDAS --- */}
       <aside className="sidebar-area">
-        <h2 className="sidebar-title">Acciones Rápidas</h2>
-        <nav className="quick-nav">
-          <Link to="/admin/solicitudes" className="nav-link-item">
-            <span className="nav-icon">📋</span>
-            <div className="nav-text">
-              <h3>Gestionar Solicitudes</h3>
-              <p>Preparar y registrar entregas de material</p>
-            </div>
-          </Link>
-          <Link to="/reservas" className="nav-link-item">
-            <span className="nav-icon">🗓️</span>
-            <div className="nav-text">
-              <h3>Gestionar Reservas</h3>
-              <p>Ver calendarios y administrar reservas</p>
-            </div>
-          </Link>
-          <Link to="/admin/inventario" className="nav-link-item">
-            <span className="nav-icon">⚙️</span>
-            <div className="nav-text">
-              <h3>Gestionar Inventario</h3>
-              <p>Administrar laboratorios y equipos</p>
-            </div>
-          </Link>
-          <Link to="/reportes" className="nav-link-item">
-            <span className="nav-icon">📊</span>
-            <div className="nav-text">
-              <h3>Ver Reportes</h3>
-              <p>Estadísticas de uso e historiales</p>
-            </div>
-          </Link>
-        </nav>
+        <div className="dashboard-card">
+          <h3 className="sidebar-title">Acciones Rápidas</h3>
+          <nav className="quick-nav">
+            <Link to="/admin/solicitudes" className="nav-link-item"><span className="nav-icon">📋</span><div className="nav-text"><h3>Gestionar Solicitudes</h3><p>Preparar y registrar entregas</p></div></Link>
+            <Link to="/reservas" className="nav-link-item"><span className="nav-icon">🗓️</span><div className="nav-text"><h3>Gestionar Reservas</h3><p>Ver calendarios y administrar</p></div></Link>
+            <Link to="/admin/inventario" className="nav-link-item"><span className="nav-icon">⚙️</span><div className="nav-text"><h3>Gestionar Inventario</h3><p>Administrar laboratorios y equipos</p></div></Link>
+            <Link to="/reportes" className="nav-link-item"><span className="nav-icon">📊</span><div className="nav-text"><h3>Ver Reportes</h3><p>Estadísticas de uso e historiales</p></div></Link>
+          </nav>
+        </div>
       </aside>
 
-      {/* --- COLUMNA DERECHA: Datos y Estadísticas --- */}
+      {/* --- COLUMNA DERECHA: CONTENIDO PRINCIPAL --- */}
       <div className="main-content-area">
-        <div className="stats-grid">
-          <div className="stat-card">
-            <h4>Total de Laboratorios</h4>
-            <span>{stats.labs}</span>
-          </div>
-          <div className="stat-card">
-            <h4>Reservas para Hoy</h4>
-            <span>{stats.reservationsToday}</span>
-          </div>
-          <div className="stat-card">
-            <h4>En Mantenimiento</h4>
-            <span>0</span>
-          </div>
-        </div>
-
+        <GlobalInventorySearch />
         <div className="content-grid">
           <div className="dashboard-card chart-card">
-            <h4>Ocupación Hoy</h4>
-            <div className="chart-container">
-              <Doughnut data={doughnutData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }} />
-            </div>
+            <h3>Ocupación Hoy</h3>
+            <div className="chart-container"><Doughnut data={doughnutData} options={{ responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } } }} /></div>
           </div>
-
           <div className="dashboard-card list-card">
-            <h4>Próximas Reservas</h4>
+            <h3>Próximas Reservas</h3>
             <div className="table-wrapper">
               <table>
                 <tbody>
@@ -176,7 +202,7 @@ const AdminDashboard = () => {
                       <td>{res.purpose}</td>
                     </tr>
                   )) : (
-                    <tr><td colSpan="3">No hay próximas reservas para hoy.</td></tr>
+                    <tr><td colSpan="3" className="no-results">No hay próximas reservas.</td></tr>
                   )}
                 </tbody>
               </table>
@@ -189,19 +215,14 @@ const AdminDashboard = () => {
 };
 
 
-// ===================================================================================
-// Componente Principal: Dashboard (Renderiza condicionalmente)
-// ===================================================================================
+// --- Componente Principal ---
 export default function Dashboard() {
   const { userData } = useAuth();
   const isAdmin = userData?.role === 'admin';
 
   return (
     <div className="dashboard-wrapper">
-      <h1 className="dashboard-title">
-        {isAdmin ? 'Panel de Control' : 'Bienvenido al Portal'}
-      </h1>
-      
+      <h1 className="dashboard-title">{isAdmin ? 'Panel de Control' : 'Bienvenido al Portal'}</h1>
       {isAdmin ? <AdminDashboard /> : <TeacherDashboard />}
     </div>
   );

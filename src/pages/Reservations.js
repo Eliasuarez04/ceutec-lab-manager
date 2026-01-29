@@ -23,13 +23,16 @@ const MySwal = withReactContent(Swal);
 
 // --- DICCIONARIO DE MAPEO DE LABORATORIOS ---
 const excelToFirestoreLabMap = {
-  'SN/FOT': 'Fotografía', 'SN/RD': 'Laboratorio de Redes',
-  'SN/TRD': 'Taller de Redes', 'SN/QUI': 'Química',
-  'SN/DB1': 'Dibujo I', 'SN/DB2': 'Dibujo II',
-  'SN/DB3': 'Dibujo III', 'SN/MAC': 'MAC',
-  'SN/L08': 'Cómputo 08', 'SN/L07': 'Cómputo 07',
-  'SC/201': 'Fotografía', 'SC/213': 'Dibujo I',
-  'SC/301': 'Taller de Redes', 'SC/306': 'Electrónica',
+  'SN/FOT': 'Fotografía', 
+  'SN/RD': 'Laboratorio de Redes',
+  'SN/TRD': 'Taller de Redes', 
+  'SN/QUI': 'Química',
+  'SN/DB1': 'Dibujo I', 
+  'SN/DB2': 'Dibujo II',
+  'SN/DB3': 'Dibujo III', 
+  'SN/MAC': 'MAC',
+  'SN/L08': 'Cómputo 08', 
+  'SN/L07': 'Cómputo 07',
 };
 
 // Configuración y mensajes
