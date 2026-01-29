@@ -4,10 +4,8 @@ import { collection, getDocs, query, where, Timestamp, orderBy } from 'firebase/
 import { db } from '../firebaseConfig';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
-// --- SOLUCIÓN: Añadir 'parseISO' a la importación ---
 import { format, getDay, getHours, startOfDay, endOfDay, parseISO } from 'date-fns';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
+import { CSVLink } from 'react-csv';
 import toast from 'react-hot-toast';
 import './styles/Reportes.css'; // Asegúrate que la ruta a tu CSS es correcta
 
@@ -28,7 +26,7 @@ const ReporteUso = ({ data }) => {
   }, [data]);
 
   const dayUsageData = useMemo(() => {
-    const dayCounts = [0, 0, 0, 0, 0, 0, 0]; // Domingo - Sábado
+    const dayCounts = [0, 0, 0, 0, 0, 0, 0]; // D-L-M-M-J-V-S
     data.forEach(res => {
       const day = getDay(res.startTime.toDate());
       dayCounts[day]++;
@@ -39,95 +37,117 @@ const ReporteUso = ({ data }) => {
     };
   }, [data]);
 
-  const hourUsageData = useMemo(() => {
-    const hourCounts = Array(24).fill(0);
-    data.forEach(res => {
-      const hour = getHours(res.startTime.toDate());
-      hourCounts[hour]++;
-    });
+  const mostRequestedItemsData = useMemo(() => {
+    const itemCounts = data.reduce((acc, res) => {
+      if (res.requestedItems) {
+        res.requestedItems.forEach(item => {
+          acc[item.itemName] = (acc[item.itemName] || 0) + item.quantity;
+        });
+      }
+      return acc;
+    }, {});
+    const sortedItems = Object.entries(itemCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
     return {
-      labels: hourCounts.map((_, i) => `${i}:00`),
-      datasets: [{ label: 'Nº de Reservas', data: hourCounts, backgroundColor: 'rgba(25, 135, 84, 0.7)' }],
+      labels: sortedItems.map(item => item[0]),
+      datasets: [{ label: 'Cantidad Solicitada', data: sortedItems.map(item => item[1]), backgroundColor: 'rgba(255, 159, 64, 0.7)' }],
     };
   }, [data]);
 
   return (
     <div className="report-grid">
-      <div className="chart-wrapper">
-        <h3>Reservas por Laboratorio</h3>
-        <Bar data={labUsageData} options={{ indexAxis: 'y', responsive: true }} />
-      </div>
-      <div className="chart-wrapper">
-        <h3>Reservas por Día de la Semana</h3>
-        <Bar data={dayUsageData} options={{ responsive: true }} />
-      </div>
-      <div className="chart-wrapper full-width">
-        <h3>Reservas por Hora del Día</h3>
-        <Bar data={hourUsageData} options={{ responsive: true }} />
+      <div className="chart-wrapper"><Bar data={labUsageData} options={{ indexAxis: 'y', responsive: true, plugins:{title:{display:true, text:'Reservas por Laboratorio'}}}} /></div>
+      <div className="chart-wrapper"><Bar data={dayUsageData} options={{ responsive: true, plugins:{title:{display:true, text:'Reservas por Día de la Semana'}}}} /></div>
+      <div className="chart-wrapper full-width"><Bar data={mostRequestedItemsData} options={{ responsive: true, plugins:{title:{display:true, text:'Top 10 Ítems Más Solicitados'}}}} /></div>
+    </div>
+  );
+};
+
+// --- Componente para el Mapa de Calor ---
+const ReporteHeatmap = ({ data }) => {
+  const heatmapData = useMemo(() => {
+    const grid = Array(16).fill(0).map(() => Array(7).fill(0));
+    let maxReservations = 0;
+    data.forEach(res => {
+      const day = getDay(res.startTime.toDate());
+      const hour = getHours(res.startTime.toDate());
+      const hourIndex = hour - 7;
+      if (hourIndex >= 0 && hourIndex < 16) {
+        grid[hourIndex][day]++;
+        if (grid[hourIndex][day] > maxReservations) { maxReservations = grid[hourIndex][day]; }
+      }
+    });
+    return { grid, maxReservations };
+  }, [data]);
+
+  const getCellColor = (count) => {
+    if (count === 0) return { backgroundColor: '#f9f9f9' };
+    const intensity = Math.min(count / (heatmapData.maxReservations || 1), 1);
+    const red = 255;
+    const green = 255 - Math.floor(intensity * 200);
+    const blue = 90 - Math.floor(intensity * 90);
+    return { backgroundColor: `rgb(${red}, ${green}, ${blue})`, color: intensity > 0.6 ? 'white' : 'black' };
+  };
+
+  return (
+    <div className="report-section">
+      <h3>Mapa de Calor de Ocupación Semanal</h3>
+      <div className="heatmap-container">
+        <table className="heatmap-table">
+          <thead><tr><th>Hora</th><th>Dom</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th></tr></thead>
+          <tbody>
+            {heatmapData.grid.map((row, hourIndex) => (
+              <tr key={hourIndex}>
+                <td>{`${hourIndex + 7}:00`}</td>
+                {row.map((count, dayIndex) => (
+                  <td key={dayIndex} style={getCellColor(count)} title={`${count} reserva(s)`}>{count > 0 ? count : ''}</td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 };
 
-
 // --- Componente para Historial de Inventario ---
-const ReporteInventario = ({ startDate, endDate }) => {
-    const [logs, setLogs] = useState([]);
-    const [loading, setLoading] = useState(false);
-    
-    useEffect(() => {
-        const fetchLogs = async () => {
-            setLoading(true);
-            try {
-                let logQuery = query(collection(db, 'inventory_logs'), orderBy('timestamp', 'desc'));
-                if (startDate && endDate) {
-                    logQuery = query(logQuery, 
-                        where('timestamp', '>=', Timestamp.fromDate(startOfDay(parseISO(startDate)))),
-                        where('timestamp', '<=', Timestamp.fromDate(endOfDay(parseISO(endDate))))
-                    );
-                }
-                const querySnapshot = await getDocs(logQuery);
-                setLogs(querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-            } catch (error) {
-                console.error("Error fetching inventory logs:", error);
-                toast.error("Error al cargar el historial. Puede que necesites crear un índice en Firebase.");
-            } finally {
-                setLoading(false);
-            }
-        };
-        fetchLogs();
-    }, [startDate, endDate]);
+const ReporteInventario = ({ logs }) => {
+    const [itemFilter, setItemFilter] = useState(null);
 
-    if (loading) return <p style={{ padding: '2rem', textAlign: 'center' }}>Cargando historial...</p>;
+    const filteredLogs = useMemo(() => {
+      if (!itemFilter) return logs;
+      return logs.filter(log => log.itemName === itemFilter);
+    }, [logs, itemFilter]);
 
     return (
-        <div className="report-section">
-            <div className="history-table-container">
-                <table className="history-table">
-                    <thead>
-                        <tr>
-                            <th>Fecha</th><th>Laboratorio</th><th>Equipo</th>
-                            <th>Cambio</th><th>Cantidad</th><th>Usuario</th><th>Notas</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        {logs.length > 0 ? logs.map(log => (
-                            <tr key={log.id}>
-                                <td>{log.timestamp ? format(log.timestamp.toDate(), 'dd/MM/yyyy HH:mm') : 'N/A'}</td>
-                                <td>{log.labName}</td>
-                                <td>{log.itemName}</td>
-                                <td><span className={`change-badge ${log.changeType.toLowerCase().replace(/\s+/g, '-')}`}>{log.changeType}</span></td>
-                                <td>{log.quantityChange > 0 ? `+${log.quantityChange}` : log.quantityChange} (Total: {log.newQuantity})</td>
-                                <td>{log.userEmail}</td>
-                                <td>{log.notes || '-'}</td>
-                            </tr>
-                        )) : (
-                            <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No hay registros para el período seleccionado.</td></tr>
-                        )}
-                    </tbody>
-                </table>
-            </div>
+      <div className="report-section">
+        {itemFilter && (
+          <div className="audit-header">
+            <h4>Auditoría para: <strong>{itemFilter}</strong></h4>
+            <button onClick={() => setItemFilter(null)}>Limpiar Filtro</button>
+          </div>
+        )}
+        <div className="history-table-container">
+          <table className="history-table">
+            <thead><tr><th>Fecha</th><th>Laboratorio</th><th>Equipo</th><th>Cambio</th><th>Cantidad</th><th>Usuario</th><th>Notas</th></tr></thead>
+            <tbody>
+              {filteredLogs.length > 0 ? filteredLogs.map(log => (
+                <tr key={log.id}>
+                  <td>{log.timestamp ? format(log.timestamp.toDate(), 'dd/MM/yyyy HH:mm') : 'N/A'}</td>
+                  <td>{log.labName}</td>
+                  <td><span className="item-link" onClick={() => setItemFilter(log.itemName)}>{log.itemName}</span></td>
+                  <td><span className={`change-badge ${log.changeType.toLowerCase().replace(/\s+/g, '-')}`}>{log.changeType}</span></td>
+                  <td>{log.quantityChange > 0 ? `+${log.quantityChange}` : log.quantityChange} (Total: {log.newQuantity})</td>
+                  <td>{log.userEmail}</td>
+                  <td>{log.notes || '-'}</td>
+                </tr>
+              )) : (
+                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No hay registros para el período o filtro seleccionado.</td></tr>
+              )}
+            </tbody>
+          </table>
         </div>
+      </div>
     );
 };
 
@@ -137,63 +157,61 @@ export default function Reportes() {
   const [activeTab, setActiveTab] = useState('uso');
   const [startDate, setStartDate] = useState(format(new Date(new Date().setMonth(new Date().getMonth() - 1)), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
-  const [data, setData] = useState([]);
+  const [reservationData, setReservationData] = useState([]);
+  const [inventoryLogData, setInventoryLogData] = useState([]);
   const [loading, setLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
     if (!startDate || !endDate) return;
     setLoading(true);
     try {
-        const q = query(
-            collection(db, 'reservations'),
-            where('startTime', '>=', Timestamp.fromDate(startOfDay(parseISO(startDate)))),
-            where('startTime', '<=', Timestamp.fromDate(endOfDay(parseISO(endDate))))
-        );
-        const querySnapshot = await getDocs(q);
-        setData(querySnapshot.docs.map(doc => doc.data()));
+      const start = Timestamp.fromDate(startOfDay(parseISO(startDate)));
+      const end = Timestamp.fromDate(endOfDay(parseISO(endDate)));
+      const resQuery = query(collection(db, 'reservations'), where('startTime', '>=', start), where('startTime', '<=', end));
+      const logQuery = query(collection(db, 'inventory_logs'), where('timestamp', '>=', start), where('timestamp', '<=', end), orderBy('timestamp', 'desc'));
+      const [resSnap, logSnap] = await Promise.all([getDocs(resQuery), getDocs(logQuery)]);
+      setReservationData(resSnap.docs.map(doc => doc.data()));
+      setInventoryLogData(logSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
-        console.error("Error fetching report data:", error);
-        toast.error("Error al cargar los datos del reporte.");
+      console.error("Error fetching report data:", error);
+      toast.error("Error al cargar datos. Puede que necesites crear un índice en Firebase.");
     } finally {
-        setLoading(false);
+      setLoading(false);
     }
   }, [startDate, endDate]);
 
-  useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+  useEffect(() => { fetchData(); }, [fetchData]);
   
-  const handleExportPDF = () => {
+  const csvHeaders = useMemo(() => ({
+    uso: [
+      { label: "Laboratorio", key: "labName" }, { label: "Motivo", key: "purpose" },
+      { label: "Tipo", key: "type" }, { label: "Fecha", key: "formattedDate" }, { label: "Horario", key: "formattedTime" }
+    ],
+    inventario: [
+      { label: "Fecha", key: "formattedTimestamp" }, { label: "Laboratorio", key: "labName" },
+      { label: "Equipo", key: "itemName" }, { label: "Cambio", key: "changeType" },
+      { label: "Variación", key: "quantityChange" }, { label: "Total", key: "newQuantity" },
+      { label: "Usuario", key: "userEmail" }, { label: "Notas", key: "notes" }
+    ]
+  }), []);
+
+  const csvData = useMemo(() => {
     if (activeTab === 'inventario') {
-      // Lógica para exportar la tabla de historial (aún por implementar)
-      toast('La exportación de historial de inventario aún no está implementada.', { icon: 'ℹ️' });
-    } else {
-      // Lógica para exportar los datos de uso
-      if (data.length === 0) {
-        return toast.error("No hay datos para exportar.");
-      }
-      const doc = new jsPDF();
-      doc.setFontSize(18);
-      doc.text(`Reporte de Uso de Laboratorios`, 14, 22);
-      doc.setFontSize(11);
-      doc.text(`Período: ${startDate} al ${endDate}`, 14, 30);
-
-      const tableRows = [];
-      const tableColumns = ["Laboratorio", "Motivo", "Tipo", "Fecha", "Horario"];
-      data.forEach(res => {
-        tableRows.push([
-          res.labName,
-          res.purpose,
-          res.type || 'Práctica',
-          format(res.startTime.toDate(), 'dd/MM/yyyy'),
-          `${format(res.startTime.toDate(), 'HH:mm')} - ${format(res.endTime.toDate(), 'HH:mm')}`
-        ]);
-      });
-
-      autoTable(doc, { head: [tableColumns], body: tableRows, startY: 40 });
-      doc.save(`reporte_uso_laboratorios_${format(new Date(), 'yyyy-MM-dd')}.pdf`);
-      toast.success('Reporte de uso generado en PDF.');
+      return inventoryLogData.map(log => ({
+        ...log, formattedTimestamp: log.timestamp ? format(log.timestamp.toDate(), 'dd/MM/yyyy HH:mm') : 'N/A'
+      }));
     }
+    return reservationData.map(res => ({
+      ...res,
+      formattedDate: format(res.startTime.toDate(), 'dd/MM/yyyy'),
+      formattedTime: `${format(res.startTime.toDate(), 'HH:mm')} - ${format(res.endTime.toDate(), 'HH:mm')}`
+    }));
+  }, [activeTab, reservationData, inventoryLogData]);
+
+  const getCurrentCsvHeaders = () => {
+    if (activeTab === 'inventario') return csvHeaders.inventario;
+    // Por defecto, o si es 'uso' o 'heatmap', exportamos los datos de uso.
+    return csvHeaders.uso;
   };
 
   return (
@@ -201,20 +219,32 @@ export default function Reportes() {
       <h1>Módulo de Reportería</h1>
       <div className="report-controls">
         <div className="tabs">
-          <button className={activeTab === 'uso' ? 'active' : ''} onClick={() => setActiveTab('uso')}>Uso de Laboratorios</button>
+          <button className={activeTab === 'uso' ? 'active' : ''} onClick={() => setActiveTab('uso')}>Análisis de Uso</button>
+          <button className={activeTab === 'heatmap' ? 'active' : ''} onClick={() => setActiveTab('heatmap')}>Mapa de Calor</button>
           <button className={activeTab === 'inventario' ? 'active' : ''} onClick={() => setActiveTab('inventario')}>Historial de Inventario</button>
         </div>
         <div className="filters">
           <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+          <span>a</span>
           <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-          <button className="export-btn" onClick={handleExportPDF}>Exportar PDF</button>
+          <CSVLink
+            data={csvData}
+            headers={getCurrentCsvHeaders()}
+            filename={`reporte_${activeTab}_${format(new Date(), 'yyyy-MM-dd')}.csv`}
+            className="export-btn"
+            target="_blank"
+          >
+            Exportar a CSV
+          </CSVLink>
         </div>
       </div>
       <div className="tab-content">
-        {loading ? <p style={{ padding: '2rem', textAlign: 'center' }}>Generando reportes...</p> : (
-            activeTab === 'uso' 
-            ? <ReporteUso data={data} /> 
-            : <ReporteInventario startDate={startDate} endDate={endDate} />
+        {loading ? <p style={{padding: '2rem', textAlign: 'center'}}>Generando reportes...</p> : (
+          <>
+            {activeTab === 'uso' && <ReporteUso data={reservationData} />}
+            {activeTab === 'heatmap' && <ReporteHeatmap data={reservationData} />}
+            {activeTab === 'inventario' && <ReporteInventario logs={inventoryLogData} />}
+          </>
         )}
       </div>
     </div>
