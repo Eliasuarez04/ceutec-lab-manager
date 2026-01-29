@@ -181,7 +181,7 @@ export default function Reportes() {
   }, [startDate, endDate]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
-  
+
   const csvHeaders = useMemo(() => ({
     uso: [
       { label: "Laboratorio", key: "labName" }, { label: "Motivo", key: "purpose" },
@@ -210,9 +210,19 @@ export default function Reportes() {
 
   const getCurrentCsvHeaders = () => {
     if (activeTab === 'inventario') return csvHeaders.inventario;
-    // Por defecto, o si es 'uso' o 'heatmap', exportamos los datos de uso.
     return csvHeaders.uso;
   };
+  
+  const [isCsvReady, setIsCsvReady] = useState(false);
+  const handleCsvDownload = (event, done) => {
+    toast.loading('Preparando tu archivo CSV...', { id: 'csv-toast' });
+    setTimeout(() => {
+      setIsCsvReady(true);
+      toast.success('¡Descarga lista!', { id: 'csv-toast' });
+      done(true);
+    }, 1000);
+  };
+  useEffect(() => { if(isCsvReady) { setIsCsvReady(false); } }, [isCsvReady]);
 
   return (
     <div className="page-container">
@@ -233,8 +243,11 @@ export default function Reportes() {
             filename={`reporte_${activeTab}_${format(new Date(), 'yyyy-MM-dd')}.csv`}
             className="export-btn"
             target="_blank"
+            asyncOnClick={true}
+            onClick={handleCsvDownload}
+            uFEFF={true}
           >
-            Exportar a CSV
+            {isCsvReady ? "Descargando..." : "Exportar a CSV"}
           </CSVLink>
         </div>
       </div>
