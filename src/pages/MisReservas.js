@@ -3,19 +3,20 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebaseConfig';
-import { collection, query, where, getDocs, orderBy, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, deleteDoc, updateDoc } from 'firebase/firestore';
 import { format, isPast, isFuture, parseISO, startOfDay, endOfDay } from 'date-fns';
 import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable'; // Importación corregida
+import autoTable from 'jspdf-autotable';
+import ReservationModal from '../components/ReservationModal'; // Importar el nuevo modal
 import './styles/MisReservas.css';
 
 const MySwal = withReactContent(Swal);
 
 // --- Componente para una Tarjeta de Reserva Individual ---
-const ReservationCard = ({ reservation, onCancel }) => (
+const ReservationCard = ({ reservation, onCancel, onEdit }) => (
   <div className="reservation-card">
     <div className="card-header">
       <span className={`type-badge ${reservation.type?.toLowerCase() || 'practica'}`}>
@@ -28,11 +29,11 @@ const ReservationCard = ({ reservation, onCancel }) => (
       <p><strong>Fecha:</strong> {format(reservation.startTime.toDate(), 'eeee, dd \'de\' MMMM \'de\' yyyy')}</p>
       <p><strong>Horario:</strong> {`${format(reservation.startTime.toDate(), 'HH:mm')} - ${format(reservation.endTime.toDate(), 'HH:mm')}`}</p>
     </div>
+    {/* Solo mostramos los botones si las funciones onCancel/onEdit existen (reservas futuras) */}
     {onCancel && (
       <div className="card-footer">
-        <button className="cancel-button" onClick={() => onCancel(reservation)}>
-          Cancelar Reserva
-        </button>
+        <button className="edit-button" onClick={() => onEdit(reservation)}>Editar</button>
+        <button className="cancel-button" onClick={() => onCancel(reservation)}>Cancelar</button>
       </div>
     )}
   </div>
@@ -45,6 +46,11 @@ export default function MisReservas() {
   const [activeTab, setActiveTab] = useState('upcoming');
   const [startDate, setStartDate] = useState('');
   const [endDate, setEndDate] = useState('');
+
+  // Estados para la Edición
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingReservation, setEditingReservation] = useState(null);
+  const [labInventoryForEdit, setLabInventoryForEdit] = useState([]);
 
   const fetchReservations = useCallback(async () => {
     if (!currentUser) return;
@@ -64,7 +70,7 @@ export default function MisReservas() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]); // <-- La dependencia de useCallback es currentUser
+  }, [currentUser]);
 
   useEffect(() => {
     fetchReservations();
@@ -121,6 +127,49 @@ export default function MisReservas() {
     });
   };
 
+  // --- FUNCIÓN PARA ABRIR EL MODAL DE EDICIÓN ---
+  const handleOpenEditModal = async (reservation) => {
+    const toastId = toast.loading('Cargando datos para edición...');
+    try {
+      const equipmentColRef = collection(db, 'laboratories', reservation.labId, 'equipment');
+      const q = query(equipmentColRef, where('quantity', '>', 0));
+      const equipmentSnapshot = await getDocs(q);
+      const inventoryData = equipmentSnapshot.docs.map(doc => ({ 
+        id: doc.id, value: doc.id, label: `${doc.data().name} (Disp: ${doc.data().quantity})`,
+        ...doc.data()
+      }));
+      setLabInventoryForEdit(inventoryData);
+      setEditingReservation(reservation);
+      setIsEditModalOpen(true);
+    } catch (error) {
+      toast.error('No se pudo cargar el inventario para editar.');
+    } finally {
+      toast.dismiss(toastId);
+    }
+  };
+
+  // --- FUNCIÓN PARA GUARDAR LOS CAMBIOS DE LA EDICIÓN ---
+  const handleUpdateReservation = async ({ purpose, requestedItems }) => {
+    if (!editingReservation) return;
+
+    const reservationRef = doc(db, 'reservations', editingReservation.id);
+    const updatedData = {
+      purpose: purpose,
+      requestedItems: requestedItems,
+      fulfillmentStatus: requestedItems.length > 0 ? 'Pendiente' : 'Sin Solicitud',
+    };
+
+    const promise = updateDoc(reservationRef, updatedData);
+    await toast.promise(promise, {
+      loading: 'Guardando cambios...',
+      success: 'Reserva actualizada con éxito.',
+      error: 'Error al actualizar la reserva.'
+    });
+
+    setIsEditModalOpen(false);
+    fetchReservations(); // Recargar la lista
+  };
+
   const handleExportPDF = () => {
     const doc = new jsPDF();
     const tableRows = [];
@@ -144,7 +193,6 @@ export default function MisReservas() {
       tableRows.push(reservationData);
     });
 
-    // Uso corregido de autoTable
     autoTable(doc, {
       head: [tableColumns],
       body: tableRows,
@@ -157,7 +205,9 @@ export default function MisReservas() {
   };
 
   const renderContent = () => {
+    // ... (TU LÓGICA DE RENDERIZACIÓN DE CONTENIDO IGUAL) ...
     if (loading) return <div className="loading-state">Cargando tus reservas...</div>;
+    
     if (filteredReservations.length === 0) {
       return (
         <div className="empty-state">
@@ -167,13 +217,15 @@ export default function MisReservas() {
         </div>
       );
     }
+
     return (
       <div className="reservations-grid">
         {filteredReservations.map(res => (
           <ReservationCard 
             key={res.id} 
             reservation={res} 
-            onCancel={activeTab === 'upcoming' ? handleCancelReservation : null} 
+            onCancel={activeTab === 'upcoming' ? handleCancelReservation : null}
+            onEdit={activeTab === 'upcoming' ? handleOpenEditModal : null}
           />
         ))}
       </div>
@@ -181,32 +233,47 @@ export default function MisReservas() {
   };
 
   return (
-    <div className="page-container">
-      <div className="page-header-mis-reservas">
-        <h1>Mis Reservas</h1>
-        <Link to="/reservas" className="back-to-calendar-btn">
-          Ir a Calendario
-        </Link>
-      </div>
-      
-      <div className="controls-bar">
-        <div className="tabs">
-          <button className={activeTab === 'upcoming' ? 'active' : ''} onClick={() => setActiveTab('upcoming')}>Próximas</button>
-          <button className={activeTab === 'past' ? 'active' : ''} onClick={() => setActiveTab('past')}>Historial</button>
-        </div>
-        
-        <div className="filters">
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-          <button className="export-btn" onClick={handleExportPDF} disabled={filteredReservations.length === 0}>
-            Exportar a PDF
-          </button>
-        </div>
-      </div>
+    <>
+      {/* --- MODAL DE EDICIÓN --- */}
+      <ReservationModal
+        isOpen={isEditModalOpen}
+        onClose={() => setIsEditModalOpen(false)}
+        labName={editingReservation?.labName}
+        inventory={labInventoryForEdit}
+        existingReservation={editingReservation}
+        onSubmit={handleUpdateReservation}
+      />
 
-      <div className="content-area">
-        {renderContent()}
+      {/* APLICAMOS EL FONDO GLOBAL */}
+      <div className="dashboard-wrapper"> 
+        <div className="page-container">
+          <div className="page-header-mis-reservas">
+            <h1>Mis Reservas</h1>
+            <Link to="/reservas" className="back-to-calendar-btn">
+              Ir a Calendario
+            </Link>
+          </div>
+          
+          <div className="controls-bar">
+            <div className="tabs">
+              <button className={activeTab === 'upcoming' ? 'active' : ''} onClick={() => setActiveTab('upcoming')}>Próximas</button>
+              <button className={activeTab === 'past' ? 'active' : ''} onClick={() => setActiveTab('past')}>Historial</button>
+            </div>
+            
+            <div className="filters">
+              <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+              <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+              <button className="export-btn" onClick={handleExportPDF} disabled={filteredReservations.length === 0}>
+                Exportar a PDF
+              </button>
+            </div>
+          </div>
+
+          <div className="content-area">
+            {renderContent()}
+          </div>
+        </div>
       </div>
-    </div>
+    </>
   );
 }

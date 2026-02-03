@@ -12,30 +12,23 @@ import { db } from '../firebaseConfig';
 import { collection, getDocs, query, where, writeBatch, doc, Timestamp, orderBy, addDoc, deleteDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
-import './styles/Reservations.css'; // Asegúrate que esta ruta es correcta
+import ReservationModal from '../components/ReservationModal';
+import './styles/Reservations.css';
 import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 import * as XLSX from 'xlsx';
-import Select from 'react-select';
 
 const MySwal = withReactContent(Swal);
 
-// --- DICCIONARIO DE MAPEO DE LABORATORIOS ---
 const excelToFirestoreLabMap = {
-  'SN/FOT': 'Fotografía', 
-  'SN/RD': 'Laboratorio de Redes',
-  'SN/TRD': 'Taller de Redes', 
-  'SN/QUI': 'Química',
-  'SN/DB1': 'Dibujo I', 
-  'SN/DB2': 'Dibujo II',
-  'SN/DB3': 'Dibujo III', 
-  'SN/MAC': 'MAC',
-  'SN/L08': 'Cómputo 08', 
-  'SN/L07': 'Cómputo 07',
+  'SN/FOT': 'Fotografía', 'SN/RD': 'Laboratorio de Redes',
+  'SN/TRD': 'Taller de Redes', 'SN/QUI': 'Química',
+  'SN/DB1': 'Dibujo I', 'SN/DB2': 'Dibujo II',
+  'SN/DB3': 'Dibujo III', 'SN/MAC': 'MAC',
+  'SN/L08': 'Cómputo 08', 'SN/L07': 'Cómputo 07',
 };
 
-// Configuración y mensajes
 const locales = { 'es': es };
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales });
 const messages = {
@@ -69,9 +62,7 @@ export default function Reservations() {
   const [isImportModalOpen, setIsImportModalOpen] = useState(false);
   const [slotInfo, setSlotInfo] = useState(null);
   const [selectedEvent, setSelectedEvent] = useState(null);
-  const [purpose, setPurpose] = useState('');
   const [availableInventory, setAvailableInventory] = useState([]);
-  const [selectedItems, setSelectedItems] = useState([]);
   const [importFile, setImportFile] = useState(null);
   const [periodStartDate, setPeriodStartDate] = useState('');
   const [periodEndDate, setPeriodEndDate] = useState('');
@@ -99,12 +90,12 @@ export default function Reservations() {
     if (!selectedLab) return;
     setLoading(true);
     let q;
-    if (selectedLab.id === 'all') { q = query(collection(db, 'reservations')); }
+    if (selectedLab.id === 'all') { q = query(collection(db, 'reservations')); } 
     else { q = query(collection(db, 'reservations'), where('labId', '==', selectedLab.id)); }
     const querySnapshot = await getDocs(q);
     const reservationsData = querySnapshot.docs.map(doc => {
       const data = doc.data();
-      let title = data.type === 'Clase'
+      let title = data.type === 'Clase' 
         ? `${data.purpose} - ${data.teacherName || 'Docente'}`
         : `${data.purpose} (${data.userEmail.split('@')[0]})`;
       if (selectedLab.id === 'all' && data.labName) { title = `${data.labName}: ${title}`; }
@@ -121,13 +112,13 @@ export default function Reservations() {
     if (slot.start < new Date()) return;
     const isOverlapping = reservations.some(event => slot.start < event.end && slot.end > event.start);
     if (isOverlapping) { return toast.error('Este horario ya está ocupado.'); }
-
+    
     const toastId = toast.loading('Cargando inventario disponible...');
     try {
       const equipmentColRef = collection(db, 'laboratories', selectedLab.id, 'equipment');
       const q = query(equipmentColRef, where('quantity', '>', 0));
       const equipmentSnapshot = await getDocs(q);
-      const inventoryData = equipmentSnapshot.docs.map(doc => ({
+      const inventoryData = equipmentSnapshot.docs.map(doc => ({ 
         id: doc.id, value: doc.id, label: `${doc.data().name} (Disp: ${doc.data().quantity})`,
         ...doc.data()
       }));
@@ -135,7 +126,6 @@ export default function Reservations() {
       const startTime = slot.start;
       const endTime = new Date(startTime.getTime() + 90 * 60000);
       setSlotInfo({ start: startTime, end: endTime, type: 'Practica' });
-      setSelectedItems([]);
       setIsBookingModalOpen(true);
     } catch (error) {
       console.error("Error fetching inventory:", error);
@@ -145,52 +135,24 @@ export default function Reservations() {
     }
   };
 
-  const handleAddItemToSelection = (selectedOption) => {
-    if (selectedItems.find(item => item.id === selectedOption.id)) {
-      return toast('Este ítem ya está en tu lista.', { icon: 'ℹ️' });
-    }
-    setSelectedItems(prev => [...prev, { ...selectedOption, requestQuantity: 1 }]);
-  };
-
-  const handleItemQuantityChange = (itemId, value) => {
-    const quantity = parseInt(value, 10);
-    const item = selectedItems.find(i => i.id === itemId);
-    if (isNaN(quantity) || quantity < 1) {
-      setSelectedItems(prev => prev.filter(i => i.id !== itemId));
-    } else if (quantity > item.quantity) {
-      toast.error(`La cantidad máxima para ${item.name} es ${item.quantity}.`);
-      setSelectedItems(prev => prev.map(i => i.id === itemId ? { ...i, requestQuantity: item.quantity } : i));
-    } else {
-      setSelectedItems(prev => prev.map(i => i.id === itemId ? { ...i, requestQuantity: quantity } : i));
-    }
-  };
-
-  const handleRemoveItem = (itemId) => {
-    setSelectedItems(prev => prev.filter(i => i.id !== itemId));
-  };
-
   const handleSelectEvent = (event) => { setSelectedEvent(event); setIsViewModalOpen(true); };
 
-  const handleCreateReservation = async (e) => {
-    e.preventDefault();
+  const handleCreateReservation = async ({ purpose, requestedItems }) => {
     if (!purpose.trim() || !slotInfo) return;
-    const itemsToSave = selectedItems.map(item => ({
-      itemId: item.id, itemName: item.name, quantity: item.requestQuantity,
-    }));
     const newReservationData = {
       type: 'Practica', labId: selectedLab.id, labName: selectedLab.name,
       userId: currentUser.uid, userEmail: currentUser.email,
       startTime: Timestamp.fromDate(slotInfo.start), endTime: Timestamp.fromDate(slotInfo.end),
       purpose: purpose.trim(),
-      requestedItems: itemsToSave,
-      fulfillmentStatus: itemsToSave.length > 0 ? 'Pendiente' : 'Sin Solicitud',
+      requestedItems: requestedItems,
+      fulfillmentStatus: requestedItems.length > 0 ? 'Pendiente' : 'Sin Solicitud',
     };
     const promise = addDoc(collection(db, 'reservations'), newReservationData);
-    toast.promise(promise, {
+    await toast.promise(promise, {
       loading: 'Creando reserva...', success: '¡Reserva creada!', error: 'Error al crear la reserva.',
-    }).then(() => {
-      setIsBookingModalOpen(false); setPurpose(''); setSlotInfo(null); setSelectedItems([]); fetchReservations();
     });
+    setIsBookingModalOpen(false);
+    fetchReservations();
   };
 
   const handleDeleteReservation = (reservationId) => {
@@ -264,11 +226,8 @@ export default function Reservations() {
             if (classDays.includes(currentDate.getDay())) {
               const timeParts = timeStr.match(/(\d+):(\d+)\s*(AM|PM)/i);
               if (!timeParts) continue;
-
               // eslint-disable-next-line
               let [_, hours, minutes, modifier] = timeParts;
-
-              
               hours = parseInt(hours);
               if (modifier.toUpperCase() === 'PM' && hours !== 12) hours += 12;
               if (modifier.toUpperCase() === 'AM' && hours === 12) hours = 0;
@@ -285,7 +244,7 @@ export default function Reservations() {
             currentDate.setDate(currentDate.getDate() + 1);
           }
         }
-
+        
         toast.dismiss(loadingToast);
         if (newReservations.length === 0) {
           return toast.error("No se generaron reservas.");
@@ -316,7 +275,7 @@ export default function Reservations() {
     };
     reader.readAsArrayBuffer(importFile);
   };
-
+  
   const eventPropGetter = useCallback((event) => {
     let className = '';
     if (event.type === 'Clase') { className = 'event-clase'; }
@@ -326,50 +285,21 @@ export default function Reservations() {
     return { className };
   }, [labStatuses]);
 
-  return (
-    <>
-      <Modal isOpen={isBookingModalOpen} onClose={() => setIsBookingModalOpen(false)} title="Confirmar Reserva">
-        {slotInfo && (
-          <form onSubmit={handleCreateReservation} className="modal-form">
-            <p><strong>Laboratorio:</strong> {selectedLab?.name}</p>
-            <p><strong>Fecha:</strong> {slotInfo.start.toLocaleDateString('es-ES', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}</p>
-            <p><strong>Horario:</strong> {`${format(slotInfo.start, 'HH:mm')} - ${format(slotInfo.end, 'HH:mm')}`}</p>
-            <div className="form-group">
-              <label htmlFor="purpose">Motivo de la Reserva (Ej: Práctica, Proyecto)</label>
-              <input id="purpose" type="text" value={purpose} onChange={(e) => setPurpose(e.target.value)} required />
-            </div>
-            <div className="inventory-request-section">
-              <h4>Solicitar Equipos/Insumos (Opcional)</h4>
-              <Select
-                options={availableInventory}
-                onChange={handleAddItemToSelection}
-                placeholder="Busca y selecciona un ítem..."
-                noOptionsMessage={() => 'No hay ítems disponibles.'}
-                value={null}
-              />
-              {selectedItems.length > 0 && (
-                <div className="selected-items-list">
-                  {selectedItems.map(item => (
-                    <div key={item.id} className="selected-item-row">
-                      <span className="item-name">{item.name}</span>
-                      <input type="number" min="1" max={item.quantity} value={item.requestQuantity}
-                        onChange={(e) => handleItemQuantityChange(item.id, e.target.value)} className="quantity-input" />
-                      <button type="button" onClick={() => handleRemoveItem(item.id)} className="remove-item-btn">&times;</button>
-                    </div>
-                  ))}
-                </div>
-              )}
-            </div>
-            <div className="modal-actions">
-              <button type="button" className="action-btn cancel-btn" onClick={() => setIsBookingModalOpen(false)}>Cancelar</button>
-              <button type="submit" className="action-btn save-btn">Confirmar y Reservar</button>
-            </div>
-          </form>
-        )}
-      </Modal>
+   return (
+    <div className="reservations-wrapper"> {/* NUEVO WRAPPER ANIMADO */}
+      
+      <ReservationModal
+        isOpen={isBookingModalOpen}
+        onClose={() => setIsBookingModalOpen(false)}
+        labName={selectedLab?.name}
+        slotInfo={slotInfo}
+        inventory={availableInventory}
+        onSubmit={handleCreateReservation}
+      />
 
       <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title="Detalles de la Reserva">
-        {selectedEvent && (
+        {/* ... (CONTENIDO DEL MODAL IGUAL) ... */}
+         {selectedEvent && (
           <div className="view-modal-content">
             <p><strong>Tipo:</strong> {selectedEvent.type || 'Practica'}</p>
             <p><strong>Laboratorio:</strong> {selectedEvent.labName}</p>
@@ -405,9 +335,11 @@ export default function Reservations() {
       </Modal>
 
       <Modal isOpen={isImportModalOpen} onClose={() => setIsImportModalOpen(false)} title="Importar Carga Académica">
-        <form onSubmit={handleImportSubmit} className="modal-form">
-          <p>Sube el archivo Excel con la carga académica. Los códigos en 'espacio_aprendizaje' deben coincidir con la lista predefinida.</p>
-          <div className="form-group">
+         {/* ... (CONTENIDO DEL MODAL IMPORT IGUAL) ... */}
+         <form onSubmit={handleImportSubmit} className="modal-form">
+          <p>Sube el archivo Excel con la carga académica.</p>
+          {/* ... inputs ... */}
+           <div className="form-group">
             <label htmlFor="period-start">Fecha de Inicio del Período</label>
             <input id="period-start" type="date" value={periodStartDate} onChange={e => setPeriodStartDate(e.target.value)} required />
           </div>
@@ -426,37 +358,60 @@ export default function Reservations() {
         </form>
       </Modal>
 
-      <div className="page-container reservations-page">
+      <div className="reservations-page">
+        
+        {/* HEADER MEJORADO */}
         <div className="reservations-header">
-          <h1 className="reservations-title">Reserva de Laboratorios</h1>
+          <div className="title-section">
+            <h1>Reserva de Laboratorios</h1>
+            <p>Selecciona un espacio y un horario para tus prácticas.</p>
+          </div>
+
           <div className="lab-selector-actions">
             {userData?.role === 'admin' && (
               <button className="import-button" onClick={() => setIsImportModalOpen(true)}>
-                Importar Carga
+                <span>📥</span> Importar Carga
               </button>
             )}
             <div className="lab-selector">
-              <label htmlFor="lab-select">Selecciona un Laboratorio:</label>
               <select id="lab-select" value={selectedLab?.id || ''} onChange={(e) => { const lab = labs.find(l => l.id === e.target.value); setSelectedLab(lab); }}>
                 {labs.map(lab => <option key={lab.id} value={lab.id}>{lab.name}</option>)}
               </select>
             </div>
           </div>
         </div>
-        <div className="calendar-container">
-          {loading ? <p style={{ textAlign: 'center', padding: '2rem' }}>Cargando calendario...</p> : (
+
+        {/* CARD DEL CALENDARIO CON EFECTO CRISTAL */}
+        <div className="calendar-card">
+          {loading ? (
+            <div style={{display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%', color: '#666'}}>
+                <h2>Cargando calendario...</h2>
+            </div>
+          ) : (
             <Calendar
-              localizer={localizer} events={reservations} startAccessor="start" endAccessor="end"
-              style={{ height: 'calc(100vh - 220px)' }} selectable onSelectSlot={handleSelectSlot}
-              onSelectEvent={handleSelectEvent} culture='es' messages={messages} view={view}
-              date={date} onView={(newView) => setView(newView)} onNavigate={(newDate) => setDate(newDate)}
-              views={['week', 'day']} step={30} timeslots={2}
-              min={new Date(0, 0, 0, 7, 0, 0)} max={new Date(0, 0, 0, 22, 0, 0)}
+              localizer={localizer} 
+              events={reservations} 
+              startAccessor="start" 
+              endAccessor="end"
+              selectable 
+              onSelectSlot={handleSelectSlot}
+              onSelectEvent={handleSelectEvent} 
+              culture='es' 
+              messages={messages} 
+              view={view}
+              date={date} 
+              onView={(newView) => setView(newView)} 
+              onNavigate={(newDate) => setDate(newDate)}
+              views={['week', 'day', 'month']} 
+              step={30} 
+              timeslots={2}
+              min={new Date(0, 0, 0, 7, 0, 0)} 
+              max={new Date(0, 0, 0, 22, 0, 0)}
               eventPropGetter={eventPropGetter}
             />
           )}
         </div>
       </div>
-    </>
+    </div>
   );
 }

@@ -1,0 +1,50 @@
+/* src/components/ReservationModal.css */
+/* Estos son los estilos que antes estaban en Reservations.css para los modales */
+
+.inventory-request-section {
+  margin-top: 2rem;
+  padding-top: 1.5rem;
+  border-top: 1px solid var(--border-color);
+}
+.inventory-request-section h4 {
+  margin-top: 0;
+  margin-bottom: 1.5rem;
+  font-size: 1.1rem;
+  color: var(--primary-text);
+}
+.selected-items-list {
+  margin-top: 1.5rem;
+  max-height: 200px;
+  overflow-y: auto;
+  padding-right: 10px;
+}
+.selected-item-row {
+  display: grid;
+  grid-template-columns: 1fr auto auto;
+  gap: 1rem;
+  align-items: center;
+  padding: 0.75rem;
+  border-radius: 6px;
+  background-color: var(--background-light);
+  margin-bottom: 0.5rem;
+}
+.item-name {
+  font-weight: 500;
+}
+.quantity-input {
+  width: 70px;
+  padding: 0.5rem;
+  text-align: center;
+  border: 1px solid var(--border-color);
+  border-radius: 5px;
+}
+.remove-item-btn {
+  background-color: transparent;
+  border: none;
+  color: var(--ceutec-red);
+  font-size: 1.5rem;
+  font-weight: bold;
+  cursor: pointer;
+  line-height: 1;
+  padding: 0 5px;
+}
