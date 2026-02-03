@@ -8,10 +8,11 @@ import '../styles/InventoryManager.css';
 import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
+import '../styles/Dashboard.css'; // Importar el fondo animado
 
 const MySwal = withReactContent(Swal);
 
-// --- Componente para una fila de la tabla de inventario (ACTUALIZADO) ---
+// --- Componente para una fila de la tabla de inventario ---
 const InventoryRow = ({ item, onUpdate, onDelete }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedItem, setEditedItem] = useState({ ...item });
@@ -28,9 +29,13 @@ const InventoryRow = ({ item, onUpdate, onDelete }) => {
     setIsEditing(false);
   };
 
+  const getStatusText = (status) => (status || '').toLowerCase().replace(/\s+/g, '-');
+  const displayStatus = item.status || (item.quantity > 0 ? 'Disponible' : 'Agotado');
+  const displayStatusClass = getStatusText(displayStatus);
+
   if (isEditing) {
     return (
-      <tr>
+      <tr className="editing-row">
         <td><input type="text" value={editedItem.name} onChange={(e) => setEditedItem({ ...editedItem, name: e.target.value })} /></td>
         <td><input type="number" min="0" value={editedItem.quantity} onChange={(e) => setEditedItem({ ...editedItem, quantity: Number(e.target.value) })} /></td>
         <td><input type="number" min="0" value={editedItem.stockThreshold || 0} onChange={(e) => setEditedItem({ ...editedItem, stockThreshold: Number(e.target.value) })} /></td>
@@ -54,7 +59,7 @@ const InventoryRow = ({ item, onUpdate, onDelete }) => {
       <td>{item.name}</td>
       <td>{item.quantity}</td>
       <td><span className="threshold-badge">{item.stockThreshold > 0 ? item.stockThreshold : 'N/A'}</span></td>
-      <td><span className={`status-badge status-${(item.status || '').toLowerCase().replace(/\s+/g, '-')}`}>{item.status}</span></td>
+      <td><span className={`status-badge status-${displayStatusClass}`}>{displayStatus}</span></td>
       <td className="actions-cell">
         <button onClick={() => setIsEditing(true)} className="action-btn edit-btn">Editar</button>
         <button onClick={() => onDelete(item.id, item.name)} className="action-btn delete-btn">Eliminar</button>
@@ -63,7 +68,7 @@ const InventoryRow = ({ item, onUpdate, onDelete }) => {
   );
 };
 
-// --- Componente Principal (ACTUALIZADO) ---
+// --- Componente Principal ---
 export default function InventoryManager() {
   const { currentUser } = useAuth();
   const [labs, setLabs] = useState([]);
@@ -127,7 +132,6 @@ export default function InventoryManager() {
     fetchInventory(selectedLab.id);
   };
 
-  // --- SOLUCIÓN: FUNCIÓN handleUpdateEquipment CORREGIDA ---
   const handleUpdateEquipment = async (itemId, updatedData) => {
     const itemDocRef = doc(db, 'laboratories', selectedLab.id, 'equipment', itemId);
     const docBefore = await getDoc(itemDocRef);
@@ -140,7 +144,7 @@ export default function InventoryManager() {
         timestamp: Timestamp.now()
       };
       await addDoc(collection(db, 'inventory_logs'), logData);
-    } // <-- LA LLAVE QUE FALTABA ESTABA AQUÍ
+    } 
 
     const dataToUpdate = {
       ...updatedData,
@@ -251,6 +255,7 @@ export default function InventoryManager() {
           </div>
           <div className="form-group">
             <label htmlFor="labDescription">Descripción (Opcional)</label>
+            {/* NO USAMOS PLACEHOLDER AQUÍ, SOLO VALUE */}
             <textarea id="labDescription" value={currentLabData.description || ''} onChange={(e) => setCurrentLabData({...currentLabData, description: e.target.value})} rows="3"></textarea>
           </div>
           <div className="form-group">
@@ -269,80 +274,87 @@ export default function InventoryManager() {
         </form>
       </Modal>
 
-      <div className="manager-layout">
-        <aside className="sidebar">
-          <div className="sidebar-header">
-            <h2 className="sidebar-title">Laboratorios</h2>
-            <button className="add-lab-btn" onClick={openAddLabModal}>+ Nuevo</button>
-          </div>
-          {isLoadingLabs ? <p>Cargando...</p> : (
-            <ul className="lab-selector-list">
-              {labs.map(lab => (
-                <li key={lab.id} className={selectedLab?.id === lab.id ? 'active' : ''} onClick={() => handleSelectLab(lab)}>
-                  {lab.name}
-                </li>
-              ))}
-            </ul>
-          )}
-        </aside>
+      <div className="dashboard-wrapper"> 
+        {/* BOTÓN FLOTANTE: Nueva ubicación */}
+        <button className="global-add-lab-btn" onClick={openAddLabModal}>
+            + Nuevo Laboratorio
+        </button>
 
-        <main className="main-content">
-          {selectedLab ? (
-            <>
-              <div className="content-header">
-                <div><h1>Gestionando: {selectedLab.name}</h1><p>{selectedLab.location}</p></div>
-                <div className="header-actions">
-                  <button className="action-btn edit-btn" onClick={() => openEditLabModal(selectedLab)}>Editar</button>
-                  <button className="action-btn delete-btn" onClick={() => handleDeleteLab(selectedLab.id, selectedLab.name)}>Eliminar</button>
-                </div>
-              </div>
-
-              <div className="manager-card">
-                <h3 className="card-title">Añadir Nuevo Equipo</h3>
-                <form onSubmit={handleAddEquipment} className="add-item-form">
-                  <input type="text" placeholder="Nombre del equipo" value={newEquipment.name} onChange={(e) => setNewEquipment({ ...newEquipment, name: e.target.value })} required />
-                  <input type="number" placeholder="Cantidad" min="1" value={newEquipment.quantity} onChange={(e) => setNewEquipment({ ...newEquipment, quantity: Number(e.target.value) })} required />
-                  <input type="number" placeholder="Umbral Alerta" min="0" value={newEquipment.stockThreshold} onChange={(e) => setNewEquipment({ ...newEquipment, stockThreshold: Number(e.target.value) })} />
-                  <select value={newEquipment.status} onChange={(e) => setNewEquipment({ ...newEquipment, status: e.target.value })}>
-                    <option value="Disponible">Disponible</option>
-                    <option value="En Mantenimiento">En Mantenimiento</option>
-                    <option value="Fuera de Servicio">Fuera de Servicio</option>
-                  </select>
-                  <button type="submit">Añadir</button>
-                </form>
-              </div>
-
-              <div className="manager-card">
-                <h3 className="card-title">Inventario de Equipamiento</h3>
-                {isLoadingInventory ? <p>Cargando inventario...</p> : (
-                  <table className="inventory-table-manager">
-                    <thead>
-                      <tr>
-                        <th>Equipo</th>
-                        <th>Cantidad</th>
-                        <th>Umbral Alerta</th>
-                        <th>Estado</th>
-                        <th className="actions-header">Acciones</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {equipment.length > 0 ? equipment.map(item => (
-                        <InventoryRow key={item.id} item={item} onUpdate={handleUpdateEquipment} onDelete={handleDeleteEquipment} />
-                      )) : (
-                        <tr><td colSpan="5" className="no-items-message">No hay equipos registrados.</td></tr>
-                      )}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </>
-          ) : (
-            <div className="placeholder-content">
-              <h2>Selecciona un laboratorio</h2>
-              <p>Elige un laboratorio para gestionar su inventario o crea uno nuevo.</p>
+        <div className="manager-layout">
+          <aside className="sidebar">
+            <div className="sidebar-header">
+              <h2 className="sidebar-title">LABORATORIOS</h2>
+              {/* Eliminamos el botón + Nuevo de aquí */}
             </div>
-          )}
-        </main>
+            {isLoadingLabs ? <p style={{padding: '0 25px', color: '#666'}}>Cargando...</p> : (
+              <ul className="lab-selector-list">
+                {labs.map(lab => (
+                  <li key={lab.id} className={selectedLab?.id === lab.id ? 'active' : ''} onClick={() => handleSelectLab(lab)}>
+                    {lab.name}
+                  </li>
+                ))}
+              </ul>
+            )}
+          </aside>
+
+          <main className="main-content">
+            {selectedLab ? (
+              <>
+                <div className="content-header floating-card">
+                  <div><h1>Gestionando: {selectedLab.name}</h1><p>{selectedLab.location}</p></div>
+                  <div className="header-actions">
+                    <button className="action-btn edit-btn" onClick={() => openEditLabModal(selectedLab)}>Editar</button>
+                    <button className="action-btn delete-btn" onClick={() => handleDeleteLab(selectedLab.id, selectedLab.name)}>Eliminar</button>
+                  </div>
+                </div>
+
+                <div className="manager-card">
+                    <h3 className="card-title">Añadir Nuevo Equipo</h3>
+                    <form onSubmit={handleAddEquipment} className="add-item-form">
+                      <input type="text" placeholder="Nombre del equipo" value={newEquipment.name} onChange={(e) => setNewEquipment({ ...newEquipment, name: e.target.value })} required />
+                      <input type="number" placeholder="1" min="1" value={newEquipment.quantity} onChange={(e) => setNewEquipment({ ...newEquipment, quantity: Number(e.target.value) })} required />
+                      <input type="number" placeholder="0" min="0" value={newEquipment.stockThreshold} onChange={(e) => setNewEquipment({ ...newEquipment, stockThreshold: Number(e.target.value) })} />
+                      <select value={newEquipment.status} onChange={(e) => setNewEquipment({ ...newEquipment, status: e.target.value })}>
+                        <option value="Disponible">Disponible</option>
+                        <option value="En Mantenimiento">En Mantenimiento</option>
+                        <option value="Fuera de Servicio">Fuera de Servicio</option>
+                      </select>
+                      <button type="submit">Añadir</button>
+                    </form>
+                  </div>
+
+                <div className="manager-card">
+                  <h3 className="card-title">Inventario de Equipamiento</h3>
+                  {isLoadingInventory ? <p>Cargando inventario...</p> : (
+                    <table className="inventory-table-manager">
+                      <thead>
+                        <tr>
+                          <th>Equipo</th>
+                          <th>Cantidad</th>
+                          <th>Umbral Alerta</th>
+                          <th>Estado</th>
+                          <th className="actions-header">Acciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {equipment.length > 0 ? equipment.map(item => (
+                          <InventoryRow key={item.id} item={item} onUpdate={handleUpdateEquipment} onDelete={handleDeleteEquipment} />
+                        )) : (
+                          <tr><td colSpan="5" className="no-items-message">No hay equipos registrados.</td></tr>
+                        )}
+                      </tbody>
+                    </table>
+                  )}
+                </div>
+              </>
+            ) : (
+              <div className="placeholder-content">
+                <h2>Selecciona un laboratorio</h2>
+                <p>Elige un laboratorio para gestionar su inventario o crea uno nuevo.</p>
+              </div>
+            )}
+          </main>
+        </div>
       </div>
     </>
   );

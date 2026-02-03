@@ -225,40 +225,46 @@ export default function Reportes() {
   useEffect(() => { if(isCsvReady) { setIsCsvReady(false); } }, [isCsvReady]);
 
   return (
-    <div className="page-container">
-      <h1>Módulo de Reportería</h1>
-      <div className="report-controls">
-        <div className="tabs">
-          <button className={activeTab === 'uso' ? 'active' : ''} onClick={() => setActiveTab('uso')}>Análisis de Uso</button>
-          <button className={activeTab === 'heatmap' ? 'active' : ''} onClick={() => setActiveTab('heatmap')}>Mapa de Calor</button>
-          <button className={activeTab === 'inventario' ? 'active' : ''} onClick={() => setActiveTab('inventario')}>Historial de Inventario</button>
+    <div className="dashboard-wrapper"> {/* Aplicamos el fondo animado */}
+      <div className="reports-page-card"> {/* Contenedor de cristal principal */}
+        
+        <h1>Módulo de Reportería</h1>
+        
+        <div className="report-controls"> {/* Barra de Control (También de cristal) */}
+          <div className="tabs">
+            <button className={activeTab === 'uso' ? 'active' : ''} onClick={() => setActiveTab('uso')}>Análisis de Uso</button>
+            <button className={activeTab === 'heatmap' ? 'active' : ''} onClick={() => setActiveTab('heatmap')}>Mapa de Calor</button>
+            <button className={activeTab === 'inventario' ? 'active' : ''} onClick={() => setActiveTab('inventario')}>Historial de Inventario</button>
+          </div>
+          <div className="filters">
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <span>a</span>
+            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <CSVLink
+              data={csvData}
+              headers={getCurrentCsvHeaders()}
+              filename={`reporte_${activeTab}_${format(new Date(), 'yyyy-MM-dd')}.csv`}
+              className="export-btn"
+              target="_blank"
+              asyncOnClick={true}
+              onClick={handleCsvDownload}
+              uFEFF={true}
+            >
+              {isCsvReady ? "Preparando..." : "Exportar a CSV"}
+            </CSVLink>
+          </div>
         </div>
-        <div className="filters">
-          <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-          <span>a</span>
-          <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-          <CSVLink
-            data={csvData}
-            headers={getCurrentCsvHeaders()}
-            filename={`reporte_${activeTab}_${format(new Date(), 'yyyy-MM-dd')}.csv`}
-            className="export-btn"
-            target="_blank"
-            asyncOnClick={true}
-            onClick={handleCsvDownload}
-            uFEFF={true}
-          >
-            {isCsvReady ? "Descargando..." : "Exportar a CSV"}
-          </CSVLink>
+        
+        <div className="tab-content">
+          {loading ? <p className="loading-message">Generando reportes...</p> : (
+            <>
+              {activeTab === 'uso' && <ReporteUso data={reservationData} />}
+              {activeTab === 'heatmap' && <ReporteHeatmap data={reservationData} />}
+              {activeTab === 'inventario' && <ReporteInventario logs={inventoryLogData} />}
+            </>
+          )}
         </div>
-      </div>
-      <div className="tab-content">
-        {loading ? <p style={{padding: '2rem', textAlign: 'center'}}>Generando reportes...</p> : (
-          <>
-            {activeTab === 'uso' && <ReporteUso data={reservationData} />}
-            {activeTab === 'heatmap' && <ReporteHeatmap data={reservationData} />}
-            {activeTab === 'inventario' && <ReporteInventario logs={inventoryLogData} />}
-          </>
-        )}
+        
       </div>
     </div>
   );

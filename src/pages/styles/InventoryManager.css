@@ -1,325 +1,337 @@
 /* src/pages/Admin/InventoryManager.css */
+:root {
+  --ceutec-red: #c8102e;
+  --ceutec-dark-red: #a00d25;
+  --glass-bg: rgba(255, 255, 255, 0.95); 
+  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --glass-border: 1px solid #e0e0e0;
+  --text-dark: #333;
+  --text-secondary: #666;
+  --border-light: #eee;
+  --background-stripe: #f9f9f9;
+}
 
 /* --- Layout Principal --- */
 .manager-layout {
   display: flex;
-  height: calc(100vh - 60px); /* Altura completa menos la navbar */
-  background-color: var(--background-light);
+  min-height: calc(100vh - 80px);
+  max-width: 1600px;
+  margin: 0 auto;
+  padding: 0 20px 20px 20px; 
+  gap: 25px;
 }
 
+/* --- BARRA LATERAL (AJUSTE) --- */
 .sidebar {
-  width: 280px;
-  height: 1200px;
+  width: 320px;
   flex-shrink: 0;
-  background-color: var(--white);
-  border-right: 1px solid var(--border-color);
-  padding: 1.5rem 0.5rem;
-  
-}
-
-.sidebar-title {
-  font-size: 1.25rem;
-  margin-top: 0;
-  padding: 0 1rem 1rem 1rem;
-  color: var(--primary-text);
-  border-bottom: 2px solid var(--border-color);
-}
-
-.main-content {
-  flex-grow: 1;
-  padding: 2rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  box-shadow: var(--glass-shadow);
+  border: var(--glass-border);
+  padding: 25px 0;
+  height: fit-content;
+  max-height: calc(100vh - 120px);
+  position: sticky;
+  top: 20px;
   overflow-y: auto;
 }
 
-.placeholder-content {
-  display: flex;
-  flex-direction: column;
-  justify-content: center;
+.sidebar-header {
+  display: flex; /* Mantenemos flex para el título */
+  justify-content: flex-start;
   align-items: center;
-  height: 100%;
-  text-align: center;
-  color: var(--secondary-text);
+  padding: 0 25px 20px 25px;
+  border-bottom: 1px solid #ddd;
+  margin-bottom: 15px;
+}
+.sidebar-title {
+  font-size: 1.5rem;
+  font-weight: 700;
+  color: var(--text-dark);
+  margin: 0;
 }
 
-/* --- Lista de Laboratorios (Sidebar) --- */
+/* Clases del botón antiguo que ya no se usan en la sidebar */
+.add-lab-btn { display: none; } 
+
 .lab-selector-list {
   list-style: none;
   padding: 0;
-  margin: 1rem 0;
+  margin: 0;
 }
 
 .lab-selector-list li {
-  padding: 1rem;
-  border-radius: 6px;
+  padding: 12px 25px;
   cursor: pointer;
-  font-weight: 600;
-  margin-bottom: 0.5rem;
-  transition: background-color 0.2s, color 0.2s;
-  color: var(--primary-text);
+  font-weight: 500;
+  color: var(--text-dark);
+  transition: all 0.2s;
+  border-left: 4px solid transparent;
 }
-
 .lab-selector-list li:hover {
-  background-color: #f8f9fa; /* Gris muy claro */
+  background-color: rgba(200, 16, 46, 0.05);
 }
-
 .lab-selector-list li.active {
-  background-color: var(--ceutec-red);
-  color: var(--white);
+  background-color: rgba(200, 16, 46, 0.1);
+  color: var(--ceutec-red);
+  font-weight: 700;
+  border-left-color: var(--ceutec-red);
 }
 
 /* --- Contenido Principal --- */
+.main-content {
+  flex-grow: 1;
+  padding-bottom: 2rem;
+}
+
+/* Encabezado del Laboratorio */
 .content-header {
-  margin-bottom: 2rem;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 25px;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 25px 30px;
+  box-shadow: var(--glass-shadow);
+  border: var(--glass-border);
 }
 .content-header h1 {
   margin: 0;
-  font-size: 2rem;
-  font-weight: 700;
+  font-size: 1.8rem;
+  font-weight: 800;
 }
 .content-header p {
   margin: 0.25rem 0 0;
-  color: var(--secondary-text);
-  font-size: 1.1rem;
+  color: var(--text-secondary);
+  font-size: 0.95rem;
 }
 
+.header-actions {
+  display: flex;
+  gap: 10px;
+}
+
+/* --- TARJETAS DE GESTIÓN --- */
 .manager-card {
-  background-color: var(--white);
-  padding: 1.5rem 2rem;
-  border-radius: 8px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.05);
-  border: 1px solid #e9ecef;
-  margin-bottom: 2rem;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  border-radius: 20px;
+  padding: 30px;
+  box-shadow: var(--glass-shadow);
+  border: var(--glass-border);
+  margin-bottom: 25px;
 }
 
 .card-title {
-  font-size: 1.2rem;
-  font-weight: 600;
+  font-size: 1.3rem;
+  font-weight: 700;
   margin-top: 0;
-  margin-bottom: 1.5rem;
+  margin-bottom: 20px;
+  color: var(--text-dark);
+  border-bottom: 1px solid #eee;
+  padding-bottom: 10px;
 }
 
-/* --- Formulario de Añadir Item --- */
+/* --- Formulario de Añadir Item (CLAVE DE ALINEACIÓN CORREGIDA) --- */
 .add-item-form {
   display: grid;
-  grid-template-columns: 3fr 1fr 1.5fr auto;
-  gap: 1rem;
+  /* 5 columnas: Nombre | Cantidad | Umbral | Estado | Botón */
+  grid-template-columns: 2fr 0.8fr 0.8fr 1.2fr 0.5fr; 
+  gap: 15px;
   align-items: center;
 }
 
-.add-item-form input, .add-item-form select {
+.add-item-form input, 
+.add-item-form select {
   padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: 5px;
-  font-size: 1rem;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  font-size: 0.95rem;
+  transition: all 0.2s;
+  background-color: #f9f9f9;
 }
 
 .add-item-form button {
-  background-color: var(--ceutec-red);
-  color: var(--white);
+  background-color: #198754; 
+  color: white;
   border: none;
-  padding: 0.75rem 1.5rem;
-  border-radius: 5px;
+  padding: 0.75rem 0;
+  border-radius: 8px;
   cursor: pointer;
-  font-weight: bold;
+  font-weight: 600;
   transition: background-color 0.2s;
-}
-.add-item-form button:hover {
-  background-color: var(--ceutec-dark-red);
+  min-width: 80px;
 }
 
-/* --- Tabla de Inventario --- */
+.add-item-form button:hover { background-color: #146c43; }
+
+/* --- TABLA DE INVENTARIO (AJUSTE Y BOTONES) --- */
 .inventory-table-manager {
   width: 100%;
   border-collapse: collapse;
 }
 
 .inventory-table-manager th, .inventory-table-manager td {
-  padding: 1rem;
+  padding: 1rem 15px;
   text-align: left;
-  border-bottom: 1px solid #e9ecef;
+  border-bottom: 1px solid #eee;
 }
 
 .inventory-table-manager th {
   background-color: #f8f9fa;
-  font-weight: 600;
-  color: var(--secondary-text);
+  font-weight: 700;
+  color: #888;
   text-transform: uppercase;
   font-size: 0.8rem;
   letter-spacing: 0.5px;
 }
 
-.inventory-table-manager tbody tr:last-child td {
-  border-bottom: none;
-}
-
-.inventory-table-manager input, .inventory-table-manager select {
-  width: 100%;
-  padding: 0.5rem;
-  border: 1px solid var(--border-color);
-  border-radius: 4px;
-}
-
 .actions-cell {
   display: flex;
-  gap: 0.5rem;
-}
-
-.actions-header {
-  text-align: right !important;
-}
-.actions-cell {
+  gap: 8px;
   justify-content: flex-end;
 }
+.actions-header { text-align: right !important; }
 
+/* --- BOTONES DE ACCIÓN (Corregidos para lucir) --- */
 .action-btn {
   border: none;
-  padding: 0.4rem 0.8rem;
-  border-radius: 5px;
-  cursor: pointer;
-  font-weight: 500;
+  padding: 0.5rem 0.9rem;
+  border-radius: 6px;
+  font-weight: 600;
   color: white;
-  transition: opacity 0.2s;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.9rem;
+  min-width: 70px; 
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 .action-btn:hover {
-  opacity: 0.85;
+  opacity: 0.95;
+  transform: translateY(-1px);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.15);
 }
 
 .edit-btn { background-color: #0d6efd; } /* Azul */
 .delete-btn { background-color: #dc3545; } /* Rojo */
-.save-btn { background-color: #198754; } /* Verde */
-.cancel-btn { background-color: #6c757d; } /* Gris */
+.save-btn { background-color: #198754; } 
+.cancel-btn { background-color: #6c757d; } 
 
-/* --- Status Badges --- */
+/* --- ESTILOS DE BADGES --- */
 .status-badge {
   padding: 0.3rem 0.8rem;
   border-radius: 50px;
-  font-weight: 600;
+  font-weight: 700;
   font-size: 0.8rem;
-  color: var(--white);
+  color: white;
   display: inline-block;
-  text-align: center;
   min-width: 90px;
+  text-align: center;
 }
 .status-disponible { background-color: #198754; }
-.status-en-mantenimiento { background-color: #ffc107; color: var(--primary-text); }
+.status-en-mantenimiento { background-color: #ffc107; color: var(--text-dark); }
 .status-fuera-de-servicio { background-color: #dc3545; }
+.status-agotado { background-color: #6c757d; } /* Agregado para consistencia */
 
-.no-items-message {
-  text-align: center;
-  padding: 2rem;
-  color: var(--secondary-text);
+/* Estilos de la Fila de Edición de Inventario (InventoryRow) */
+.inventory-table-manager .editing-row td {
+  padding: 8px 15px; /* Reducimos el padding para que los inputs quepan mejor */
+  vertical-align: middle;
 }
 
-.sidebar-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0 1rem 1rem 1rem;
-  border-bottom: 2px solid var(--border-color);
+.inventory-table-manager .editing-row input, 
+.inventory-table-manager .editing-row select {
+  padding: 0.6rem; /* Reducimos el padding interno */
+  border: 1px solid #ccc;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  background-color: white; /* Resalta que está activo */
+  transition: border-color 0.2s;
+}
+.inventory-table-manager .editing-row input:focus, 
+.inventory-table-manager .editing-row select:focus {
+  border-color: var(--ceutec-red);
+  box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.1);
 }
 
-.sidebar-title {
-  padding: 0;
-  border-bottom: none; /* Quitamos el borde de aquí */
+/* Ajuste de los botones Guardar/Cancelar en la Fila */
+.inventory-table-manager .editing-row .actions-cell {
+  gap: 5px; /* Espacio más pequeño */
 }
 
-.add-lab-btn {
-  background-color: var(--ceutec-red);
-  color: white;
-  border: none;
-  font-weight: bold;
-  padding: 0.5rem 1rem;
-  border-radius: 5px;
-  cursor: pointer;
-  transition: background-color 0.2s;
-}
-
-.add-lab-btn:hover {
-  background-color: var(--ceutec-dark-red);
-}
-
-.header-actions {
-  display: flex;
-  gap: 0.75rem;
-}
-
-/* --- ESTILOS PARA FORMULARIO DEL MODAL --- */
+/* --- ESTILOS PARA FORMULARIO DEL MODAL (Lab Form) --- */
 .modal-form .form-group {
-  margin-bottom: 1.25rem;
+  margin-bottom: 15px;
 }
 
 .modal-form label {
   display: block;
   font-weight: 600;
-  margin-bottom: 0.5rem;
-  color: var(--secondary-text);
+  margin-bottom: 5px;
+  color: var(--text-dark); /* Color más oscuro para labels */
 }
 
 .modal-form input,
-.modal-form textarea {
+.modal-form textarea,
+.modal-form .select-wrapper select {
   width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: 5px;
+  padding: 0.8rem; /* Aumentamos el padding para hacerlo más elegante */
+  border: 1px solid #ddd;
+  border-radius: 8px; /* Más redondeado */
   font-size: 1rem;
+  background-color: #f9f9f9;
+  transition: all 0.2s;
 }
 
+.modal-form input:focus,
+.modal-form textarea:focus,
+.modal-form select:focus {
+  border-color: var(--ceutec-red);
+  box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.1);
+  background-color: white;
+}
+
+.modal-form textarea {
+  resize: vertical; /* Permite solo redimensionar verticalmente */
+  min-height: 100px;
+}
+
+/* Botones en el Modal */
 .modal-actions {
   display: flex;
   justify-content: flex-end;
-  gap: 1rem;
-  margin-top: 2rem;
-  padding-top: 1.5rem;
-  border-top: 1px solid var(--border-color);
+  gap: 15px;
+  margin-top: 25px;
+  padding-top: 20px;
+  border-top: 1px solid #eee;
 }
 
-.select-wrapper {
-  position: relative;
-  width: 100%;
-}
-
-/* Estilo base para el <select> */
-.modal-form select {
-  /* Apariencia y espaciado igual al de los inputs */
-  width: 100%;
-  padding: 0.75rem;
-  border: 1px solid var(--border-color);
-  border-radius: 5px;
-  font-size: 1rem;
-  background-color: white; /* Fondo blanco */
-
-  /* Ocultar la apariencia nativa del sistema operativo */
-  -webkit-appearance: none;
-  -moz-appearance: none;
-  appearance: none;
-
-  /* Dejar espacio a la derecha para nuestro ícono de flecha */
-  padding-right: 2.5rem;
+.modal-actions button {
+  padding: 0.7rem 1.5rem;
+  font-weight: 700;
+  border-radius: 8px;
+  border: none;
+  color: white;
   cursor: pointer;
+  transition: transform 0.2s, opacity 0.2s;
 }
 
-/* Pseudo-elemento para crear nuestro propio ícono de flecha */
-.select-wrapper::after {
-  content: '▼'; /* Puedes usar un ícono SVG o un carácter como este */
-  font-size: 0.8rem;
-  color: #888;
-  position: absolute;
-  right: 1rem;
-  top: 50%;
-  transform: translateY(-50%);
-  pointer-events: none; /* Evita que el ícono intercepte los clics */
+.modal-actions .save-btn { 
+  background-color: var(--ceutec-red); 
+}
+.modal-actions .save-btn:hover {
+  background-color: var(--ceutec-dark-red);
+  transform: translateY(-1px);
 }
 
-.threshold-badge {
-  font-size: 0.9rem;
-  font-weight: 500;
-  color: var(--secondary-text);
-  background-color: var(--background-light);
-  padding: 0.3rem 0.6rem;
-  border-radius: 4px;
+.modal-actions .cancel-btn { 
+  background-color: #6c757d; 
 }
-
-/* Ajustar el formulario de añadir para el nuevo campo */
-.add-item-form {
-  grid-template-columns: 2fr 1fr 1fr 1.5fr auto;
+.modal-actions .cancel-btn:hover {
+  background-color: #5a6268;
+  transform: translateY(-1px);
 }

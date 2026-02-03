@@ -6,7 +6,8 @@ import { format } from 'date-fns';
 import toast from 'react-hot-toast';
 import Modal from '../../components/Modal';
 import { useAuth } from '../../context/AuthContext';
-import '../styles/GestionSolicitudes.css'; // Asegúrate que la ruta a tu CSS es correcta
+import '../styles/GestionSolicitudes.css';
+import '../../pages/styles/Dashboard.css'; 
 
 // --- Componente para una Tarjeta de Solicitud Individual (ACTUALIZADO) ---
 const RequestCard = ({ request, onAdvanceStatus, onOpenClosureModal }) => {
@@ -164,7 +165,7 @@ export default function GestionSolicitudes() {
 
   const renderContent = (requests) => {
     if (loading) return <p style={{ padding: '2rem', textAlign: 'center' }}>Cargando solicitudes...</p>;
-    if (requests.length === 0) return <p style={{ padding: '2rem', textAlign: 'center' }}>No hay solicitudes en esta categoría.</p>;
+    if (requests.length === 0) return <p style={{ padding: '2rem', textAlign: 'center', background: 'white', borderRadius: '15px', boxShadow: '0 4px 10px rgba(0,0,0,0.05)' }}>No hay solicitudes en esta categoría.</p>;
     
     return (
       <div className="requests-grid">
@@ -222,18 +223,24 @@ export default function GestionSolicitudes() {
         )}
       </Modal>
 
-      <div className="page-container">
-        <h1>Gestión de Solicitudes</h1>
-        <div className="tabs">
-          <button className={activeTab === 'pendiente' ? 'active' : ''} onClick={() => setActiveTab('pendiente')}>
-            Pendientes ({pendingRequests.length})
-          </button>
-          <button className={activeTab === 'en_uso' ? 'active' : ''} onClick={() => setActiveTab('en_uso')}>
-            En Uso ({inUseRequests.length})
-          </button>
-        </div>
-        <div className="tab-content">
-          {activeTab === 'pendiente' ? renderContent(pendingRequests) : renderContent(inUseRequests)}
+      
+{/* APLICAMOS EL FONDO GLOBAL */}
+      <div className="dashboard-wrapper">
+        <div className="requests-page-card"> {/* CONTENEDOR DE CRISTAL */}
+          <div className="page-container">
+            <h1>Gestión de Solicitudes</h1>
+            <div className="tabs">
+              <button className={activeTab === 'pendiente' ? 'active' : ''} onClick={() => setActiveTab('pendiente')}>
+                Pendientes ({pendingRequests.length})
+              </button>
+              <button className={activeTab === 'en_uso' ? 'active' : ''} onClick={() => setActiveTab('en_uso')}>
+                En Uso ({inUseRequests.length})
+              </button>
+            </div>
+            <div className="tab-content">
+              {activeTab === 'pendiente' ? renderContent(pendingRequests) : renderContent(inUseRequests)}
+            </div>
+          </div>
         </div>
       </div>
     </>
