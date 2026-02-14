@@ -335,3 +335,20 @@
   background-color: #5a6268;
   transform: translateY(-1px);
 }
+
+.read-only-item {
+    opacity: 0.7;
+    font-style: italic;
+    cursor: default;
+}
+
+.read-only-notice {
+    background: #fff8e1 !important; /* Amarillo sutil de advertencia */
+    border-left: 5px solid #ffc107 !important;
+    color: #856404;
+}
+
+.type-dot {
+    margin-right: 10px;
+    font-size: 1.1rem;
+}

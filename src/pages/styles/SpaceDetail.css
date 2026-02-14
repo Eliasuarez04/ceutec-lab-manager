@@ -1,0 +1,150 @@
+/* src/pages/LabDetail.css */
+
+:root {
+  --ceutec-red: #c8102e;
+  --glass-bg: rgba(255, 255, 255, 0.85);
+  --glass-border: rgba(255, 255, 255, 0.6);
+  --glass-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
+  --text-dark: #333;
+  --text-secondary: #666;
+  --border-light: #eee;
+  --background-stripe: #f9f9f9;
+}
+
+.detail-container {
+  max-width: 1100px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.detail-nav {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+}
+
+.direct-reserva-btn {
+    background: #c8102e;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 50px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    box-shadow: 0 4px 15px rgba(200, 16, 46, 0.3);
+}
+.direct-reserva-btn:hover {
+    transform: scale(1.05);
+    background: #a00d25;
+}
+
+/* --- HERO CARD --- */
+.space-hero-card {
+  background: white;
+  border-radius: 24px;
+  padding: 40px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+  margin-bottom: 30px;
+  border-left: 10px solid #c8102e;
+}
+
+.hero-content {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    margin-bottom: 30px;
+}
+
+.hero-main-info h1 {
+    font-size: 3rem;
+    margin: 10px 0;
+    color: #1a202c;
+    letter-spacing: -1px;
+}
+
+.type-tag {
+    padding: 4px 15px;
+    border-radius: 20px;
+    font-size: 0.8rem;
+    font-weight: 800;
+    text-transform: uppercase;
+    color: white;
+}
+.type-tag.aula { background: #3182ce; }
+.type-tag.laboratorio { background: #805ad5; }
+
+.location-text {
+    font-size: 1.2rem;
+    color: #718096;
+    font-weight: 500;
+}
+
+/* Capacity Badge */
+.capacity-badge-large {
+    background: #f7fafc;
+    padding: 20px;
+    border-radius: 20px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    min-width: 150px;
+    border: 1px solid #edf2f7;
+}
+.cap-label { font-size: 0.7rem; text-transform: uppercase; font-weight: 800; color: #a0aec0; }
+.cap-value { font-size: 2.5rem; font-weight: 900; color: #2d3748; }
+.cap-sub { font-size: 0.75rem; font-weight: 600; color: #4a5568; }
+
+.space-description-box {
+    background: #fff5f5;
+    padding: 20px;
+    border-radius: 15px;
+}
+.space-description-box h3 { margin-top: 0; font-size: 1rem; color: #c8102e; }
+.space-description-box p { margin: 0; line-height: 1.6; color: #4a5568; }
+
+/* --- TABLA --- */
+.inventory-table-modern {
+    width: 100%;
+    border-collapse: collapse;
+}
+.inventory-table-modern th {
+    text-align: left;
+    padding: 15px;
+    color: #a0aec0;
+    font-size: 0.8rem;
+    text-transform: uppercase;
+    border-bottom: 2px solid #edf2f7;
+}
+.inventory-table-modern td {
+    padding: 20px 15px;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.item-name-cell {
+    font-weight: 700;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #2d3748;
+}
+.item-dot { width: 8px; height: 8px; background: #c8102e; border-radius: 50%; }
+
+.status-badge-new {
+    padding: 5px 12px;
+    border-radius: 50px;
+    font-size: 0.8rem;
+    font-weight: 700;
+}
+.status-badge-new.disponible { background: #c6f6d5; color: #22543d; }
+.status-badge-new.mantenimiento { background: #feebc8; color: #744210; }
+
+.error-card-detail {
+    background: white;
+    padding: 50px;
+    border-radius: 20px;
+    text-align: center;
+    max-width: 500px;
+    margin: 100px auto;
+}

@@ -1,66 +1,121 @@
 // src/context/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../firebaseConfig';
-import { onAuthStateChanged, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, sendEmailVerification, sendPasswordResetEmail } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { 
+  onAuthStateChanged, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  sendEmailVerification,
+  sendPasswordResetEmail // <--- Importación añadida
+} from 'firebase/auth';
+import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
-export function useAuth() {
-  return useContext(AuthContext);
-}
+export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // FUNCIÓN DE REGISTRO MEJORADA
-  async function signup(email, password) {
-    // 1. Crear el usuario en Firebase Auth
+  // --- FUNCIÓN DE REGISTRO ---
+  async function signup(email, password, faculty) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    
-    // 2. Enviar el correo de verificación
-    await sendEmailVerification(user);
+    const isStaff = email.toLowerCase().endsWith('@unitec.edu.hn');
 
-    // 3. Crear el documento del usuario en Firestore con rol 'docente'
+    // Si es .edu.hn (Coordinador), se envía correo de inmediato
+    if (isStaff) {
+      await sendEmailVerification(user);
+    }
+
+    // Guardamos en Firestore con los campos solicitados
     return setDoc(doc(db, 'users', user.uid), {
-      email: user.email,
-      role: 'docente' // Rol por defecto para todos los nuevos registros
+      uid: user.uid,
+      email: user.email.toLowerCase(),
+      faculty: faculty,
+      role: isStaff ? 'coordinador' : 'docente',
+      active: isStaff ? true : false, // Docente inicia inactivo hasta aprobación
+      sede: '', 
+      typeAssigned: '', 
+      createdAt: Timestamp.now()
     });
   }
 
-  function login(email, password) {
-    return signInWithEmailAndPassword(auth, email, password);
+  // --- FUNCIÓN DE INICIO DE SESIÓN CON VALIDACIONES ---
+  async function login(email, password) {
+    const userCredential = await signInWithEmailAndPassword(auth, email, password);
+    const user = userCredential.user;
+
+    const userDoc = await getDoc(doc(db, 'users', user.uid));
+    
+    if (!userDoc.exists()) {
+      await signOut(auth);
+      throw new Error("No se encontró el perfil del usuario.");
+    }
+
+    const data = userDoc.data();
+
+    // 1. Validar si está activo (Aprobado por coordinador)
+    if (data.active === false) {
+      await signOut(auth);
+      throw new Error("user_not_active"); 
+    }
+
+    // 2. Validar si ya verificó el correo
+    // (Si está activo pero no verificado, enviamos el correo en este momento)
+    if (!user.emailVerified) {
+      await sendEmailVerification(user);
+      await signOut(auth);
+      throw new Error("verify_email_first");
+    }
+
+    return userCredential;
   }
 
-  function logout() {
-    return signOut(auth);
-  }
-
+  // --- FUNCIÓN PARA RESTABLECER CONTRASEÑA ---
   function resetPassword(email) {
     return sendPasswordResetEmail(auth, email);
   }
 
+  // --- FUNCIÓN DE CIERRE DE SESIÓN ---
+  function logout() {
+    return signOut(auth);
+  }
+
+  // --- ESCUCHADOR DE ESTADO DE AUTENTICACIÓN ---
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async user => {
+    const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
       if (user) {
-        const userDocRef = doc(db, 'users', user.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          setUserData(userDoc.data());
+        try {
+          const docSnap = await getDoc(doc(db, 'users', user.uid));
+          if (docSnap.exists()) {
+            setUserData(docSnap.data());
+          }
+        } catch (error) {
+          console.error("Error al obtener datos de Firestore:", error);
         }
       } else {
         setUserData(null);
       }
       setLoading(false);
     });
+
     return unsubscribe;
   }, []);
 
-  const value = { currentUser, userData, signup, login, logout, resetPassword };
+  // Valores expuestos a la aplicación
+  const value = { 
+    currentUser, 
+    userData, 
+    signup, 
+    login, 
+    logout, 
+    resetPassword 
+  };
 
   return (
     <AuthContext.Provider value={value}>

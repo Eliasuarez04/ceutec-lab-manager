@@ -1,12 +1,12 @@
-/* src/pages/styles/Dashboard.css */
-
-/* --- VARIABLES & FONDO ANIMADO --- */
+/* --- VARIABLES GLOBALES & RESET --- */
 :root {
   --ceutec-red: #c8102e;
   --ceutec-dark-red: #a00d25;
   --glass-bg: rgba(255, 255, 255, 0.75);
   --glass-border: rgba(255, 255, 255, 0.6);
   --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+  --text-main: #1f2937;
+  --text-muted: #6b7280;
 }
 
 @keyframes gradientBG {
@@ -20,74 +20,192 @@
   background-size: 400% 400%;
   animation: gradientBG 15s ease infinite;
   min-height: 90vh;
-  padding: 2rem;
+  padding: 2.5rem;
   border-radius: 20px;
+  box-sizing: border-box;
 }
 
-/* --- HERO SECTION (SALUDO COMPARTIDO) --- */
+/* --- ANIMACIONES --- */
+.fade-in {
+  animation: fadeIn 0.5s ease forwards;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(10px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+/* =========================================
+   1. VISTA: SELECTOR DE SEDES (ENTRADA)
+   ========================================= */
+
+.sede-selector-container {
+  max-width: 1200px;
+  margin: 0 auto;
+  text-align: center;
+}
+
+.selector-header h1 {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin-bottom: 10px;
+}
+
+.selector-header p {
+  font-size: 1.2rem;
+  color: var(--text-muted);
+  margin-bottom: 50px;
+}
+
+.sedes-grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
+}
+
+.sede-card-big {
+  border-radius: 24px;
+  padding: 40px 20px;
+  color: white;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-height: 220px;
+  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+}
+
+.sede-card-big:hover {
+  transform: translateY(-12px) scale(1.02);
+  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
+}
+
+.sede-card-icon {
+  font-size: 3.8rem;
+  margin-bottom: 15px;
+  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
+}
+
+.sede-card-info h3 {
+  font-size: 1.6rem;
+  font-weight: 800;
+  margin-bottom: 5px;
+}
+
+.sede-card-info span {
+  font-size: 0.95rem;
+  opacity: 0.9;
+  font-weight: 300;
+}
+
+.sede-card-arrow {
+  position: absolute;
+  bottom: 20px;
+  right: 25px;
+  font-size: 1.5rem;
+  opacity: 0;
+  transform: translateX(-20px);
+  transition: all 0.3s ease;
+}
+
+.sede-card-big:hover .sede-card-arrow {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+/* =========================================
+   2. HERO SECTION (BANNER SUPERIOR)
+   ========================================= */
+
 .dashboard-hero {
   background: linear-gradient(135deg, var(--ceutec-red) 0%, var(--ceutec-dark-red) 100%);
   color: white;
-  padding: 30px 40px;
-  border-radius: 20px;
-  margin-bottom: 30px;
-  box-shadow: 0 10px 25px rgba(200, 16, 46, 0.25);
+  padding: 40px 50px;
+  border-radius: 24px;
+  margin-bottom: 40px;
+  box-shadow: 0 10px 30px rgba(200, 16, 46, 0.3);
   position: relative;
   overflow: hidden;
 }
 
-.dashboard-hero h1 {
-  font-size: 2.2rem;
-  margin: 0 0 5px 0;
-  font-weight: 800;
-  z-index: 2;
+.hero-content-wrapper {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   position: relative;
+  z-index: 2;
 }
 
-.dashboard-hero p {
-  font-size: 1rem;
+.hero-text-side h1 {
+  font-size: 2.5rem;
+  font-weight: 800;
+  margin: 0 0 8px 0;
+  letter-spacing: -1px;
+}
+
+.hero-text-side p {
+  font-size: 1.1rem;
   opacity: 0.9;
   margin: 0;
-  z-index: 2;
-  position: relative;
+}
+
+/* BOTÓN "CAMBIAR SEDE" (Resaltado en Blanco) */
+.btn-change-sede-new {
+  background: white;
+  color: var(--ceutec-red);
+  padding: 14px 28px;
+  border-radius: 50px;
+  text-decoration: none;
+  font-weight: 800;
+  font-size: 0.95rem;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  white-space: nowrap;
+}
+
+.btn-change-sede-new:hover {
+  transform: translateY(-3px) scale(1.03);
+  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
+  background: #f8f9fa;
 }
 
 /* Decoración abstracta en el Hero */
 .dashboard-hero::before {
   content: '';
   position: absolute;
-  top: -50%; right: -5%; width: 250px; height: 250px;
-  background: rgba(255, 255, 255, 0.1); border-radius: 50%;
-}
-.dashboard-hero::after {
-  content: '';
-  position: absolute;
-  bottom: -40%; right: 15%; width: 180px; height: 180px;
-  background: rgba(255, 255, 255, 0.1); border-radius: 50%;
+  top: -40%; right: -5%; width: 280px; height: 280px;
+  background: rgba(255, 255, 255, 0.08); border-radius: 50%;
 }
 
 /* =========================================
-   ESTILOS PARA DOCENTES (Teacher Dashboard)
+   3. GRID Y TARJETAS OPERATIVAS (DOCENTES)
    ========================================= */
+
 .teacher-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
-  gap: 25px;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 30px;
 }
 
 .teacher-card {
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border);
-  border-radius: 20px;
-  padding: 25px;
+  border-radius: 22px;
+  padding: 30px;
   text-decoration: none;
-  color: #333;
-  transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+  color: var(--text-main);
+  transition: all 0.3s ease;
   box-shadow: var(--glass-shadow);
   display: flex;
   flex-direction: column;
-  justify-content: space-between;
   height: 100%;
 }
 
@@ -95,225 +213,165 @@
   transform: translateY(-8px);
   background: white;
   border-color: var(--ceutec-red);
-  box-shadow: 0 15px 30px rgba(0,0,0,0.1);
+  box-shadow: 0 15px 30px rgba(0,0,0,0.08);
 }
 
-.teacher-card .card-icon-wrapper {
-  width: 60px; height: 60px;
-  border-radius: 16px;
+.card-icon-wrapper {
+  width: 65px; height: 65px;
+  border-radius: 18px;
   display: flex; align-items: center; justify-content: center;
-  font-size: 1.8rem; margin-bottom: 15px;
-  box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+  font-size: 2rem; margin-bottom: 20px;
 }
 
 /* Colores de Iconos */
-.bg-blue { background: linear-gradient(135deg, #e3f2fd, #bbdefb); color: #1565c0; }
-.bg-green { background: linear-gradient(135deg, #e8f5e9, #c8e6c9); color: #2e7d32; }
-.bg-purple { background: linear-gradient(135deg, #f3e5f5, #e1bee7); color: #7b1fa2; }
-.bg-orange { background: linear-gradient(135deg, #fff3e0, #ffe0b2); color: #ef6c00; }
+.bg-blue { background: #e3f2fd; color: #1565c0; }
+.bg-green { background: #e8f5e9; color: #2e7d32; }
+.bg-purple { background: #f3e5f5; color: #7b1fa2; }
+.bg-orange { background: #fff3e0; color: #ef6c00; }
 
-.teacher-card h3 { font-size: 1.2rem; font-weight: 700; margin-bottom: 8px; color: #1f2937; }
-.teacher-card p { color: #6b7280; font-size: 0.9rem; line-height: 1.5; margin-bottom: 15px; }
-.card-cta { font-weight: 700; font-size: 0.85rem; color: var(--ceutec-red); display: flex; align-items: center; gap: 5px; opacity: 0.8; transition: gap 0.3s ease; }
-.teacher-card:hover .card-cta { opacity: 1; gap: 8px; }
+.teacher-card h3 {
+  font-size: 1.4rem;
+  font-weight: 800;
+  margin-bottom: 10px;
+  color: #111;
+}
 
+.teacher-card p {
+  color: var(--text-muted);
+  font-size: 0.95rem;
+  line-height: 1.6;
+  margin-bottom: 25px;
+}
+
+/* CONTENEDOR DE BOTONES EN CARDS */
+.card-actions-row {
+  display: flex;
+  gap: 12px;
+  margin-top: auto; /* Empuja al fondo */
+}
+
+.btn-primary-card, 
+.btn-secondary-card {
+  flex: 1;
+  text-align: center;
+  padding: 12px 5px;
+  border-radius: 12px;
+  font-size: 0.85rem;
+  font-weight: 700;
+  text-decoration: none;
+  transition: all 0.2s ease;
+}
+
+.btn-primary-card {
+  background: var(--ceutec-red);
+  color: white;
+  box-shadow: 0 4px 10px rgba(200, 16, 46, 0.2);
+}
+
+.btn-primary-card:hover {
+  background: var(--ceutec-dark-red);
+  transform: translateY(-2px);
+}
+
+.btn-secondary-card {
+  background: #f1f5f9;
+  color: #475569;
+  border: 1px solid #e2e8f0;
+}
+
+.btn-secondary-card:hover {
+  background: #e2e8f0;
+}
+
+.card-cta {
+  font-weight: 800;
+  font-size: 0.9rem;
+  color: var(--ceutec-red);
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-top: auto;
+}
 
 /* =========================================
-   ESTILOS PARA ADMINISTRADOR (Admin Dashboard)
+   4. ADMINISTRACIÓN (ADMIN DASHBOARD)
    ========================================= */
 
 .admin-dashboard-layout {
   display: grid;
-  grid-template-columns: 320px 1fr; /* Sidebar fija a la izquierda */
+  grid-template-columns: 300px 1fr;
   gap: 30px;
   align-items: start;
 }
 
-/* --- SIDEBAR (BARRA LATERAL) --- */
-.sidebar-area {
-  display: flex;
-  flex-direction: column;
-  gap: 20px;
-}
-
-/* Tarjeta contenedora de la sidebar */
 .sidebar-card {
   background: var(--glass-bg);
   backdrop-filter: blur(12px);
-  border-radius: 20px;
-  padding: 25px;
+  border-radius: 24px;
+  padding: 30px;
   border: 1px solid var(--glass-border);
   box-shadow: var(--glass-shadow);
 }
 
 .sidebar-title {
-  font-size: 0.85rem;
+  font-size: 0.8rem;
   font-weight: 800;
-  color: #888;
+  color: #999;
   text-transform: uppercase;
-  letter-spacing: 1.2px;
-  margin: 0 0 20px 0;
-  padding-bottom: 10px;
+  letter-spacing: 1.5px;
+  margin-bottom: 25px;
   border-bottom: 1px solid rgba(0,0,0,0.05);
+  padding-bottom: 10px;
 }
 
-.quick-nav {
-  display: flex;
-  flex-direction: column;
-  gap: 15px;
-}
-
-/* Enlaces del Sidebar (Parecen tarjetas pequeñas) */
 .nav-link-item {
   display: flex;
   align-items: center;
   gap: 15px;
-  padding: 12px;
-  border-radius: 12px;
+  padding: 14px;
+  border-radius: 15px;
   text-decoration: none;
-  background: rgba(255,255,255,0.5); /* Fondo sutil */
-  border: 1px solid transparent;
+  color: var(--text-main);
   transition: all 0.2s ease;
+  margin-bottom: 10px;
 }
 
 .nav-link-item:hover {
   background: white;
-  transform: translateX(5px);
+  transform: translateX(8px);
   box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-  border-color: #eee;
 }
 
 .nav-icon {
-  font-size: 1.5rem;
-  width: 40px; height: 40px;
-  display: flex; align-items: center; justify-content: center;
+  font-size: 1.4rem;
+  min-width: 40px; height: 40px;
   background: #f3f4f6;
   border-radius: 10px;
+  display: flex; align-items: center; justify-content: center;
 }
 
-.nav-text h3 {
-  margin: 0;
-  font-size: 0.95rem;
-  color: #333;
-  font-weight: 700;
-}
+/* =========================================
+   5. RESPONSIVE
+   ========================================= */
 
-.nav-text p {
-  margin: 2px 0 0 0;
-  font-size: 0.75rem;
-  color: #666;
-}
-
-/* --- MAIN CONTENT (DERECHA) --- */
-.main-content-area {
-  display: flex;
-  flex-direction: column;
-  gap: 25px;
-}
-
-/* Tarjetas Generales (Búsqueda, Gráficos, Listas) */
-.dashboard-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  border-radius: 20px;
-  padding: 25px;
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
-}
-
-.dashboard-card h3 {
-  margin-top: 0;
-  margin-bottom: 20px;
-  font-size: 1.1rem;
-  font-weight: 700;
-  color: #333;
-}
-
-/* Búsqueda Global */
-.global-search-form {
-  display: flex;
-  gap: 10px;
-}
-
-.global-search-form input {
-  flex-grow: 1;
-  padding: 12px 20px;
-  font-size: 1rem;
-  border: 1px solid #ddd;
-  border-radius: 50px; /* Estilo cápsula */
-  background: rgba(255,255,255,0.8);
-  outline: none;
-  transition: all 0.2s;
-}
-
-.global-search-form input:focus {
-  border-color: var(--ceutec-red);
-  box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.1);
-  background: white;
-}
-
-.global-search-form button {
-  background-color: var(--ceutec-red);
-  color: white;
-  border: none;
-  padding: 0 25px;
-  border-radius: 50px;
-  font-weight: 700;
-  cursor: pointer;
-  transition: transform 0.2s;
-}
-
-.global-search-form button:hover {
-  transform: scale(1.05);
-  background-color: var(--ceutec-dark-red);
-}
-
-/* Grid de Gráficos y Tablas */
-.content-grid {
-  display: grid;
-  grid-template-columns: 1fr 1.5fr; /* Gráfico | Tabla */
-  gap: 25px;
-}
-
-.chart-card { min-height: 350px; }
-.chart-container { height: 250px; position: relative; }
-
-/* Tabla de Próximas Reservas */
-.table-wrapper table { width: 100%; border-collapse: collapse; }
-.table-wrapper tr { border-bottom: 1px solid #eee; cursor: pointer; transition: background 0.2s; }
-.table-wrapper tr:last-child { border-bottom: none; }
-.table-wrapper tr:hover { background: rgba(200, 16, 46, 0.03); }
-.table-wrapper td { padding: 12px 10px; font-size: 0.9rem; color: #444; }
-.table-wrapper td strong { color: var(--ceutec-red); }
-
-/* --- RESPONSIVE --- */
 @media (max-width: 1024px) {
   .admin-dashboard-layout { grid-template-columns: 1fr; }
-  .content-grid { grid-template-columns: 1fr; }
-  .sidebar-area { order: 2; } /* Mueve el menú abajo en móvil si prefieres, o quita esta línea */
+  .dashboard-wrapper { padding: 1.5rem; }
 }
 
-/* Añadir esto a Dashboard.css o App.css si no existe */
-.global-add-lab-btn {
-    position: fixed; 
-    top: 70px; 
-    right: 15px; /* Separado del botón Cerrar Sesión */
-    z-index: 1000;
-    
-    background-color: var(--ceutec-red);
-    color: white;
-    border: none;
-    font-weight: 700;
-    padding: 10px 18px;
-    border-radius: 50px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    box-shadow: 0 4px 15px rgba(200, 16, 46, 0.4);
-    font-size: 1rem;
-}
+@media (max-width: 768px) {
+  .hero-content-wrapper {
+    flex-direction: column;
+    text-align: center;
+    gap: 25px;
+  }
+  
+  .hero-text-side h1 { font-size: 2rem; }
+  
+  .btn-change-sede-new {
+    width: 100%;
+    justify-content: center;
+  }
 
-.global-add-lab-btn:hover {
-    background-color: var(--ceutec-dark-red);
-    transform: translateY(-2px);
-    box-shadow: 0 6px 20px rgba(200, 16, 46, 0.6);
+  .selector-header h1 { font-size: 2.2rem; }
 }

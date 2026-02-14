@@ -314,3 +314,52 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; }
   margin-bottom: 15px;
   filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
 }
+
+.auth-input-select {
+  appearance: none; /* Elimina la flecha fea por defecto */
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-color: var(--input-bg);
+  border: 1px solid transparent;
+  padding: 12px 15px 12px 45px !important; /* Mismo padding que los inputs */
+  width: 100%;
+  border-radius: 8px;
+  outline: none;
+  font-size: 0.95rem;
+  font-family: 'Montserrat', sans-serif;
+  cursor: pointer;
+  color: #666;
+  transition: all 0.3s;
+}
+
+.auth-input-select:focus {
+  background-color: #fff;
+  border-color: var(--ceutec-red);
+  color: #333;
+}
+
+/* Flecha personalizada para el select */
+.select-arrow {
+  position: absolute;
+  right: 15px;
+  top: 50%;
+  transform: translateY(-50%);
+  font-size: 0.7rem;
+  color: #999;
+  pointer-events: none; /* Para que al clickear la flecha se abra el select */
+}
+
+.input-wrapper:focus-within .select-arrow {
+  color: var(--ceutec-red);
+}
+
+/* Ajuste de títulos para que no se vean tan grandes en el registro */
+.sign-up-container h1 {
+    font-size: 1.6rem;
+    margin-bottom: 20px;
+}
+
+/* Espaciado extra para el botón en el registro */
+.sign-up-container .auth-button {
+    margin-top: 10px;
+}
