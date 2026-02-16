@@ -1,4 +1,3 @@
-// src/context/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../firebaseConfig';
 import { 
@@ -7,7 +6,7 @@ import {
   signInWithEmailAndPassword, 
   signOut, 
   sendEmailVerification,
-  sendPasswordResetEmail // <--- Importación añadida
+  sendPasswordResetEmail 
 } from 'firebase/auth';
 import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
 
@@ -20,31 +19,33 @@ export function AuthProvider({ children }) {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // --- FUNCIÓN DE REGISTRO ---
+  // --- FUNCIÓN DE REGISTRO CON ROLES AUTOMÁTICOS ---
   async function signup(email, password, faculty) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
+    
+    // Lógica de dominios
     const isStaff = email.toLowerCase().endsWith('@unitec.edu.hn');
 
-    // Si es .edu.hn (Coordinador), se envía correo de inmediato
-    if (isStaff) {
-      await sendEmailVerification(user);
-    }
+    // Siempre enviamos verificación de correo
+    await sendEmailVerification(user);
 
-    // Guardamos en Firestore con los campos solicitados
+    // Guardamos en Firestore
     return setDoc(doc(db, 'users', user.uid), {
       uid: user.uid,
       email: user.email.toLowerCase(),
       faculty: faculty,
+      // @unitec.edu.hn -> coordinador / @unitec.edu -> docente
       role: isStaff ? 'coordinador' : 'docente',
-      active: isStaff ? true : false, // Docente inicia inactivo hasta aprobación
+      // @unitec.edu.hn entran activos / @unitec.edu requieren aprobación
+      active: isStaff ? true : false, 
       sede: '', 
       typeAssigned: '', 
       createdAt: Timestamp.now()
     });
   }
 
-  // --- FUNCIÓN DE INICIO DE SESIÓN CON VALIDACIONES ---
+  // --- FUNCIÓN DE INICIO DE SESIÓN ---
   async function login(email, password) {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
@@ -58,15 +59,15 @@ export function AuthProvider({ children }) {
 
     const data = userDoc.data();
 
-    // 1. Validar si está activo (Aprobado por coordinador)
+    // 1. Validar si está activo
     if (data.active === false) {
       await signOut(auth);
       throw new Error("user_not_active"); 
     }
 
     // 2. Validar si ya verificó el correo
-    // (Si está activo pero no verificado, enviamos el correo en este momento)
     if (!user.emailVerified) {
+      // Re-enviar si intenta entrar y no ha verificado
       await sendEmailVerification(user);
       await signOut(auth);
       throw new Error("verify_email_first");
@@ -75,17 +76,14 @@ export function AuthProvider({ children }) {
     return userCredential;
   }
 
-  // --- FUNCIÓN PARA RESTABLECER CONTRASEÑA ---
   function resetPassword(email) {
     return sendPasswordResetEmail(auth, email);
   }
 
-  // --- FUNCIÓN DE CIERRE DE SESIÓN ---
   function logout() {
     return signOut(auth);
   }
 
-  // --- ESCUCHADOR DE ESTADO DE AUTENTICACIÓN ---
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
@@ -96,7 +94,7 @@ export function AuthProvider({ children }) {
             setUserData(docSnap.data());
           }
         } catch (error) {
-          console.error("Error al obtener datos de Firestore:", error);
+          console.error("Error al obtener datos:", error);
         }
       } else {
         setUserData(null);
@@ -107,15 +105,7 @@ export function AuthProvider({ children }) {
     return unsubscribe;
   }, []);
 
-  // Valores expuestos a la aplicación
-  const value = { 
-    currentUser, 
-    userData, 
-    signup, 
-    login, 
-    logout, 
-    resetPassword 
-  };
+  const value = { currentUser, userData, signup, login, logout, resetPassword };
 
   return (
     <AuthContext.Provider value={value}>

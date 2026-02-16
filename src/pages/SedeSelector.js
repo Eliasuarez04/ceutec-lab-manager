@@ -15,7 +15,6 @@ export default function SedeSelector() {
   const navigate = useNavigate();
 
   const handleSelect = (sedeName) => {
-    // Al navegar al dashboard con el parámetro, bloqueamos la sede
     navigate(`/?sede=${encodeURIComponent(sedeName)}`);
   };
 
@@ -26,6 +25,7 @@ export default function SedeSelector() {
           <h1>¡Bienvenido! 👋</h1>
           <p>Selecciona la sede donde gestionarás espacios hoy:</p>
         </div>
+        
         <div className="sedes-grid-container">
           {sedesConfig.map((sede) => (
             <div 
@@ -39,6 +39,7 @@ export default function SedeSelector() {
                 <h3>{sede.desc}</h3>
                 <span>{sede.name}</span>
               </div>
+              <div className="sede-card-arrow">➜</div>
             </div>
           ))}
         </div>

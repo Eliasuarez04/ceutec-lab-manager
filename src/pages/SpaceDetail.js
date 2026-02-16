@@ -1,4 +1,4 @@
-// src/pages/SpaceDetail.js
+// src/pages/SpaceDetail.js (o LabDetail.js según tu proyecto)
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
@@ -16,7 +16,7 @@ export default function SpaceDetail() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // LEER CONTEXTO DE LA URL
+  // LEER CONTEXTO DE LA URL PARA NO PERDER LA SEDE AL VOLVER
   const currentSede = searchParams.get('sede');
   const currentTipo = searchParams.get('tipo') || 'Aula';
 
@@ -58,8 +58,11 @@ export default function SpaceDetail() {
       <div className="detail-container">
         
         <div className="detail-nav">
-            {/* CORRECCIÓN: Volvemos manteniendo el filtro de sede y tipo */}
-            <Link to={`/espacios?tipo=${currentTipo}&sede=${currentSede}`} className="back-link">
+            {/* BOTÓN "VOLVER" CON ESTILO CORREGIDO */}
+            <Link 
+                to={`/espacios?tipo=${currentTipo}&sede=${currentSede}`} 
+                className="back-link-detail"
+            >
             ← Volver a {currentTipo}s
             </Link>
             

@@ -1,13 +1,20 @@
-/* --- VARIABLES GLOBALES & RESET --- */
+/* src/pages/styles/Dashboard.css */
+
+/* =========================================
+   1. VARIABLES & RESET GLOBALES
+   ========================================= */
 :root {
   --ceutec-red: #c8102e;
   --ceutec-dark-red: #a00d25;
-  --glass-bg: rgba(255, 255, 255, 0.75);
+  --glass-bg: rgba(255, 255, 255, 0.85);
   --glass-border: rgba(255, 255, 255, 0.6);
-  --glass-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+  --glass-shadow: 0 10px 40px rgba(31, 38, 135, 0.08);
   --text-main: #1f2937;
-  --text-muted: #6b7280;
+  --text-muted: #64748b;
+  --bg-light: #f8fafc;
 }
+
+* { box-sizing: border-box; }
 
 @keyframes gradientBG {
   0% { background-position: 0% 50%; }
@@ -16,16 +23,14 @@
 }
 
 .dashboard-wrapper {
-  background: linear-gradient(-45deg, #f3f4f6, #e5e7eb, #fca5a5, #f3f4f6);
+  background: linear-gradient(-45deg, #f3f4f6, #e2e8f0, #fca5a5, #f3f4f6);
   background-size: 400% 400%;
   animation: gradientBG 15s ease infinite;
-  min-height: 90vh;
+  min-height: 100vh;
   padding: 2.5rem;
-  border-radius: 20px;
-  box-sizing: border-box;
+  font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
 }
 
-/* --- ANIMACIONES --- */
 .fade-in {
   animation: fadeIn 0.5s ease forwards;
 }
@@ -36,98 +41,15 @@
 }
 
 /* =========================================
-   1. VISTA: SELECTOR DE SEDES (ENTRADA)
+   2. HERO SECTION (BANNER ROJO)
    ========================================= */
-
-.sede-selector-container {
-  max-width: 1200px;
-  margin: 0 auto;
-  text-align: center;
-}
-
-.selector-header h1 {
-  font-size: 2.8rem;
-  font-weight: 800;
-  color: var(--text-main);
-  margin-bottom: 10px;
-}
-
-.selector-header p {
-  font-size: 1.2rem;
-  color: var(--text-muted);
-  margin-bottom: 50px;
-}
-
-.sedes-grid-container {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-  gap: 30px;
-}
-
-.sede-card-big {
-  border-radius: 24px;
-  padding: 40px 20px;
-  color: white;
-  cursor: pointer;
-  position: relative;
-  overflow: hidden;
-  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-height: 220px;
-  box-shadow: 0 10px 20px rgba(0,0,0,0.1);
-}
-
-.sede-card-big:hover {
-  transform: translateY(-12px) scale(1.02);
-  box-shadow: 0 20px 40px rgba(0,0,0,0.2);
-}
-
-.sede-card-icon {
-  font-size: 3.8rem;
-  margin-bottom: 15px;
-  filter: drop-shadow(0 4px 6px rgba(0,0,0,0.2));
-}
-
-.sede-card-info h3 {
-  font-size: 1.6rem;
-  font-weight: 800;
-  margin-bottom: 5px;
-}
-
-.sede-card-info span {
-  font-size: 0.95rem;
-  opacity: 0.9;
-  font-weight: 300;
-}
-
-.sede-card-arrow {
-  position: absolute;
-  bottom: 20px;
-  right: 25px;
-  font-size: 1.5rem;
-  opacity: 0;
-  transform: translateX(-20px);
-  transition: all 0.3s ease;
-}
-
-.sede-card-big:hover .sede-card-arrow {
-  opacity: 1;
-  transform: translateX(0);
-}
-
-/* =========================================
-   2. HERO SECTION (BANNER SUPERIOR)
-   ========================================= */
-
 .dashboard-hero {
   background: linear-gradient(135deg, var(--ceutec-red) 0%, var(--ceutec-dark-red) 100%);
   color: white;
   padding: 40px 50px;
   border-radius: 24px;
   margin-bottom: 40px;
-  box-shadow: 0 10px 30px rgba(200, 16, 46, 0.3);
+  box-shadow: 0 12px 30px rgba(200, 16, 46, 0.3);
   position: relative;
   overflow: hidden;
 }
@@ -138,139 +60,140 @@
   align-items: center;
   position: relative;
   z-index: 2;
+  width: 100%;
 }
 
 .hero-text-side h1 {
-  font-size: 2.5rem;
-  font-weight: 800;
-  margin: 0 0 8px 0;
-  letter-spacing: -1px;
+  font-size: 2.4rem;
+  font-weight: 900;
+  margin: 0;
+  letter-spacing: -1.5px;
 }
 
 .hero-text-side p {
   font-size: 1.1rem;
   opacity: 0.9;
-  margin: 0;
+  margin-top: 5px;
 }
 
-/* BOTÓN "CAMBIAR SEDE" (Resaltado en Blanco) */
+/* Botón "Cambiar Sede" */
 .btn-change-sede-new {
-  background: white;
-  color: var(--ceutec-red);
-  padding: 14px 28px;
+  background: white !important;
+  color: var(--ceutec-red) !important;
+  padding: 12px 24px;
   border-radius: 50px;
   text-decoration: none;
   font-weight: 800;
-  font-size: 0.95rem;
+  font-size: 0.9rem;
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-  transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-  white-space: nowrap;
+  transition: all 0.3s ease;
 }
 
 .btn-change-sede-new:hover {
-  transform: translateY(-3px) scale(1.03);
-  box-shadow: 0 8px 25px rgba(0, 0, 0, 0.2);
-  background: #f8f9fa;
-}
-
-/* Decoración abstracta en el Hero */
-.dashboard-hero::before {
-  content: '';
-  position: absolute;
-  top: -40%; right: -5%; width: 280px; height: 280px;
-  background: rgba(255, 255, 255, 0.08); border-radius: 50%;
+  transform: translateY(-3px);
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
 }
 
 /* =========================================
-   3. GRID Y TARJETAS OPERATIVAS (DOCENTES)
+   3. SISTEMA DE CARDS OPERATIVAS
    ========================================= */
+.section-title-dash {
+  font-size: 1.2rem;
+  font-weight: 800;
+  color: var(--text-main);
+  margin: 40px 0 20px 0;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+}
 
 .teacher-card-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
   gap: 30px;
 }
 
 .teacher-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
+  background: white;
   border-radius: 22px;
   padding: 30px;
-  text-decoration: none;
-  color: var(--text-main);
-  transition: all 0.3s ease;
+  border: 1px solid #edf2f7;
   box-shadow: var(--glass-shadow);
   display: flex;
   flex-direction: column;
   height: 100%;
+  transition: all 0.3s ease;
+  text-decoration: none;
 }
 
-.teacher-card:hover {
-  transform: translateY(-8px);
-  background: white;
+.teacher-card:hover, 
+.clickable-card:hover {
+  transform: translateY(-10px);
   border-color: var(--ceutec-red);
-  box-shadow: 0 15px 30px rgba(0,0,0,0.08);
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.06);
 }
 
+/* --- WRAPPERS DE ICONOS --- */
 .card-icon-wrapper {
-  width: 65px; height: 65px;
+  width: 65px;
+  height: 65px;
   border-radius: 18px;
-  display: flex; align-items: center; justify-content: center;
-  font-size: 2rem; margin-bottom: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 2.2rem;
+  margin-bottom: 25px;
+  background: #f8fafc;
+  flex-shrink: 0; /* Evita que el icono se aplaste */
 }
 
-/* Colores de Iconos */
 .bg-blue { background: #e3f2fd; color: #1565c0; }
-.bg-green { background: #e8f5e9; color: #2e7d32; }
 .bg-purple { background: #f3e5f5; color: #7b1fa2; }
+.bg-green { background: #e8f5e9; color: #2e7d32; }
 .bg-orange { background: #fff3e0; color: #ef6c00; }
 
 .teacher-card h3 {
-  font-size: 1.4rem;
+  font-size: 1.5rem;
   font-weight: 800;
-  margin-bottom: 10px;
+  margin: 0 0 10px 0;
   color: #111;
 }
 
 .teacher-card p {
-  color: var(--text-muted);
   font-size: 0.95rem;
+  color: var(--text-muted);
   line-height: 1.6;
   margin-bottom: 25px;
 }
 
-/* CONTENEDOR DE BOTONES EN CARDS */
+/* =========================================
+   4. BOTONES Y ACCIONES
+   ========================================= */
 .card-actions-row {
   display: flex;
   gap: 12px;
-  margin-top: auto; /* Empuja al fondo */
+  margin-top: auto;
 }
 
 .btn-primary-card, 
 .btn-secondary-card {
   flex: 1;
+  padding: 14px;
+  border-radius: 14px;
+  font-weight: 800;
   text-align: center;
-  padding: 12px 5px;
-  border-radius: 12px;
-  font-size: 0.85rem;
-  font-weight: 700;
   text-decoration: none;
-  transition: all 0.2s ease;
+  cursor: pointer;
+  border: none;
+  transition: all 0.2s;
+  font-size: 0.85rem;
 }
 
 .btn-primary-card {
   background: var(--ceutec-red);
   color: white;
-  box-shadow: 0 4px 10px rgba(200, 16, 46, 0.2);
-}
-
-.btn-primary-card:hover {
-  background: var(--ceutec-dark-red);
-  transform: translateY(-2px);
 }
 
 .btn-secondary-card {
@@ -279,99 +202,84 @@
   border: 1px solid #e2e8f0;
 }
 
-.btn-secondary-card:hover {
-  background: #e2e8f0;
+.btn-primary-card:hover { 
+  background: var(--ceutec-dark-red); 
+  transform: translateY(-2px); 
 }
 
 .card-cta {
-  font-weight: 800;
-  font-size: 0.9rem;
-  color: var(--ceutec-red);
-  display: flex;
-  align-items: center;
-  gap: 8px;
   margin-top: auto;
-}
-
-/* =========================================
-   4. ADMINISTRACIÓN (ADMIN DASHBOARD)
-   ========================================= */
-
-.admin-dashboard-layout {
-  display: grid;
-  grid-template-columns: 300px 1fr;
-  gap: 30px;
-  align-items: start;
-}
-
-.sidebar-card {
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  border-radius: 24px;
-  padding: 30px;
-  border: 1px solid var(--glass-border);
-  box-shadow: var(--glass-shadow);
-}
-
-.sidebar-title {
-  font-size: 0.8rem;
   font-weight: 800;
-  color: #999;
-  text-transform: uppercase;
-  letter-spacing: 1.5px;
-  margin-bottom: 25px;
-  border-bottom: 1px solid rgba(0,0,0,0.05);
-  padding-bottom: 10px;
-}
-
-.nav-link-item {
-  display: flex;
-  align-items: center;
-  gap: 15px;
-  padding: 14px;
-  border-radius: 15px;
-  text-decoration: none;
-  color: var(--text-main);
-  transition: all 0.2s ease;
-  margin-bottom: 10px;
-}
-
-.nav-link-item:hover {
-  background: white;
-  transform: translateX(8px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
-}
-
-.nav-icon {
-  font-size: 1.4rem;
-  min-width: 40px; height: 40px;
-  background: #f3f4f6;
-  border-radius: 10px;
-  display: flex; align-items: center; justify-content: center;
+  color: var(--ceutec-red);
+  font-size: 0.9rem;
+  display: block;
 }
 
 /* =========================================
-   5. RESPONSIVE
+   5. SELECTOR DE SEDES (PÁGINA DE ENTRADA)
    ========================================= */
-
-@media (max-width: 1024px) {
-  .admin-dashboard-layout { grid-template-columns: 1fr; }
-  .dashboard-wrapper { padding: 1.5rem; }
+.sede-selector-container {
+  max-width: 1300px;
+  margin: 0 auto;
 }
 
-@media (max-width: 768px) {
-  .hero-content-wrapper {
-    flex-direction: column;
-    text-align: center;
-    gap: 25px;
-  }
-  
-  .hero-text-side h1 { font-size: 2rem; }
-  
-  .btn-change-sede-new {
-    width: 100%;
-    justify-content: center;
-  }
+.selector-header {
+  text-align: center;
+  margin-bottom: 50px;
+}
 
-  .selector-header h1 { font-size: 2.2rem; }
+.sedes-grid-container {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+  gap: 30px;
+}
+
+.sede-card-big {
+  border-radius: 32px;
+  padding: 60px 40px;
+  color: white;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.1);
+  position: relative;
+}
+
+.sede-card-big:hover {
+  transform: translateY(-15px) scale(1.02);
+  box-shadow: 0 25px 50px rgba(0,0,0,0.2);
+}
+
+.sede-card-icon {
+  font-size: 4.5rem;
+  margin-bottom: 25px;
+  filter: drop-shadow(0 5px 10px rgba(0,0,0,0.2));
+}
+
+.sede-card-info h3 {
+  font-size: 1.8rem;
+  font-weight: 800;
+  margin: 0 0 8px 0;
+  color: white !important;
+}
+
+.sede-card-info span {
+  font-size: 1.1rem;
+  opacity: 0.9;
+  color: white !important;
+}
+
+/* =========================================
+   6. RESPONSIVIDAD
+   ========================================= */
+@media (max-width: 768px) {
+  .dashboard-wrapper { padding: 1.5rem; }
+  .hero-content-wrapper { flex-direction: column; text-align: center; gap: 25px; }
+  .btn-change-sede-new { width: 100%; justify-content: center; }
+  .dashboard-hero { padding: 30px; }
+  .hero-text-side h1 { font-size: 2rem; }
 }

@@ -1,177 +1,194 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { updateProfile } from 'firebase/auth';
-import { doc, updateDoc, getDoc, collection, query, where, getCountFromServer } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, collection, query, where, getDocs, limit, orderBy, getCountFromServer } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import toast from 'react-hot-toast';
-import { Link } from 'react-router-dom';
-import './styles/Dashboard.css'; // Reusamos estilos del dashboard
+import { Link, useSearchParams } from 'react-router-dom';
+import { format } from 'date-fns';
+import es from 'date-fns/locale/es';
+import './styles/UserProfile.css'; // <--- IMPORTACIÓN DEL NUEVO CSS
+
+const facultadesList = [
+  "Ingeniería", "Ciencias de la Salud", "Ciencias Administrativas y Contables", 
+  "Diseño y Comunicación", "Derecho", "Postgrado"
+];
 
 const UserProfile = () => {
-  const { currentUser } = useAuth();
+  const { currentUser, userData } = useAuth();
+  const [searchParams] = useSearchParams();
+  const currentSede = searchParams.get('sede') || userData?.sede || "";
+
   const [isEditing, setIsEditing] = useState(false);
   const [loading, setLoading] = useState(false);
   
-  // Estados de datos
   const [displayName, setDisplayName] = useState(currentUser?.displayName || '');
-  const [department, setDepartment] = useState('');
-  const [role, setRole] = useState('Docente');
-  
-  // Estadísticas
+  const [faculty, setFaculty] = useState('');
+  const [recentReservations, setRecentReservations] = useState([]);
   const [stats, setStats] = useState({ totalReservations: 0, activeReservations: 0 });
 
   useEffect(() => {
-    const fetchUserData = async () => {
+    const fetchProfileData = async () => {
       if (!currentUser?.uid) return;
-
       try {
-        // 1. Obtener datos extendidos del usuario
-        const userDocRef = doc(db, "users", currentUser.uid);
-        const userDoc = await getDoc(userDocRef);
-        if (userDoc.exists()) {
-          const data = userDoc.data();
-          setDepartment(data.department || '');
-          setRole(data.role || 'Docente');
-        }
+        const userDoc = await getDoc(doc(db, "users", currentUser.uid));
+        if (userDoc.exists()) setFaculty(userDoc.data().faculty || '');
 
-        // 2. Obtener estadísticas (Mejora solicitada)
-        const reservationsRef = collection(db, "reservations");
+        const resRef = collection(db, "reservations");
+        const qTotal = query(resRef, where("userId", "==", currentUser.uid));
+        const snapTotal = await getCountFromServer(qTotal);
         
-        // Contar total histórico
-        const qTotal = query(reservationsRef, where("userId", "==", currentUser.uid));
-        const snapshotTotal = await getCountFromServer(qTotal);
-        
-        // Contar activas (Pendientes o Aprobadas que aún no terminan)
-        // Nota: Simplificado para conteo rápido
-        const qActive = query(
-            reservationsRef, 
-            where("userId", "==", currentUser.uid),
-            where("endTime", ">=", new Date())
-        );
-        const snapshotActive = await getCountFromServer(qActive);
+        const qActive = query(resRef, where("userId", "==", currentUser.uid), where("fulfillmentStatus", "==", "Pendiente"));
+        const snapActive = await getCountFromServer(qActive);
 
         setStats({
-          totalReservations: snapshotTotal.data().count,
-          activeReservations: snapshotActive.data().count
+          totalReservations: snapTotal.data().count,
+          activeReservations: snapActive.data().count
         });
 
-      } catch (error) {
-        console.error("Error cargando perfil:", error);
-      }
+        const qRecent = query(resRef, where("userId", "==", currentUser.uid), orderBy("startTime", "desc"), limit(3));
+        const snapRecent = await getDocs(qRecent);
+        setRecentReservations(snapRecent.docs.map(d => ({ id: d.id, ...d.data() })));
+      } catch (error) { console.error(error); }
     };
-    fetchUserData();
+    fetchProfileData();
   }, [currentUser]);
 
   const handleUpdate = async (e) => {
     e.preventDefault();
     setLoading(true);
     try {
-      // Actualizar Auth
       await updateProfile(currentUser, { displayName });
-
-      // Actualizar Firestore
-      const userRef = doc(db, "users", currentUser.uid);
-      await updateDoc(userRef, {
-        displayName, // Aseguramos consistencia
-        department
-      });
-
-      toast.success("Perfil actualizado correctamente");
+      await updateDoc(doc(db, "users", currentUser.uid), { displayName, faculty });
+      toast.success("Perfil actualizado");
       setIsEditing(false);
-    } catch (error) {
-      console.error(error);
-      toast.error("Error al actualizar");
-    } finally {
-      setLoading(false);
-    }
+    } catch (error) { toast.error("Error al actualizar"); }
+    finally { setLoading(false); }
   };
 
   return (
     <div className="dashboard-wrapper">
-      <h1 className="dashboard-title">Mi Perfil</h1>
-
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 300px', gap: '2rem' }}>
+      <div className="profile-container">
         
-        {/* COLUMNA IZQUIERDA: Formulario e Info */}
-        <div className="dashboard-card">
-          <div style={{ display: 'flex', alignItems: 'center', gap: '20px', marginBottom: '30px', borderBottom: '1px solid #eee', paddingBottom: '20px' }}>
-            <div style={{ 
-              width: '80px', height: '80px', borderRadius: '50%', background: '#c8102e', color: 'white', 
-              display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '2.5rem', fontWeight: 'bold'
-            }}>
-              {displayName.charAt(0)?.toUpperCase()}
+        <div className="profile-header-nav">
+            <Link to={`/dashboard?sede=${currentSede}`} className="back-link-simple">
+               ← Volver al Dashboard
+            </Link>
+        </div>
+
+        <div className="profile-main-grid fade-in">
+          
+          {/* COLUMNA IZQUIERDA */}
+          <div className="profile-info-column">
+            <div className="profile-card-hero">
+              <div className="profile-avatar-row">
+                <div className="profile-avatar-big">
+                  {displayName ? displayName.charAt(0).toUpperCase() : "?"}
+                </div>
+                <div className="profile-title-info">
+                  <h1>{displayName || 'Docente Portal'}</h1>
+                  <p>{currentUser?.email}</p>
+                  <span className="role-badge-profile">{userData?.role?.replace('_', ' ') || 'DOCENTE'}</span>
+                </div>
+              </div>
+
+              {isEditing ? (
+                <form onSubmit={handleUpdate} className="edit-profile-form">
+                  <div className="form-group-profile">
+                    <label>Nombre Completo</label>
+                    <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+                  </div>
+                  <div className="form-group-profile">
+                    <label>Facultad Asignada</label>
+                    <select value={faculty} onChange={(e) => setFaculty(e.target.value)}>
+                      <option value="">Selecciona facultad...</option>
+                      {facultadesList.map(f => <option key={f} value={f}>{f}</option>)}
+                    </select>
+                  </div>
+                  <div className="card-actions-row">
+                    <button type="button" onClick={() => setIsEditing(false)} className="btn-secondary-card">Cancelar</button>
+                    <button type="submit" disabled={loading} className="btn-primary-card">Guardar Perfil</button>
+                  </div>
+                </form>
+              ) : (
+                <div className="profile-details-view">
+                  <div className="details-grid-profile">
+                    <div className="detail-item-box">
+                      <label>Facultad / Depto</label>
+                      <p>{faculty || 'No especificada'}</p>
+                    </div>
+                    <div className="detail-item-box">
+                      <label>ID de Registro</label>
+                      <p><code>{currentUser?.uid.substring(0, 12)}...</code></p>
+                    </div>
+                  </div>
+                  <button onClick={() => setIsEditing(true)} className="btn-edit-profile-trigger">
+                    ✏️ Editar Información
+                  </button>
+                </div>
+              )}
             </div>
-            <div>
-              <h2 style={{ margin: 0 }}>{displayName}</h2>
-              <p style={{ color: '#666', margin: '5px 0' }}>{currentUser?.email}</p>
-              <span style={{ background: '#eee', padding: '2px 8px', borderRadius: '4px', fontSize: '0.8rem', fontWeight: 'bold' }}>
-                {role.toUpperCase()}
-              </span>
+
+            {/* ACTIVIDAD RECIENTE */}
+            <div className="dashboard-card recent-activity-card" style={{marginTop: '30px'}}>
+              <h3 style={{fontWeight: '800', marginBottom: '20px'}}>Actividad Reciente</h3>
+              {recentReservations.length > 0 ? (
+                <div className="activity-list">
+                  {recentReservations.map(res => (
+                    <div key={res.id} className="activity-item">
+                      <div className="activity-info">
+                        <strong>{res.labName}</strong>
+                        <small>{format(res.startTime.toDate(), "d 'de' MMMM", { locale: es })}</small>
+                      </div>
+                      <span className={`status-dot ${res.fulfillmentStatus?.toLowerCase()}`}></span>
+                    </div>
+                  ))}
+                </div>
+              ) : <p className="empty-text">Sin reservas recientes en esta sede.</p>}
             </div>
           </div>
 
-          {isEditing ? (
-            <form onSubmit={handleUpdate}>
-              <div style={{ marginBottom: '15px' }}>
-                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>Nombre Completo</label>
-                <input 
-                  type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)}
-                  style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '5px' }}
-                />
-              </div>
-              <div style={{ marginBottom: '20px' }}>
-                <label style={{ display: 'block', fontWeight: 'bold', marginBottom: '5px' }}>Departamento / Facultad</label>
-                <input 
-                  type="text" value={department} onChange={(e) => setDepartment(e.target.value)}
-                  placeholder="Ej. Facultad de Ingeniería"
-                  style={{ width: '100%', padding: '10px', border: '1px solid #ccc', borderRadius: '5px' }}
-                />
-              </div>
-              <div style={{ display: 'flex', gap: '10px' }}>
-                <button type="button" onClick={() => setIsEditing(false)} style={{ padding: '10px 20px', border: 'none', background: '#ccc', borderRadius: '5px', cursor: 'pointer' }}>Cancelar</button>
-                <button type="submit" disabled={loading} style={{ padding: '10px 20px', border: 'none', background: '#c8102e', color: 'white', borderRadius: '5px', cursor: 'pointer' }}>{loading ? 'Guardando...' : 'Guardar Cambios'}</button>
-              </div>
-            </form>
-          ) : (
-            <div>
-              <p><strong>Departamento:</strong> {department || 'No especificado (Edita tu perfil para agregar)'}</p>
-              <p><strong>ID Usuario:</strong> <span style={{ fontFamily: 'monospace', color: '#888' }}>{currentUser?.uid}</span></p>
-              
-              <button 
-                onClick={() => setIsEditing(true)}
-                style={{ marginTop: '20px', padding: '10px 20px', background: '#333', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer' }}
-              >
-                ✏️ Editar Información
-              </button>
-            </div>
-          )}
-        </div>
-
-        {/* COLUMNA DERECHA: Estadísticas (Mejora) */}
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '1rem' }}>
-            
-            <div className="dashboard-card" style={{ textAlign: 'center', padding: '2rem' }}>
-                <div style={{ fontSize: '3rem', fontWeight: 'bold', color: '#c8102e' }}>{stats.totalReservations}</div>
-                <div style={{ color: '#666' }}>Reservas Totales</div>
+          {/* COLUMNA DERECHA */}
+          <div className="profile-stats-column">
+            <div className="dashboard-card stat-card-profile total-res">
+              <span className="stat-value">{stats.totalReservations}</span>
+              <span className="stat-label">Reservas Totales</span>
             </div>
 
-            <div className="dashboard-card" style={{ textAlign: 'center', padding: '2rem' }}>
-                <div style={{ fontSize: '3rem', fontWeight: 'bold', color: '#1565c0' }}>{stats.activeReservations}</div>
-                <div style={{ color: '#666' }}>Reservas Activas / Futuras</div>
+            <div className="dashboard-card stat-card-profile active-res">
+              <span className="stat-value">{stats.activeReservations}</span>
+              <span className="stat-label">Pendientes</span>
             </div>
 
-            <div className="dashboard-card">
-                <h3>Accesos Rápidos</h3>
-                <Link to="/mis-reservas" style={{ display: 'block', padding: '10px', textDecoration: 'none', color: '#333', borderBottom: '1px solid #eee' }}>
-                    📋 Ver mi Historial
-                </Link>
-                <Link to="/reservas" style={{ display: 'block', padding: '10px', textDecoration: 'none', color: '#333' }}>
-                    📅 Crear Nueva Reserva
-                </Link>
+            <div className="dashboard-card quick-links-card">
+              <h3>Accesos Rápidos</h3>
+              <div className="quick-links-stack">
+                  <Link to={`/mis-reservas?sede=${currentSede}`} className="nav-link-profile">
+                      <span className="nav-icon">📋</span>
+                      <div className="nav-text">
+                        <h4>Mi Historial</h4>
+                        <p>Ver mis registros</p>
+                      </div>
+                  </Link>
+                  <Link to={`/reservas?tipo=Aula&sede=${currentSede}`} className="nav-link-profile">
+                      <span className="nav-icon">🏫</span>
+                      <div className="nav-text">
+                        <h4>Reservar Aula</h4>
+                        <p>Espacios teóricos</p>
+                      </div>
+                  </Link>
+                  <Link to={`/reservas?tipo=Laboratorio&sede=${currentSede}`} className="nav-link-profile">
+                      <span className="nav-icon">🧪</span>
+                      <div className="nav-text">
+                        <h4>Reservar Lab</h4>
+                        <p>Talleres técnicos</p>
+                      </div>
+                  </Link>
+              </div>
             </div>
+          </div>
 
         </div>
-
       </div>
     </div>
   );
