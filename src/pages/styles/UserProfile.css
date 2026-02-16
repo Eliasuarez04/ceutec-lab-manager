@@ -8,7 +8,7 @@
 
 .profile-main-grid {
     display: grid;
-    grid-template-columns: 1fr 380px;
+    grid-template-columns: 1fr 400px;
     gap: 40px;
     margin-top: 30px;
     align-items: start;
@@ -16,12 +16,11 @@
 
 /* --- COLUMNA IZQUIERDA: CARD PRINCIPAL --- */
 .profile-card-hero {
-    background: rgba(255, 255, 255, 0.9);
-    backdrop-filter: blur(15px);
+    background: white;
     border-radius: 30px;
     padding: 50px;
-    border: 1px solid rgba(255, 255, 255, 0.6);
-    box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+    box-shadow: 0 10px 30px rgba(0,0,0,0.05);
+    border: 1px solid #edf2f7;
 }
 
 .profile-avatar-row {
@@ -29,41 +28,41 @@
     align-items: center;
     gap: 35px;
     margin-bottom: 45px;
+    padding-bottom: 30px;
+    border-bottom: 1px solid #f1f5f9;
 }
 
 .profile-avatar-big {
-    width: 120px;
-    height: 120px;
+    width: 110px;
+    height: 110px;
     background: linear-gradient(135deg, #c8102e, #a00d25);
-    border-radius: 30px;
+    border-radius: 25px;
     display: flex;
     align-items: center;
     justify-content: center;
     color: white;
-    font-size: 4rem;
+    font-size: 3.8rem;
     font-weight: 900;
-    box-shadow: 0 10px 25px rgba(200, 16, 46, 0.25);
+    box-shadow: 0 10px 20px rgba(200, 16, 46, 0.2);
 }
 
 .profile-title-info h1 {
-    font-size: 2.5rem;
+    font-size: 2.4rem;
     font-weight: 900;
-    margin: 0;
     color: #1a202c;
-    letter-spacing: -1px;
+    margin: 0;
 }
 
 .role-badge-profile {
     display: inline-block;
-    background: #f1f5f9;
-    color: #475569;
+    background: #dcfce7;
+    color: #166534;
     padding: 6px 15px;
     border-radius: 8px;
     font-size: 0.75rem;
     font-weight: 800;
     text-transform: uppercase;
     margin-top: 12px;
-    letter-spacing: 1px;
 }
 
 /* --- GRID DE DETALLES --- */
@@ -71,19 +70,18 @@
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 25px;
-    margin-bottom: 40px;
+    margin-bottom: 35px;
 }
 
 .detail-item-box {
     background: #f8fafc;
-    padding: 20px 25px;
+    padding: 22px;
     border-radius: 20px;
     border: 1px solid #edf2f7;
-    transition: all 0.3s ease;
 }
 
 .detail-item-box label {
-    font-size: 0.7rem;
+    font-size: 0.75rem;
     font-weight: 800;
     color: #94a3b8;
     text-transform: uppercase;
@@ -94,20 +92,66 @@
 .detail-item-box p {
     font-size: 1.2rem;
     font-weight: 700;
-    margin: 0;
     color: #2d3748;
+    margin: 0;
+}
+
+/* --- FORMULARIO --- */
+.edit-profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 25px;
+}
+
+.form-group-profile {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.form-group-profile label {
+    font-size: 0.8rem;
+    font-weight: 800;
+    color: #c8102e;
+    text-transform: uppercase;
+}
+
+.form-group-profile input, 
+.form-group-profile select {
+    width: 100%;
+    padding: 15px 20px;
+    border-radius: 14px;
+    border: 2px solid #edf2f7;
+    background: #f8fafc;
+    font-size: 1.05rem;
+    font-weight: 600;
+    outline: none;
+    transition: 0.3s;
+}
+
+.form-group-profile input:focus {
+    border-color: #c8102e;
+    background: white;
+}
+
+.profile-form-actions {
+    display: flex;
+    gap: 15px;
 }
 
 /* --- COLUMNA DERECHA: STATS & LINKS --- */
 .profile-stats-column {
     display: flex;
     flex-direction: column;
-    gap: 30px;
+    gap: 25px;
 }
 
 .stat-card-profile {
+    background: white;
+    border-radius: 24px;
+    padding: 35px;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.03);
     text-align: center;
-    padding: 40px;
     border-left: 10px solid #cbd5e0;
 }
 
@@ -119,7 +163,7 @@
     font-size: 3.8rem;
     font-weight: 900;
     line-height: 1;
-    margin-bottom: 10px;
+    margin-bottom: 5px;
 }
 
 .total-res .stat-value { color: #c8102e; }
@@ -132,19 +176,19 @@
     text-transform: uppercase;
 }
 
-/* --- ACCESOS RÁPIDOS (COMO TARJETAS) --- */
-.quick-links-card h3 {
-    font-size: 0.9rem;
-    font-weight: 800;
-    text-transform: uppercase;
-    margin-bottom: 20px;
-    color: #94a3b8;
+/* --- ACCESOS RÁPIDOS --- */
+.quick-links-card {
+    background: white;
+    border-radius: 24px;
+    padding: 30px;
+    border: 1px solid #edf2f7;
 }
 
 .quick-links-stack {
     display: flex;
     flex-direction: column;
     gap: 15px;
+    margin-top: 15px;
 }
 
 .nav-link-profile {
@@ -156,16 +200,15 @@
     gap: 20px;
     text-decoration: none;
     border: 2px solid #edf2f7;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    transition: 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
 }
 
 .nav-link-profile:hover {
     border-color: #c8102e;
     transform: translateX(10px);
-    box-shadow: 0 10px 20px rgba(0,0,0,0.05);
 }
 
-.nav-link-profile .nav-icon {
+.nav-icon {
     font-size: 1.8rem;
     width: 50px;
     height: 50px;
@@ -174,42 +217,30 @@
     display: flex;
     align-items: center;
     justify-content: center;
+    flex-shrink: 0; /* Evita que el icono se aplaste */
 }
 
-.nav-link-profile h4 {
-    margin: 0;
-    font-size: 1.1rem;
-    font-weight: 800;
-    color: #1a202c;
-}
+.nav-text h4 { margin: 0; font-size: 1.1rem; font-weight: 800; color: #1a202c; }
+.nav-text p { margin: 2px 0 0 0; font-size: 0.85rem; color: #718096; }
 
-.nav-link-profile p {
-    margin: 3px 0 0 0;
-    font-size: 0.85rem;
-    color: #64748b;
-}
-
-/* --- BOTONES DE ACCIÓN --- */
+/* Botón Editar Trigger */
 .btn-edit-profile-trigger {
     background: #1e293b;
     color: white;
     border: none;
     padding: 14px 28px;
-    border-radius: 14px;
+    border-radius: 12px;
     font-weight: 800;
     cursor: pointer;
-    display: inline-flex;
-    align-items: center;
-    gap: 10px;
     transition: 0.3s;
 }
 
-.btn-edit-profile-trigger:hover {
-    background: #000;
-    transform: translateY(-3px);
-}
+.btn-edit-profile-trigger:hover { background: #000; transform: translateY(-2px); }
 
-/* --- RESPONSIVO --- */
-@media (max-width: 1100px) {
-    .profile-main-grid { grid-template-columns: 1fr; }
-}
+/* Status Dot para actividad */
+.status-dot { width: 10px; height: 10px; border-radius: 50%; background: #cbd5e1; }
+.status-dot.pendiente { background: #f59e0b; }
+.status-dot.aprobada { background: #10b981; }
+
+.fade-in { animation: fadeIn 0.4s ease-out forwards; }
+@keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }

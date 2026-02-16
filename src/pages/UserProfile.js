@@ -1,3 +1,4 @@
+// src/pages/UserProfile.js
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { updateProfile } from 'firebase/auth';
@@ -7,7 +8,7 @@ import toast from 'react-hot-toast';
 import { Link, useSearchParams } from 'react-router-dom';
 import { format } from 'date-fns';
 import es from 'date-fns/locale/es';
-import './styles/UserProfile.css'; // <--- IMPORTACIÓN DEL NUEVO CSS
+import './styles/UserProfile.css'; 
 
 const facultadesList = [
   "Ingeniería", "Ciencias de la Salud", "Ciencias Administrativas y Contables", 
@@ -69,7 +70,6 @@ const UserProfile = () => {
   return (
     <div className="dashboard-wrapper">
       <div className="profile-container">
-        
         <div className="profile-header-nav">
             <Link to={`/dashboard?sede=${currentSede}`} className="back-link-simple">
                ← Volver al Dashboard
@@ -83,12 +83,12 @@ const UserProfile = () => {
             <div className="profile-card-hero">
               <div className="profile-avatar-row">
                 <div className="profile-avatar-big">
-                  {displayName ? displayName.charAt(0).toUpperCase() : "?"}
+                  {displayName ? displayName.charAt(0).toUpperCase() : (currentUser?.email?.charAt(0).toUpperCase())}
                 </div>
                 <div className="profile-title-info">
                   <h1>{displayName || 'Docente Portal'}</h1>
                   <p>{currentUser?.email}</p>
-                  <span className="role-badge-profile">{userData?.role?.replace('_', ' ') || 'DOCENTE'}</span>
+                  <span className="role-badge-profile">USUARIO {userData?.role?.toUpperCase() || 'DOCENTE'}</span>
                 </div>
               </div>
 
@@ -96,16 +96,16 @@ const UserProfile = () => {
                 <form onSubmit={handleUpdate} className="edit-profile-form">
                   <div className="form-group-profile">
                     <label>Nombre Completo</label>
-                    <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} />
+                    <input type="text" value={displayName} onChange={(e) => setDisplayName(e.target.value)} placeholder="Escribe tu nombre..." />
                   </div>
                   <div className="form-group-profile">
                     <label>Facultad Asignada</label>
                     <select value={faculty} onChange={(e) => setFaculty(e.target.value)}>
-                      <option value="">Selecciona facultad...</option>
+                      <option value="">Selecciona tu facultad...</option>
                       {facultadesList.map(f => <option key={f} value={f}>{f}</option>)}
                     </select>
                   </div>
-                  <div className="card-actions-row">
+                  <div className="profile-form-actions">
                     <button type="button" onClick={() => setIsEditing(false)} className="btn-secondary-card">Cancelar</button>
                     <button type="submit" disabled={loading} className="btn-primary-card">Guardar Perfil</button>
                   </div>
@@ -129,9 +129,8 @@ const UserProfile = () => {
               )}
             </div>
 
-            {/* ACTIVIDAD RECIENTE */}
             <div className="dashboard-card recent-activity-card" style={{marginTop: '30px'}}>
-              <h3 style={{fontWeight: '800', marginBottom: '20px'}}>Actividad Reciente</h3>
+              <h3>Actividad Reciente</h3>
               {recentReservations.length > 0 ? (
                 <div className="activity-list">
                   {recentReservations.map(res => (
