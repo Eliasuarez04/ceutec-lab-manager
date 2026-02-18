@@ -6,8 +6,9 @@ import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { format, getDay, getHours, startOfDay, endOfDay, parseISO } from 'date-fns';
 import { CSVLink } from 'react-csv';
+import { Link, useSearchParams } from 'react-router-dom'; // Importado para navegación y filtros
 import toast from 'react-hot-toast';
-import './styles/Reportes.css'; // Asegúrate que la ruta a tu CSS es correcta
+import './styles/Reportes.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -26,7 +27,7 @@ const ReporteUso = ({ data }) => {
   }, [data]);
 
   const dayUsageData = useMemo(() => {
-    const dayCounts = [0, 0, 0, 0, 0, 0, 0]; // D-L-M-M-J-V-S
+    const dayCounts = [0, 0, 0, 0, 0, 0, 0];
     data.forEach(res => {
       const day = getDay(res.startTime.toDate());
       dayCounts[day]++;
@@ -55,7 +56,7 @@ const ReporteUso = ({ data }) => {
 
   return (
     <div className="report-grid">
-      <div className="chart-wrapper"><Bar data={labUsageData} options={{ indexAxis: 'y', responsive: true, plugins:{title:{display:true, text:'Reservas por Laboratorio'}}}} /></div>
+      <div className="chart-wrapper"><Bar data={labUsageData} options={{ indexAxis: 'y', responsive: true, plugins:{title:{display:true, text:'Reservas por Espacio'}}}} /></div>
       <div className="chart-wrapper"><Bar data={dayUsageData} options={{ responsive: true, plugins:{title:{display:true, text:'Reservas por Día de la Semana'}}}} /></div>
       <div className="chart-wrapper full-width"><Bar data={mostRequestedItemsData} options={{ responsive: true, plugins:{title:{display:true, text:'Top 10 Ítems Más Solicitados'}}}} /></div>
     </div>
@@ -142,7 +143,7 @@ const ReporteInventario = ({ logs }) => {
                   <td>{log.notes || '-'}</td>
                 </tr>
               )) : (
-                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No hay registros para el período o filtro seleccionado.</td></tr>
+                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No hay registros para el período seleccionado.</td></tr>
               )}
             </tbody>
           </table>
@@ -154,6 +155,9 @@ const ReporteInventario = ({ logs }) => {
 
 // --- Página Principal de Reportes ---
 export default function Reportes() {
+  const [searchParams] = useSearchParams();
+  const currentSede = searchParams.get('sede') || ""; // Capturamos la sede actual de la URL
+
   const [activeTab, setActiveTab] = useState('uso');
   const [startDate, setStartDate] = useState(format(new Date(new Date().setMonth(new Date().getMonth() - 1)), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -162,23 +166,43 @@ export default function Reportes() {
   const [loading, setLoading] = useState(false);
 
   const fetchData = useCallback(async () => {
-    if (!startDate || !endDate) return;
+    if (!startDate || !endDate || !currentSede) return;
     setLoading(true);
     try {
       const start = Timestamp.fromDate(startOfDay(parseISO(startDate)));
       const end = Timestamp.fromDate(endOfDay(parseISO(endDate)));
-      const resQuery = query(collection(db, 'reservations'), where('startTime', '>=', start), where('startTime', '<=', end));
-      const logQuery = query(collection(db, 'inventory_logs'), where('timestamp', '>=', start), where('timestamp', '<=', end), orderBy('timestamp', 'desc'));
+
+      // FILTRO POR SEDE AÑADIDO: 'where("sede", "==", currentSede)'
+      const resQuery = query(
+        collection(db, 'reservations'), 
+        where("sede", "==", currentSede), // <--- Filtro Sede
+        where('startTime', '>=', start), 
+        where('startTime', '<=', end)
+      );
+
+      // Si los logs de inventario tienen campo sede, filtramos, sino cargamos los del periodo
+      const logQuery = query(
+        collection(db, 'inventory_logs'), 
+        where('timestamp', '>=', start), 
+        where('timestamp', '<=', end), 
+        orderBy('timestamp', 'desc')
+      );
+
       const [resSnap, logSnap] = await Promise.all([getDocs(resQuery), getDocs(logQuery)]);
+      
       setReservationData(resSnap.docs.map(doc => doc.data()));
-      setInventoryLogData(logSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      
+      // Filtrado manual de logs por si no tienen el campo sede directo (opcional pero recomendado)
+      const logsRaw = logSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      setInventoryLogData(logsRaw);
+
     } catch (error) {
       console.error("Error fetching report data:", error);
-      toast.error("Error al cargar datos. Puede que necesites crear un índice en Firebase.");
+      toast.error("Error al generar reportes. Verifica los índices de Firebase.");
     } finally {
       setLoading(false);
     }
-  }, [startDate, endDate]);
+  }, [startDate, endDate, currentSede]);
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
@@ -215,48 +239,65 @@ export default function Reportes() {
   
   const [isCsvReady, setIsCsvReady] = useState(false);
   const handleCsvDownload = (event, done) => {
-    toast.loading('Preparando tu archivo CSV...', { id: 'csv-toast' });
+    toast.loading('Generando CSV...', { id: 'csv-toast' });
     setTimeout(() => {
       setIsCsvReady(true);
-      toast.success('¡Descarga lista!', { id: 'csv-toast' });
+      toast.success('¡Listo!', { id: 'csv-toast' });
       done(true);
-    }, 1000);
+    }, 800);
   };
   useEffect(() => { if(isCsvReady) { setIsCsvReady(false); } }, [isCsvReady]);
 
   return (
-    <div className="dashboard-wrapper"> {/* Aplicamos el fondo animado */}
-      <div className="reports-page-card"> {/* Contenedor de cristal principal */}
+    <div className="dashboard-wrapper">
+      <div className="reports-page-card fade-in">
         
-        <h1>Módulo de Reportería</h1>
+        {/* BOTÓN VOLVER DINÁMICO */}
+        <div style={{ marginBottom: '20px' }}>
+          <Link 
+            to={`/dashboard?sede=${encodeURIComponent(currentSede)}`} 
+            className="back-link-simple"
+            style={{ textDecoration: 'none', color: '#c8102e', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}
+          >
+            ← Volver al Dashboard
+          </Link>
+        </div>
         
-        <div className="report-controls"> {/* Barra de Control (También de cristal) */}
+        <header className="page-header" style={{ marginBottom: '25px' }}>
+          <h1>📊 Reportería y Análisis</h1>
+          <p>Sede: <strong>{currentSede}</strong></p>
+        </header>
+        
+        <div className="report-controls">
           <div className="tabs">
             <button className={activeTab === 'uso' ? 'active' : ''} onClick={() => setActiveTab('uso')}>Análisis de Uso</button>
             <button className={activeTab === 'heatmap' ? 'active' : ''} onClick={() => setActiveTab('heatmap')}>Mapa de Calor</button>
-            <button className={activeTab === 'inventario' ? 'active' : ''} onClick={() => setActiveTab('inventario')}>Historial de Inventario</button>
+            <button className={activeTab === 'inventario' ? 'active' : ''} onClick={() => setActiveTab('inventario')}>Historial Inventario</button>
           </div>
           <div className="filters">
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-            <span>a</span>
-            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <div className="date-range">
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+                <span>a</span>
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            </div>
             <CSVLink
               data={csvData}
               headers={getCurrentCsvHeaders()}
-              filename={`reporte_${activeTab}_${format(new Date(), 'yyyy-MM-dd')}.csv`}
+              filename={`reporte_${activeTab}_${currentSede}.csv`}
               className="export-btn"
-              target="_blank"
               asyncOnClick={true}
               onClick={handleCsvDownload}
               uFEFF={true}
             >
-              {isCsvReady ? "Preparando..." : "Exportar a CSV"}
+              {isCsvReady ? "Generando..." : "Descargar CSV"}
             </CSVLink>
           </div>
         </div>
         
         <div className="tab-content">
-          {loading ? <p className="loading-message">Generando reportes...</p> : (
+          {loading ? (
+            <div className="loading-message">Procesando datos de {currentSede}...</div>
+          ) : (
             <>
               {activeTab === 'uso' && <ReporteUso data={reservationData} />}
               {activeTab === 'heatmap' && <ReporteHeatmap data={reservationData} />}

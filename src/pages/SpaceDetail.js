@@ -1,24 +1,38 @@
-// src/pages/SpaceDetail.js (o LabDetail.js según tu proyecto)
+// src/pages/SpaceDetail.js
 import React, { useState, useEffect } from 'react';
 import { useParams, Link, useNavigate, useSearchParams } from 'react-router-dom';
 import { doc, getDoc, collection, getDocs } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
+import { useAuth } from '../context/AuthContext'; // IMPORTANTE
 import './styles/SpaceDetail.css';
 import './styles/Dashboard.css'; 
+
+// Configuración de Permisos
+const CITY_PERMISSIONS = {
+  "San Pedro Sula": ["Ceutec SPS Norte", "Ceutec SPS Central"],
+  "Tegucigalpa": ["Ceutec TGU (Prado)", "Ceutec TGU (Centroamerica)"],
+  "La Ceiba": ["Ceutec LCE"]
+};
 
 export default function SpaceDetail() {
   const { spaceId } = useParams();
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
+  const { userData } = useAuth(); // Datos del usuario
   
   const [space, setSpace] = useState(null);
   const [equipment, setEquipment] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
-  // LEER CONTEXTO DE LA URL PARA NO PERDER LA SEDE AL VOLVER
   const currentSede = searchParams.get('sede');
   const currentTipo = searchParams.get('tipo') || 'Aula';
+
+  // --- LÓGICA DE PERMISO ---
+  const userCity = userData?.city;
+  const allowedSedes = CITY_PERMISSIONS[userCity] || [];
+  const canReserve = userData?.role === 'superadmin' || allowedSedes.some(s => currentSede.includes(s) || s.includes(currentSede));
+  // -------------------------
 
   useEffect(() => {
     const fetchSpaceDetails = async () => {
@@ -58,7 +72,6 @@ export default function SpaceDetail() {
       <div className="detail-container">
         
         <div className="detail-nav">
-            {/* BOTÓN "VOLVER" CON ESTILO CORREGIDO */}
             <Link 
                 to={`/espacios?tipo=${currentTipo}&sede=${currentSede}`} 
                 className="back-link-detail"
@@ -66,12 +79,23 @@ export default function SpaceDetail() {
             ← Volver a {currentTipo}s
             </Link>
             
-            <button 
-                className="direct-reserva-btn"
-                onClick={() => navigate(`/reservas?spaceId=${space.id}&sede=${currentSede}&tipo=${currentTipo}`)}
-            >
-                📅 Reservar este espacio
-            </button>
+            {/* BOTÓN RESERVAR CONDICIONAL */}
+            {canReserve ? (
+                <button 
+                    className="direct-reserva-btn"
+                    onClick={() => navigate(`/reservas?spaceId=${space.id}&sede=${currentSede}&tipo=${currentTipo}`)}
+                >
+                    📅 Reservar este espacio
+                </button>
+            ) : (
+                <button 
+                    className="direct-reserva-btn"
+                    style={{background: '#95a5a6', cursor: 'not-allowed'}}
+                    disabled
+                >
+                    ⛔ Disponible solo en {userCity}
+                </button>
+            )}
         </div>
         
         {space && (

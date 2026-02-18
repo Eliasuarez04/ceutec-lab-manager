@@ -1,64 +1,132 @@
-/* --- ESTILOS PARA EL MODAL ACADÉMICO --- */
-.academic-form-container {
-    padding: 10px 0;
+/* Contenedor principal dentro del Modal */
+.academic-modal-wrapper {
+    padding: 0 10px 10px 10px;
+    font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
+/* Títulos de las secciones (Horario, Datos) */
+.form-section-header {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 0.85rem;
+    font-weight: 700;
+    color: #c8102e; /* Rojo Institucional */
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 15px;
+    border-bottom: 2px solid #f1f1f1;
+    padding-bottom: 5px;
+}
+
+.form-section-header .icon {
+    font-size: 1.1rem;
+}
+
+/* Filas del formulario (Flexbox) */
 .form-row-pro {
     display: flex;
-    gap: 20px;
+    gap: 20px; /* Espacio entre columnas */
     margin-bottom: 15px;
 }
 
+/* Grupos de campos (Labels + Inputs) */
 .field-group {
-    flex: 1;
+    flex: 1; /* Ocupa espacio equitativo */
     display: flex;
     flex-direction: column;
+    min-width: 0; /* Evita desbordamiento en flex */
 }
 
 .field-group.full {
-    flex: none;
-    width: 100%;
+    flex: 100%; /* Ocupa todo el ancho */
 }
 
+/* Etiquetas */
 .field-group label {
-    font-size: 0.7rem;
-    font-weight: 800;
-    color: #c8102e;
-    text-transform: uppercase;
-    margin-bottom: 5px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #4a5568;
+    margin-bottom: 6px;
+    display: block;
 }
 
-.field-group input, .field-group select {
-    padding: 12px;
-    border: 1px solid #ddd;
-    border-radius: 10px;
-    background: #f8fafc;
+/* Inputs y Selects */
+.field-group input,
+.field-group select {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid #e2e8f0;
+    border-radius: 8px;
+    background-color: #f8fafc;
     font-size: 0.9rem;
+    color: #2d3748;
+    transition: all 0.2s ease;
     outline: none;
+    box-sizing: border-box; /* Crucial para padding */
 }
 
-.field-group input:focus { border-color: #c8102e; background: white; }
-
-.field-group small {
-    font-size: 0.65rem;
-    color: #888;
-    margin-top: 4px;
+/* Estados de Focus */
+.field-group input:focus,
+.field-group select:focus {
+    border-color: #c8102e;
+    background-color: #fff;
+    box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.1);
 }
 
-/* Footer del Modal */
+/* Inputs de Hora específicos */
+.time-input {
+    font-family: 'Consolas', monospace; /* Para que los números se alineen bien */
+    font-weight: 600;
+    color: #1a202c;
+}
+
+/* Footer de botones */
 .modal-footer-pro {
     display: flex;
     justify-content: flex-end;
     gap: 12px;
-    margin-top: 20px;
-    padding-top: 20px;
-    border-top: 1px solid #eee;
+    margin-top: 25px;
+    padding-top: 15px;
+    border-top: 1px solid #edf2f7;
 }
 
-.btn-save-pro { background: #c8102e; color: white; border: none; padding: 12px 25px; border-radius: 8px; font-weight: 700; cursor: pointer; }
-.btn-cancel-pro { background: #eee; color: #666; border: none; padding: 12px 25px; border-radius: 8px; font-weight: 700; cursor: pointer; }
+.btn-save-pro {
+    background-color: #c8102e;
+    color: white;
+    border: none;
+    padding: 10px 24px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background 0.2s;
+}
 
-/* Vista de detalles del evento */
-.res-details-view h2 { margin-bottom: 20px; color: #333; }
-.res-info-grid p { margin-bottom: 10px; padding-bottom: 5px; border-bottom: 1px solid #f0f0f0; }
-.res-info-grid strong { color: #c8102e; min-width: 100px; display: inline-block; }
+.btn-save-pro:hover {
+    background-color: #a00c24;
+}
+
+.btn-cancel-pro {
+    background-color: white;
+    color: #718096;
+    border: 1px solid #cbd5e1;
+    padding: 10px 20px;
+    border-radius: 8px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-cancel-pro:hover {
+    background-color: #f7fafc;
+    color: #4a5568;
+    border-color: #a0aec0;
+}
+
+/* Responsive: En móviles, las columnas se vuelven filas */
+@media (max-width: 600px) {
+    .form-row-pro {
+        flex-direction: column;
+        gap: 10px;
+    }
+}

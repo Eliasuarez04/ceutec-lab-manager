@@ -1,11 +1,10 @@
-// src/pages/Admin/SpaceManager.js
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '../../firebaseConfig';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, writeBatch, getDoc, Timestamp } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, setDoc } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
-import Modal from '../../components/Modal';
-import { Link } from 'react-router-dom';
-import '../styles/InventoryManager.css';
+import { Link, useSearchParams } from 'react-router-dom';
+import Modal from '../../components/Modal'; 
+import '../styles/SpaceManager.css';
 import '../../pages/styles/Dashboard.css';
 import toast from 'react-hot-toast';
 import Swal from 'sweetalert2';
@@ -13,32 +12,39 @@ import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
 
-// --- Componente para una fila de la tabla de inventario ---
+const REGION_MAPPING = {
+  "San Pedro Sula": ["Ceutec SPS Norte", "Ceutec SPS Central"],
+  "Tegucigalpa": ["Ceutec TGU (Prado)", "Ceutec TGU (Centroamerica)"],
+  "La Ceiba": ["Ceutec LCE"]
+};
+
+// --- COMPONENTE: FILA DE INVENTARIO ---
 const InventoryRow = ({ item, onUpdate, onDelete, canEdit }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editedItem, setEditedItem] = useState({ ...item });
 
-  const handleUpdate = () => {
-    onUpdate(item.id, editedItem);
-    setIsEditing(false);
-  };
+  const handleUpdate = () => { onUpdate(item.id, editedItem); setIsEditing(false); };
 
   if (isEditing) {
     return (
-      <tr className="editing-row">
-        <td><input type="text" value={editedItem.name} onChange={(e) => setEditedItem({ ...editedItem, name: e.target.value })} /></td>
-        <td><input type="number" value={editedItem.quantity} onChange={(e) => setEditedItem({ ...editedItem, quantity: Number(e.target.value) })} /></td>
-        <td><input type="number" value={editedItem.stockThreshold || 0} onChange={(e) => setEditedItem({ ...editedItem, stockThreshold: Number(e.target.value) })} /></td>
+      <tr className="editing-row-pro">
+        <td><input type="text" className="edit-input" value={editedItem.name} onChange={(e) => setEditedItem({ ...editedItem, name: e.target.value })} /></td>
         <td>
-          <select value={editedItem.status} onChange={(e) => setEditedItem({ ...editedItem, status: e.target.value })}>
+            <input type="text" className="edit-input" placeholder="Marca" value={editedItem.brand || ''} onChange={(e) => setEditedItem({ ...editedItem, brand: e.target.value })} />
+            <input type="text" className="edit-input mt-5" placeholder="Modelo" value={editedItem.model || ''} onChange={(e) => setEditedItem({ ...editedItem, model: e.target.value })} />
+        </td>
+        <td><input type="number" className="edit-input" value={editedItem.quantity} onChange={(e) => setEditedItem({ ...editedItem, quantity: Number(e.target.value) })} /></td>
+        <td><input type="text" className="edit-input" value={editedItem.location || ''} onChange={(e) => setEditedItem({ ...editedItem, location: e.target.value })} /></td>
+        <td>
+          <select className="edit-select" value={editedItem.status} onChange={(e) => setEditedItem({ ...editedItem, status: e.target.value })}>
             <option value="Disponible">Disponible</option>
-            <option value="En Mantenimiento">En Mantenimiento</option>
-            <option value="Fuera de Servicio">Fuera de Servicio</option>
+            <option value="En Reparación">En Reparación</option>
+            <option value="Dañado">Dañado</option>
           </select>
         </td>
         <td className="actions-cell">
-          <button onClick={handleUpdate} className="action-btn save-btn">Guardar</button>
-          <button onClick={() => setIsEditing(false)} className="action-btn cancel-btn">Cancelar</button>
+          <button onClick={handleUpdate} className="btn-icon save">💾</button>
+          <button onClick={() => setIsEditing(false)} className="btn-icon cancel">✖</button>
         </td>
       </tr>
     );
@@ -46,203 +52,345 @@ const InventoryRow = ({ item, onUpdate, onDelete, canEdit }) => {
 
   return (
     <tr>
-      <td>{item.name}</td>
+      <td className="font-bold">{item.name}</td>
+      <td>
+          <div className="brand-text">{item.brand || '---'}</div>
+          <div className="model-text">{item.model || ''}</div>
+      </td>
       <td>{item.quantity}</td>
-      <td><span className="threshold-badge">{item.stockThreshold || 0}</span></td>
-      <td><span className={`status-badge status-${(item.status || 'disponible').toLowerCase().replace(/\s+/g, '-')}`}>{item.status || 'Disponible'}</span></td>
+      <td><div className="loc-text">{item.location || '---'}</div></td>
+      <td><span className={`status-pill ${(item.status || 'disponible').toLowerCase().replace(/\s+/g, '-')}`}>{item.status || 'Disponible'}</span></td>
       <td className="actions-cell">
         {canEdit && (
-          <>
-            <button onClick={() => setIsEditing(true)} className="action-btn edit-btn">Editar</button>
-            <button onClick={() => onDelete(item.id, item.name)} className="action-btn delete-btn">Eliminar</button>
-          </>
+          <div className="actions-btns-flex">
+            <button onClick={() => setIsEditing(true)} className="btn-icon edit">✏️</button>
+            <button onClick={() => onDelete(item.id, item.name)} className="btn-icon delete">🗑️</button>
+          </div>
         )}
-        {!canEdit && <span style={{fontSize: '0.8rem', color: '#999'}}>Sólo lectura</span>}
       </td>
     </tr>
   );
 };
 
-// --- Componente Principal SpaceManager ---
 export default function SpaceManager() {
-  const { currentUser, userData } = useAuth();
+  const { userData } = useAuth();
+  const [searchParams] = useSearchParams();
+  const currentSede = searchParams.get('sede') || "";
+
   const [spaces, setSpaces] = useState([]);
   const [selectedSpace, setSelectedSpace] = useState(null);
   const [equipment, setEquipment] = useState([]);
-  const [newEquipment, setNewEquipment] = useState({ name: '', quantity: 1, status: 'Disponible', stockThreshold: 0 });
-  const [loading, setLoading] = useState({ spaces: false, inventory: false });
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [currentSpaceData, setCurrentSpaceData] = useState({ name: '', location: '', description: '', status: 'Disponible', type: 'Aula', sede: '' });
+  const [activeType, setActiveType] = useState('Aula'); 
+  const [sidebarSearch, setSidebarSearch] = useState('');
+  const [itemSearch, setItemSearch] = useState(''); 
+  const [isEditingSpace, setIsEditingSpace] = useState(false);
+  const [isNewSpaceModalOpen, setIsNewSpaceModalOpen] = useState(false);
 
-  // Lógica de Permisos: ¿Puede este usuario gestionar este espacio?
+  const [newEquipment, setNewEquipment] = useState({ 
+    name: '', brand: '', model: '', quantity: 1, location: '', observations: '', status: 'Disponible' 
+  });
+
+  const [newSpaceData, setNewSpaceData] = useState({
+      name: '', building: '', floor: '', capacity: 20, type: 'Laboratorio', status: 'Disponible'
+  });
+
+  const isUserInHisCity = useMemo(() => {
+    if (userData?.role === 'superadmin') return true;
+    const allowedSedes = REGION_MAPPING[userData?.city] || [];
+    return allowedSedes.includes(currentSede);
+  }, [userData, currentSede]);
+
+  const userManagedType = useMemo(() => {
+    if (userData?.role === 'coord_labs') return 'Laboratorio';
+    if (userData?.role === 'coord_aulas') return 'Aula';
+    return null;
+  }, [userData]);
+
   const canManageSpace = (space) => {
     if (!userData || !space) return false;
     if (userData.role === 'superadmin') return true;
-
-    const isSameSede = space.sede === userData.sede;
-    const isCorrectType = space.type === userData.typeAssigned;
-
-    if (userData.role === 'coord_laboratorios' && isSameSede && space.type === 'Laboratorio') return true;
-    if (userData.role === 'coord_aulas' && isSameSede && space.type === 'Aula') return true;
-
+    if (!isUserInHisCity) return false;
+    if (userData.role === 'coordinador') return true;
+    if (userData.role === 'coord_labs' && space.type === 'Laboratorio') return true;
+    if (userData.role === 'coord_aulas' && space.type === 'Aula') return true;
     return false;
   };
 
   const fetchSpaces = useCallback(async () => {
-    setLoading(prev => ({ ...prev, spaces: true }));
-    const q = query(collection(db, 'spaces'), orderBy('name'));
-    const snap = await getDocs(q);
-    setSpaces(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    setLoading(prev => ({ ...prev, spaces: false }));
-  }, []);
+    try {
+      const snap = await getDocs(collection(db, 'spaces'));
+      const allDocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      const filtered = allDocs.filter(s => {
+          const sedeBD = (s.sede || s.campus || "").toLowerCase().trim();
+          const sedeBusqueda = currentSede.toLowerCase().replace('ceutec', '').replace('sps', '').trim();
+          return sedeBD.includes(sedeBusqueda) || sedeBusqueda.includes(sedeBD);
+      });
+      setSpaces(filtered);
+    } catch (error) { toast.error("Error al sincronizar"); }
+  }, [currentSede]);
 
   useEffect(() => { fetchSpaces(); }, [fetchSpaces]);
 
+  const handleOpenNewSpaceModal = () => {
+      if (!isUserInHisCity) {
+          return toast.error(`⛔ No puedes crear espacios en ${currentSede} porque tu ciudad base es ${userData.city}`);
+      }
+      setNewSpaceData({
+          name: '', building: '', floor: '', capacity: 20, 
+          type: userManagedType || 'Laboratorio', 
+          status: 'Disponible'
+      });
+      setIsNewSpaceModalOpen(true);
+  };
+
+  const visibleSpaces = useMemo(() => {
+      return spaces
+        .filter(s => s.type === activeType)
+        .filter(s => (s.name || "").toLowerCase().includes(sidebarSearch.toLowerCase()));
+  }, [spaces, activeType, sidebarSearch]);
+
+  const filteredEquipment = useMemo(() => {
+      return equipment.filter(item => 
+        item.name.toLowerCase().includes(itemSearch.toLowerCase()) ||
+        (item.brand && item.brand.toLowerCase().includes(itemSearch.toLowerCase()))
+      );
+  }, [equipment, itemSearch]);
+
   const fetchInventory = useCallback(async (spaceId) => {
-    setLoading(prev => ({ ...prev, inventory: true }));
     const q = query(collection(db, 'spaces', spaceId, 'equipment'), orderBy('name'));
     const snap = await getDocs(q);
     setEquipment(snap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-    setLoading(prev => ({ ...prev, inventory: false }));
   }, []);
 
   const handleSelectSpace = (space) => {
     setSelectedSpace(space);
+    setIsEditingSpace(false);
+    setItemSearch('');
     fetchInventory(space.id);
+  };
+
+  const handleCreateSpace = async (e) => {
+      e.preventDefault();
+      if (!isUserInHisCity) return toast.error("Acción denegada por región.");
+      try {
+          const finalType = userManagedType || newSpaceData.type;
+          const customId = `SPACE-${Math.floor(1000 + Math.random() * 9000)}`;
+          await setDoc(doc(db, 'spaces', customId), {
+              ...newSpaceData, type: finalType, id: customId, sede: currentSede, updatedAt: new Date()
+          });
+          toast.success("Espacio creado con éxito");
+          setIsNewSpaceModalOpen(false);
+          fetchSpaces();
+      } catch (e) { toast.error("Error al crear el espacio"); }
+  };
+
+  const handleUpdateSpace = async (e) => {
+    e.preventDefault();
+    if (!isUserInHisCity) return toast.error("No tienes permisos en esta ciudad.");
+    try {
+        await updateDoc(doc(db, 'spaces', selectedSpace.id), selectedSpace);
+        toast.success("Información actualizada");
+        setIsEditingSpace(false);
+        fetchSpaces();
+    } catch (e) { toast.error("Error al actualizar"); }
+  };
+
+  const handleDeleteSpace = () => {
+    if (!isUserInHisCity) return toast.error("Acción denegada por región.");
+    MySwal.fire({
+        title: `¿Eliminar ${selectedSpace.name}?`,
+        icon: 'warning', showCancelButton: true, confirmButtonColor: '#c8102e', confirmButtonText: 'Sí, eliminar'
+    }).then(async (result) => {
+        if (result.isConfirmed) {
+            await deleteDoc(doc(db, 'spaces', selectedSpace.id));
+            toast.success("Espacio eliminado");
+            setSelectedSpace(null);
+            fetchSpaces();
+        }
+    });
   };
 
   const handleAddEquipment = async (e) => {
     e.preventDefault();
-    if (!selectedSpace || !canManageSpace(selectedSpace)) return toast.error("No tienes permisos de edición.");
-    
-    const data = { ...newEquipment, name_uppercase: newEquipment.name.toUpperCase(), labName: selectedSpace.name };
-    await addDoc(collection(db, 'spaces', selectedSpace.id, 'equipment'), data);
-    toast.success("Equipo añadido");
-    setNewEquipment({ name: '', quantity: 1, status: 'Disponible', stockThreshold: 0 });
+    if (!canManageSpace(selectedSpace)) return;
+    await addDoc(collection(db, 'spaces', selectedSpace.id, 'equipment'), { ...newEquipment, labName: selectedSpace.name, createdAt: new Date() });
+    toast.success("Ítem agregado");
+    setNewEquipment({ name: '', brand: '', model: '', quantity: 1, location: '', observations: '', status: 'Disponible' });
     fetchInventory(selectedSpace.id);
-  };
-
-  const handleUpdateEquipment = async (itemId, updatedData) => {
-    const docRef = doc(db, 'spaces', selectedSpace.id, 'equipment', itemId);
-    await updateDoc(docRef, { ...updatedData, name_uppercase: updatedData.name.toUpperCase() });
-    toast.success("Actualizado");
-    fetchInventory(selectedSpace.id);
-  };
-
-  const handleDeleteEquipment = async (itemId, itemName) => {
-    MySwal.fire({
-      title: `¿Eliminar ${itemName}?`,
-      icon: 'warning',
-      showCancelButton: true,
-      confirmButtonColor: '#c8102e',
-      confirmButtonText: 'Sí, eliminar'
-    }).then(async (result) => {
-      if (result.isConfirmed) {
-        await deleteDoc(doc(db, 'spaces', selectedSpace.id, 'equipment', itemId));
-        fetchInventory(selectedSpace.id);
-      }
-    });
   };
 
   return (
     <div className="dashboard-wrapper">
-      {/* BOTÓN DE IMPORTACIÓN: Sólo Superadmin */}
-      {userData?.role === 'superadmin' && (
-        <Link to="/admin/importar-espacios" className="global-add-lab-btn">
-          ⚙️ Importar Espacios Maestros
-        </Link>
-      )}
+      <div className="manager-top-header">
+        <Link to={`/dashboard?sede=${currentSede}`} className="back-btn-modern">← Dashboard</Link>
+        <div className="header-actions-main">
+            <button className="btn-add-space-manual" onClick={handleOpenNewSpaceModal}>➕ Nuevo Espacio</button>
+            <Link to={`/admin/importar-inventario?sede=${currentSede}`} className="btn-import-excel">📥 Carga Masiva</Link>
+        </div>
+      </div>
 
-      <div className="manager-layout">
-        <aside className="sidebar">
-          <div className="sidebar-header">
-            <h2 className="sidebar-title">RECURSOS</h2>
+      <div className="manager-layout-grid">
+        <aside className="sidebar-pro">
+          <div className="sidebar-top-tabs">
+            <button className={activeType === 'Aula' ? 'active' : ''} onClick={() => setActiveType('Aula')}>Aulas</button>
+            <button className={activeType === 'Laboratorio' ? 'active' : ''} onClick={() => setActiveType('Laboratorio')}>Labs</button>
           </div>
-          <ul className="lab-selector-list">
-            {spaces.map(s => (
-              <li 
-                key={s.id} 
-                className={`${selectedSpace?.id === s.id ? 'active' : ''} ${!canManageSpace(s) ? 'read-only-item' : ''}`}
-                onClick={() => handleSelectSpace(s)}
-              >
-                <span className="type-dot">{s.type === 'Aula' ? '📖' : '🧪'}</span>
-                {s.name} 
-                {!canManageSpace(s) && <small> (Lectura)</small>}
+          <div className="sidebar-search">
+            <input type="text" placeholder="🔍 Buscar espacio..." value={sidebarSearch} onChange={e => setSidebarSearch(e.target.value)} />
+          </div>
+          <ul className="space-items-list">
+            {visibleSpaces.map(s => (
+              <li key={s.id} className={selectedSpace?.id === s.id ? 'active' : ''} onClick={() => handleSelectSpace(s)}>
+                <div className="item-main">{s.name}</div>
+                <div className="item-sub">{s.building} • {isUserInHisCity ? '✅ Tu Ciudad' : '🔒 Solo Lectura'}</div>
               </li>
             ))}
           </ul>
         </aside>
 
-        <main className="main-content">
+        <main className="content-pro">
           {selectedSpace ? (
-            <>
-              <div className="content-header floating-card">
-                <div>
-                    <h1>{selectedSpace.name}</h1>
-                    <p>📍 {selectedSpace.sede} | {selectedSpace.location}</p>
+            <div className="fade-in">
+              <div className="space-master-header floating-card">
+                <div className="info">
+                    <span className={`status-pill-big ${selectedSpace.status?.toLowerCase().replace(/\s+/g, '-')}`}>
+                        {selectedSpace.status}
+                    </span>
+                    <h2>{selectedSpace.name}</h2>
+                    <p>Sede: {currentSede} • Capacidad: {selectedSpace.capacity}</p>
                 </div>
-                {userData?.role === 'superadmin' && (
-                    <div className="header-actions">
-                        <button className="action-btn delete-btn" onClick={() => {/* lógica delete space */}}>Eliminar Espacio</button>
-                    </div>
+                {canManageSpace(selectedSpace) && (
+                    <button className="btn-edit-space" onClick={() => setIsEditingSpace(!isEditingSpace)}>
+                        {isEditingSpace ? 'Cerrar Edición' : '⚙️ Gestionar Espacio'}
+                    </button>
                 )}
               </div>
 
-              {/* FORMULARIO AÑADIR: Solo si tiene permiso */}
-              {canManageSpace(selectedSpace) ? (
-                <div className="manager-card">
-                  <h3 className="card-title">Añadir Nuevo Equipo</h3>
-                  <form onSubmit={handleAddEquipment} className="add-item-form">
-                    <input type="text" placeholder="Nombre equipo" value={newEquipment.name} onChange={(e) => setNewEquipment({...newEquipment, name: e.target.value})} required />
-                    <input type="number" placeholder="Cant" value={newEquipment.quantity} onChange={(e) => setNewEquipment({...newEquipment, quantity: Number(e.target.value)})} />
-                    <input type="number" placeholder="Alerta" value={newEquipment.stockThreshold} onChange={(e) => setNewEquipment({...newEquipment, stockThreshold: Number(e.target.value)})} />
-                    <select value={newEquipment.status} onChange={(e) => setNewEquipment({...newEquipment, status: e.target.value})}>
-                      <option value="Disponible">Disponible</option>
-                      <option value="En Mantenimiento">Mantenimiento</option>
-                    </select>
-                    <button type="submit">Añadir</button>
-                  </form>
+              {isEditingSpace && (
+                <div className="edit-space-card floating-card fade-in">
+                    <h3>Configuración del Espacio</h3>
+                    <form onSubmit={handleUpdateSpace} className="edit-grid-pro">
+                        <div className="field"><label>Nombre</label><input type="text" value={selectedSpace.name} onChange={e => setSelectedSpace({...selectedSpace, name: e.target.value})} /></div>
+                        <div className="field"><label>Edificio</label><input type="text" value={selectedSpace.building} onChange={e => setSelectedSpace({...selectedSpace, building: e.target.value})} /></div>
+                        <div className="field"><label>Piso</label><input type="number" value={selectedSpace.floor} onChange={e => setSelectedSpace({...selectedSpace, floor: e.target.value})} /></div>
+                        <div className="field"><label>Capacidad</label><input type="number" value={selectedSpace.capacity} onChange={e => setSelectedSpace({...selectedSpace, capacity: e.target.value})} /></div>
+                        <div className="field">
+                            <label>Estado</label>
+                            <select value={selectedSpace.status} onChange={e => setSelectedSpace({...selectedSpace, status: e.target.value})}>
+                                <option value="Disponible">Disponible</option>
+                                <option value="En Mantenimiento">En Mantenimiento</option>
+                            </select>
+                        </div>
+                        <div className="btn-row-space">
+                            <button type="submit" className="btn-confirm">Guardar Cambios</button>
+                            {userData?.role === 'superadmin' && <button type="button" className="btn-danger" onClick={handleDeleteSpace}>Eliminar</button>}
+                        </div>
+                    </form>
                 </div>
-              ) : (
-                  <div className="manager-card read-only-notice">
-                      <p>⚠️ Tienes acceso de <strong>Sólo Lectura</strong> para este espacio. Para modificaciones, contacta al Superadmin.</p>
-                  </div>
               )}
 
-              <div className="manager-card">
-                <h3 className="card-title">Inventario Actual</h3>
-                <table className="inventory-table-manager">
-                  <thead>
-                    <tr>
-                      <th>Recurso</th>
-                      <th>Cantidad</th>
-                      <th>Umbral</th>
-                      <th>Estado</th>
-                      <th className="actions-header">Acciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {equipment.map(item => (
-                      <InventoryRow 
-                        key={item.id} 
-                        item={item} 
-                        onUpdate={handleUpdateEquipment} 
-                        onDelete={handleDeleteEquipment}
-                        canEdit={canManageSpace(selectedSpace)}
-                      />
-                    ))}
-                  </tbody>
-                </table>
+              <div className="inventory-section">
+                <div className="section-header-pro">
+                    <h3>Inventario de Activos</h3>
+                    <div className="search-box-items">
+                        <span className="search-icon-inside">🔍</span>
+                        <input type="text" className="item-search-bar" placeholder="Filtrar insumos..." value={itemSearch} onChange={e => setItemSearch(e.target.value)} />
+                    </div>
+                </div>
+
+                {canManageSpace(selectedSpace) ? (
+                    <div className="add-item-panel-pro">
+                        <h4>Añadir Ítem Manualmente</h4>
+                        <form onSubmit={handleAddEquipment} className="add-item-grid-pro">
+                            <div className="field"><label>Nombre</label><input type="text" value={newEquipment.name} onChange={e => setNewEquipment({...newEquipment, name: e.target.value})} required /></div>
+                            <div className="field"><label>Marca</label><input type="text" value={newEquipment.brand} onChange={e => setNewEquipment({...newEquipment, brand: e.target.value})} /></div>
+                            <div className="field"><label>Modelo</label><input type="text" value={newEquipment.model} onChange={e => setNewEquipment({...newEquipment, model: e.target.value})} /></div>
+                            <div className="field"><label>Cant.</label><input type="number" value={newEquipment.quantity} onChange={e => setNewEquipment({...newEquipment, quantity: Number(e.target.value)})} /></div>
+                            <div className="field"><label>Ubicación</label><input type="text" value={newEquipment.location} onChange={e => setNewEquipment({...newEquipment, location: e.target.value})} /></div>
+                            <div className="field"><label>Notas</label><input type="text" value={newEquipment.observations} onChange={e => setNewEquipment({...newEquipment, observations: e.target.value})} /></div>
+                            <button type="submit" className="btn-add-item-final">Agregar</button>
+                        </form>
+                    </div>
+                ) : (
+                    <div className="read-only-notice-box" style={{background: '#f1f5f9', padding: '15px', borderRadius: '12px', borderLeft: '4px solid #94a3b8', marginBottom: '20px'}}>
+                        <p style={{margin:0, fontSize: '0.9rem', color: '#475569'}}>🔒 Estás viendo los recursos de <strong>{currentSede}</strong> en modo lectura. Solo puedes gestionar recursos de <strong>{userData.city}</strong>.</p>
+                    </div>
+                )}
+
+                <div className="table-wrapper-pro">
+                    <table className="inventory-table-pro">
+                        <thead>
+                            <tr><th>Recurso</th><th>Marca/Modelo</th><th>Cant.</th><th>Ubicación</th><th>Estado</th><th>Acciones</th></tr>
+                        </thead>
+                        <tbody>
+                            {filteredEquipment.length > 0 ? filteredEquipment.map(item => (
+                                <InventoryRow key={item.id} item={item} canEdit={canManageSpace(selectedSpace)} onUpdate={async (id, data) => {
+                                    await updateDoc(doc(db, 'spaces', selectedSpace.id, 'equipment', id), data);
+                                    fetchInventory(selectedSpace.id);
+                                    toast.success("Actualizado");
+                                }} onDelete={async (id) => {
+                                    MySwal.fire({ title: '¿Borrar?', icon: 'warning', showCancelButton: true, confirmButtonText: 'Sí' })
+                                    .then(async (res) => { if(res.isConfirmed) { await deleteDoc(doc(db, 'spaces', selectedSpace.id, 'equipment', id)); fetchInventory(selectedSpace.id); }})
+                                }} />
+                            )) : <tr><td colSpan="6" style={{textAlign:'center', padding:'30px', color:'#94a3b8'}}>No hay insumos que coincidan.</td></tr>}
+                        </tbody>
+                    </table>
+                </div>
               </div>
-            </>
-          ) : (
-            <div className="placeholder-content">
-              <h2>Selecciona un Recurso Académico</h2>
-              <p>Elige un aula o laboratorio de la izquierda para gestionar su inventario.</p>
             </div>
-          )}
+          ) : <div className="no-selection-pro"><h2>Selecciona un recurso académico 👈</h2></div>}
         </main>
       </div>
+
+      {/* MODAL NUEVO ESPACIO ACTUALIZADO */}
+      <Modal isOpen={isNewSpaceModalOpen} onClose={() => setIsNewSpaceModalOpen(false)} title="Crear Nuevo Recurso">
+          <form onSubmit={handleCreateSpace} className="academic-form-pro">
+              <div className="form-row-pro">
+                  <div className="field-group">
+                      <label>Nombre del Espacio</label>
+                      <input type="text" required value={newSpaceData.name} onChange={e => setNewSpaceData({...newSpaceData, name: e.target.value})} placeholder="Ej: Laboratorio 10" />
+                  </div>
+                  <div className="field-group">
+                      <label>Tipo</label>
+                      {userData?.role === 'superadmin' ? (
+                          <select value={newSpaceData.type} onChange={e => setNewSpaceData({...newSpaceData, type: e.target.value})}>
+                              <option value="Laboratorio">Laboratorio</option>
+                              <option value="Aula">Aula</option>
+                          </select>
+                      ) : (
+                          <input type="text" value={userManagedType} disabled className="locked-input" style={{background: '#f8fafc', color: '#64748b'}} />
+                      )}
+                  </div>
+              </div>
+
+              <div className="form-row-pro" style={{marginTop:'15px'}}>
+                  <div className="field-group">
+                      <label>Edificio</label>
+                      <input type="text" required value={newSpaceData.building} onChange={e => setNewSpaceData({...newSpaceData, building: e.target.value})} placeholder="Ej: Edificio 2" />
+                  </div>
+                  <div className="field-group">
+                      <label>Piso</label>
+                      <input type="number" required value={newSpaceData.floor} onChange={e => setNewSpaceData({...newSpaceData, floor: e.target.value})} placeholder="Ej: 1" />
+                  </div>
+              </div>
+
+              <div className="form-row-pro" style={{marginTop:'15px'}}>
+                  <div className="field-group">
+                      <label>Capacidad (Personas)</label>
+                      <input type="number" required value={newSpaceData.capacity} onChange={e => setNewSpaceData({...newSpaceData, capacity: Number(e.target.value)})} min="1" />
+                  </div>
+                  <div className="field-group">
+                      {/* Espacio vacío para mantener la alineación de 2 columnas */}
+                  </div>
+              </div>
+
+              <div className="modal-footer-pro" style={{marginTop:'30px', borderTop: '1px solid #eee', paddingTop: '20px'}}>
+                  <button type="submit" className="btn-save-pro" style={{width: '100%'}}>
+                      Crear {userManagedType || 'Espacio'} en {currentSede}
+                  </button>
+              </div>
+          </form>
+      </Modal>
     </div>
   );
 }

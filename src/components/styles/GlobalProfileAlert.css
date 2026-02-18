@@ -1,0 +1,53 @@
+.global-alert-banner {
+  background: linear-gradient(90deg, #c8102e 0%, #a00c24 100%);
+  color: white;
+  width: 100%;
+  padding: 12px 20px;
+  position: sticky; /* Se queda pegado arriba */
+  top: 0;
+  z-index: 9999; /* Por encima de todo */
+  box-shadow: 0 4px 15px rgba(200, 16, 46, 0.3);
+  animation: slideDown 0.5s ease-out;
+}
+
+.alert-content {
+  max-width: 1200px;
+  margin: 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  flex-wrap: wrap;
+  gap: 10px;
+}
+
+.alert-text {
+  font-size: 0.95rem;
+  flex: 1;
+}
+
+.alert-icon {
+  font-size: 1.2rem;
+  margin-right: 10px;
+}
+
+.alert-button {
+  background: white;
+  color: #c8102e;
+  padding: 6px 15px;
+  border-radius: 20px;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 0.9rem;
+  transition: transform 0.2s;
+  white-space: nowrap;
+}
+
+.alert-button:hover {
+  transform: scale(1.05);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+}
+
+@keyframes slideDown {
+  from { transform: translateY(-100%); }
+  to { transform: translateY(0); }
+}
