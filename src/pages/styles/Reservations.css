@@ -347,3 +347,131 @@
 /* Animaciones */
 .fade-in { animation: fadeIn 0.3s ease forwards; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(5px); } to { opacity: 1; transform: translateY(0); } }
+
+.btn-import-academic {
+    background: #1e293b;
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s;
+    font-size: 0.9rem;
+}
+
+.btn-import-academic:hover {
+    background: #000;
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+/* --- BOTÓN DE CARGA MASIVA --- */
+.btn-mass-load {
+    background: #198754; /* Verde institucional éxito */
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 12px;
+    font-weight: 700;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    box-shadow: 0 4px 10px rgba(25, 135, 84, 0.2);
+    font-size: 0.9rem;
+}
+
+.btn-mass-load:hover {
+    background: #146c43;
+    transform: translateY(-2px);
+    box-shadow: 0 6px 15px rgba(25, 135, 84, 0.3);
+}
+
+/* --- DROPZONE / ÁREA DE ARCHIVO --- */
+.dropzone-mass {
+    margin-top: 20px;
+    border: 2px dashed #cbd5e1;
+    border-radius: 16px;
+    padding: 40px 20px;
+    text-align: center;
+    background: #f8fafc;
+    transition: all 0.2s ease;
+}
+
+.dropzone-mass:hover {
+    border-color: #c8102e;
+    background: #fff5f5;
+}
+
+.dropzone-label {
+    cursor: pointer;
+    display: block;
+}
+
+.dropzone-label .icon {
+    font-size: 2.5rem;
+    display: block;
+    margin-bottom: 10px;
+}
+
+.dropzone-label p {
+    font-weight: 700;
+    color: #1e293b;
+    margin: 0;
+}
+
+.dropzone-label small {
+    color: #64748b;
+}
+
+/* --- PASO DE CONFIRMACIÓN --- */
+.summary-card-mass {
+    background: #f8fafc;
+    padding: 20px;
+    border-radius: 15px;
+    border: 1px solid #e2e8f0;
+    margin-bottom: 25px;
+}
+
+.summary-card-mass h3 {
+    margin: 0 0 15px 0;
+    font-size: 1.1rem;
+    color: #1e293b;
+    text-align: center;
+}
+
+.stat-row {
+    display: flex;
+    justify-content: space-between;
+    padding: 10px 0;
+    border-bottom: 1px solid #edf2f7;
+}
+
+.stat-row:last-of-type { border: none; }
+
+.alert-mass-load {
+    margin-top: 20px;
+    background: #fff3cd;
+    color: #856404;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    text-align: center;
+    border: 1px solid #ffeeba;
+}
+
+.loading-mass-state {
+    padding: 20px;
+}
+
+.loading-mass-state span {
+    font-size: 2rem;
+    display: block;
+    margin-bottom: 10px;
+    animation: rotate 2s linear infinite;
+}
+
+@keyframes rotate {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+}

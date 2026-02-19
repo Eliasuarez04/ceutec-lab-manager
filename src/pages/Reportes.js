@@ -5,18 +5,19 @@ import { db } from '../firebaseConfig';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { format, getDay, getHours, startOfDay, endOfDay, parseISO } from 'date-fns';
+import { es } from 'date-fns/locale'; 
 import { CSVLink } from 'react-csv';
-import { Link, useSearchParams } from 'react-router-dom'; // Importado para navegación y filtros
+import { Link, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import './styles/Reportes.css';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
-// --- Componente para Reportes de Uso (Gráficos) ---
 const ReporteUso = ({ data }) => {
   const labUsageData = useMemo(() => {
     const counts = data.reduce((acc, res) => {
-      acc[res.labName] = (acc[res.labName] || 0) + 1;
+      const name = res.labName || "Sin Nombre";
+      acc[name] = (acc[name] || 0) + 1;
       return acc;
     }, {});
     const sortedLabs = Object.entries(counts).sort((a, b) => b[1] - a[1]);
@@ -29,8 +30,10 @@ const ReporteUso = ({ data }) => {
   const dayUsageData = useMemo(() => {
     const dayCounts = [0, 0, 0, 0, 0, 0, 0];
     data.forEach(res => {
-      const day = getDay(res.startTime.toDate());
-      dayCounts[day]++;
+      if (res.startTime) {
+        const day = getDay(res.startTime.toDate());
+        dayCounts[day]++;
+      }
     });
     return {
       labels: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
@@ -38,69 +41,55 @@ const ReporteUso = ({ data }) => {
     };
   }, [data]);
 
-  const mostRequestedItemsData = useMemo(() => {
-    const itemCounts = data.reduce((acc, res) => {
-      if (res.requestedItems) {
-        res.requestedItems.forEach(item => {
-          acc[item.itemName] = (acc[item.itemName] || 0) + item.quantity;
-        });
-      }
-      return acc;
-    }, {});
-    const sortedItems = Object.entries(itemCounts).sort((a, b) => b[1] - a[1]).slice(0, 10);
-    return {
-      labels: sortedItems.map(item => item[0]),
-      datasets: [{ label: 'Cantidad Solicitada', data: sortedItems.map(item => item[1]), backgroundColor: 'rgba(255, 159, 64, 0.7)' }],
-    };
-  }, [data]);
-
   return (
     <div className="report-grid">
-      <div className="chart-wrapper"><Bar data={labUsageData} options={{ indexAxis: 'y', responsive: true, plugins:{title:{display:true, text:'Reservas por Espacio'}}}} /></div>
-      <div className="chart-wrapper"><Bar data={dayUsageData} options={{ responsive: true, plugins:{title:{display:true, text:'Reservas por Día de la Semana'}}}} /></div>
-      <div className="chart-wrapper full-width"><Bar data={mostRequestedItemsData} options={{ responsive: true, plugins:{title:{display:true, text:'Top 10 Ítems Más Solicitados'}}}} /></div>
+      <div className="chart-wrapper">
+        <Bar data={labUsageData} options={{ indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins:{title:{display:true, text:'Uso por Espacio Académico'}}}} />
+      </div>
+      <div className="chart-wrapper">
+        <Bar data={dayUsageData} options={{ responsive: true, maintainAspectRatio: false, plugins:{title:{display:true, text:'Distribución por Día'}}}} />
+      </div>
     </div>
   );
 };
 
-// --- Componente para el Mapa de Calor ---
 const ReporteHeatmap = ({ data }) => {
   const heatmapData = useMemo(() => {
     const grid = Array(16).fill(0).map(() => Array(7).fill(0));
     let maxReservations = 0;
     data.forEach(res => {
-      const day = getDay(res.startTime.toDate());
-      const hour = getHours(res.startTime.toDate());
-      const hourIndex = hour - 7;
-      if (hourIndex >= 0 && hourIndex < 16) {
-        grid[hourIndex][day]++;
-        if (grid[hourIndex][day] > maxReservations) { maxReservations = grid[hourIndex][day]; }
+      if (res.startTime) {
+        const date = res.startTime.toDate();
+        const day = getDay(date);
+        const hour = getHours(date);
+        const hourIndex = hour - 7;
+        if (hourIndex >= 0 && hourIndex < 16) {
+          grid[hourIndex][day]++;
+          if (grid[hourIndex][day] > maxReservations) maxReservations = grid[hourIndex][day];
+        }
       }
     });
     return { grid, maxReservations };
   }, [data]);
 
   const getCellColor = (count) => {
-    if (count === 0) return { backgroundColor: '#f9f9f9' };
+    if (count === 0) return { backgroundColor: '#f9f9f9', color: '#ccc' };
     const intensity = Math.min(count / (heatmapData.maxReservations || 1), 1);
-    const red = 255;
-    const green = 255 - Math.floor(intensity * 200);
-    const blue = 90 - Math.floor(intensity * 90);
-    return { backgroundColor: `rgb(${red}, ${green}, ${blue})`, color: intensity > 0.6 ? 'white' : 'black' };
+    return { backgroundColor: `rgba(200, 16, 46, ${intensity})`, color: intensity > 0.5 ? 'white' : 'black', fontWeight: 'bold' };
   };
 
   return (
-    <div className="report-section">
-      <h3>Mapa de Calor de Ocupación Semanal</h3>
+    <div className="report-section fade-in">
+      <h3 style={{textAlign: 'center', marginBottom: '20px', color: '#333'}}>Mapa de Calor de Ocupación Semanal</h3>
       <div className="heatmap-container">
         <table className="heatmap-table">
           <thead><tr><th>Hora</th><th>Dom</th><th>Lun</th><th>Mar</th><th>Mié</th><th>Jue</th><th>Vie</th><th>Sáb</th></tr></thead>
           <tbody>
             {heatmapData.grid.map((row, hourIndex) => (
               <tr key={hourIndex}>
-                <td>{`${hourIndex + 7}:00`}</td>
+                <td className="hour-label">{`${hourIndex + 7}:00`}</td>
                 {row.map((count, dayIndex) => (
-                  <td key={dayIndex} style={getCellColor(count)} title={`${count} reserva(s)`}>{count > 0 ? count : ''}</td>
+                  <td key={dayIndex} style={getCellColor(count)}>{count > 0 ? count : '-'}</td>
                 ))}
               </tr>
             ))}
@@ -111,39 +100,23 @@ const ReporteHeatmap = ({ data }) => {
   );
 };
 
-// --- Componente para Historial de Inventario ---
 const ReporteInventario = ({ logs }) => {
-    const [itemFilter, setItemFilter] = useState(null);
-
-    const filteredLogs = useMemo(() => {
-      if (!itemFilter) return logs;
-      return logs.filter(log => log.itemName === itemFilter);
-    }, [logs, itemFilter]);
-
     return (
-      <div className="report-section">
-        {itemFilter && (
-          <div className="audit-header">
-            <h4>Auditoría para: <strong>{itemFilter}</strong></h4>
-            <button onClick={() => setItemFilter(null)}>Limpiar Filtro</button>
-          </div>
-        )}
+      <div className="report-section fade-in">
         <div className="history-table-container">
           <table className="history-table">
-            <thead><tr><th>Fecha</th><th>Laboratorio</th><th>Equipo</th><th>Cambio</th><th>Cantidad</th><th>Usuario</th><th>Notas</th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Laboratorio</th><th>Equipo</th><th>Cambio</th><th>Usuario</th></tr></thead>
             <tbody>
-              {filteredLogs.length > 0 ? filteredLogs.map(log => (
+              {logs.length > 0 ? logs.map(log => (
                 <tr key={log.id}>
-                  <td>{log.timestamp ? format(log.timestamp.toDate(), 'dd/MM/yyyy HH:mm') : 'N/A'}</td>
+                  <td>{log.timestamp ? format(log.timestamp.toDate(), 'dd/MM/yy HH:mm') : 'N/A'}</td>
                   <td>{log.labName}</td>
-                  <td><span className="item-link" onClick={() => setItemFilter(log.itemName)}>{log.itemName}</span></td>
-                  <td><span className={`change-badge ${log.changeType.toLowerCase().replace(/\s+/g, '-')}`}>{log.changeType}</span></td>
-                  <td>{log.quantityChange > 0 ? `+${log.quantityChange}` : log.quantityChange} (Total: {log.newQuantity})</td>
+                  <td>{log.itemName}</td>
+                  <td><span className={`change-badge ${log.changeType.toLowerCase().replace(' ', '-')}`}>{log.changeType}</span></td>
                   <td>{log.userEmail}</td>
-                  <td>{log.notes || '-'}</td>
                 </tr>
               )) : (
-                <tr><td colSpan="7" style={{ textAlign: 'center', padding: '2rem' }}>No hay registros para el período seleccionado.</td></tr>
+                <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No hay registros de inventario.</td></tr>
               )}
             </tbody>
           </table>
@@ -152,11 +125,9 @@ const ReporteInventario = ({ logs }) => {
     );
 };
 
-
-// --- Página Principal de Reportes ---
 export default function Reportes() {
   const [searchParams] = useSearchParams();
-  const currentSede = searchParams.get('sede') || ""; // Capturamos la sede actual de la URL
+  const currentSede = searchParams.get('sede') || "";
 
   const [activeTab, setActiveTab] = useState('uso');
   const [startDate, setStartDate] = useState(format(new Date(new Date().setMonth(new Date().getMonth() - 1)), 'yyyy-MM-dd'));
@@ -172,33 +143,15 @@ export default function Reportes() {
       const start = Timestamp.fromDate(startOfDay(parseISO(startDate)));
       const end = Timestamp.fromDate(endOfDay(parseISO(endDate)));
 
-      // FILTRO POR SEDE AÑADIDO: 'where("sede", "==", currentSede)'
-      const resQuery = query(
-        collection(db, 'reservations'), 
-        where("sede", "==", currentSede), // <--- Filtro Sede
-        where('startTime', '>=', start), 
-        where('startTime', '<=', end)
-      );
-
-      // Si los logs de inventario tienen campo sede, filtramos, sino cargamos los del periodo
-      const logQuery = query(
-        collection(db, 'inventory_logs'), 
-        where('timestamp', '>=', start), 
-        where('timestamp', '<=', end), 
-        orderBy('timestamp', 'desc')
-      );
+      const resQuery = query(collection(db, 'reservations'), where("sede", "==", currentSede), where('startTime', '>=', start), where('startTime', '<=', end));
+      const logQuery = query(collection(db, 'inventory_logs'), where("sede", "==", currentSede), orderBy('timestamp', 'desc'));
 
       const [resSnap, logSnap] = await Promise.all([getDocs(resQuery), getDocs(logQuery)]);
-      
-      setReservationData(resSnap.docs.map(doc => doc.data()));
-      
-      // Filtrado manual de logs por si no tienen el campo sede directo (opcional pero recomendado)
-      const logsRaw = logSnap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      setInventoryLogData(logsRaw);
-
+      setReservationData(resSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      setInventoryLogData(logSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
     } catch (error) {
-      console.error("Error fetching report data:", error);
-      toast.error("Error al generar reportes. Verifica los índices de Firebase.");
+      console.error(error);
+      toast.error("Error al cargar datos. Verifica los índices de Firebase.");
     } finally {
       setLoading(false);
     }
@@ -206,66 +159,29 @@ export default function Reportes() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const csvHeaders = useMemo(() => ({
-    uso: [
-      { label: "Laboratorio", key: "labName" }, { label: "Motivo", key: "purpose" },
-      { label: "Tipo", key: "type" }, { label: "Fecha", key: "formattedDate" }, { label: "Horario", key: "formattedTime" }
-    ],
-    inventario: [
-      { label: "Fecha", key: "formattedTimestamp" }, { label: "Laboratorio", key: "labName" },
-      { label: "Equipo", key: "itemName" }, { label: "Cambio", key: "changeType" },
-      { label: "Variación", key: "quantityChange" }, { label: "Total", key: "newQuantity" },
-      { label: "Usuario", key: "userEmail" }, { label: "Notas", key: "notes" }
-    ]
-  }), []);
-
   const csvData = useMemo(() => {
-    if (activeTab === 'inventario') {
-      return inventoryLogData.map(log => ({
-        ...log, formattedTimestamp: log.timestamp ? format(log.timestamp.toDate(), 'dd/MM/yyyy HH:mm') : 'N/A'
-      }));
-    }
     return reservationData.map(res => ({
-      ...res,
-      formattedDate: format(res.startTime.toDate(), 'dd/MM/yyyy'),
-      formattedTime: `${format(res.startTime.toDate(), 'HH:mm')} - ${format(res.endTime.toDate(), 'HH:mm')}`
+      Materia: res.className || res.purpose,
+      Laboratorio: res.labName,
+      Docente: res.userName,
+      Fecha: res.startTime ? format(res.startTime.toDate(), 'dd/MM/yyyy') : '',
+      Hora: res.startTime ? `${format(res.startTime.toDate(), 'HH:mm')} - ${format(res.endTime.toDate(), 'HH:mm')}` : ''
     }));
-  }, [activeTab, reservationData, inventoryLogData]);
-
-  const getCurrentCsvHeaders = () => {
-    if (activeTab === 'inventario') return csvHeaders.inventario;
-    return csvHeaders.uso;
-  };
-  
-  const [isCsvReady, setIsCsvReady] = useState(false);
-  const handleCsvDownload = (event, done) => {
-    toast.loading('Generando CSV...', { id: 'csv-toast' });
-    setTimeout(() => {
-      setIsCsvReady(true);
-      toast.success('¡Listo!', { id: 'csv-toast' });
-      done(true);
-    }, 800);
-  };
-  useEffect(() => { if(isCsvReady) { setIsCsvReady(false); } }, [isCsvReady]);
+  }, [reservationData]);
 
   return (
     <div className="dashboard-wrapper">
-      <div className="reports-page-card fade-in">
+      <div className="reports-page-card">
         
-        {/* BOTÓN VOLVER DINÁMICO */}
-        <div style={{ marginBottom: '20px' }}>
-          <Link 
-            to={`/dashboard?sede=${encodeURIComponent(currentSede)}`} 
-            className="back-link-simple"
-            style={{ textDecoration: 'none', color: '#c8102e', fontWeight: 'bold', display: 'flex', alignItems: 'center', gap: '8px' }}
-          >
-            ← Volver al Dashboard
-          </Link>
+        <div className="nav-back-container">
+            <Link to={`/dashboard?sede=${encodeURIComponent(currentSede)}`} className="back-link-report">
+               ← Volver al Dashboard
+            </Link>
         </div>
         
-        <header className="page-header" style={{ marginBottom: '25px' }}>
-          <h1>📊 Reportería y Análisis</h1>
-          <p>Sede: <strong>{currentSede}</strong></p>
+        <header className="page-header-reports">
+          <h1>Módulo de Reportería</h1>
+          <p>Visualizando datos de: <strong>{currentSede}</strong></p>
         </header>
         
         <div className="report-controls">
@@ -275,29 +191,14 @@ export default function Reportes() {
             <button className={activeTab === 'inventario' ? 'active' : ''} onClick={() => setActiveTab('inventario')}>Historial Inventario</button>
           </div>
           <div className="filters">
-            <div className="date-range">
-                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-                <span>a</span>
-                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
-            </div>
-            <CSVLink
-              data={csvData}
-              headers={getCurrentCsvHeaders()}
-              filename={`reporte_${activeTab}_${currentSede}.csv`}
-              className="export-btn"
-              asyncOnClick={true}
-              onClick={handleCsvDownload}
-              uFEFF={true}
-            >
-              {isCsvReady ? "Generando..." : "Descargar CSV"}
-            </CSVLink>
+            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <CSVLink data={csvData} filename={`reporte_${currentSede}.csv`} className="export-btn">Descargar CSV</CSVLink>
           </div>
         </div>
         
         <div className="tab-content">
-          {loading ? (
-            <div className="loading-message">Procesando datos de {currentSede}...</div>
-          ) : (
+          {loading ? <div className="loading-msg">Procesando datos...</div> : (
             <>
               {activeTab === 'uso' && <ReporteUso data={reservationData} />}
               {activeTab === 'heatmap' && <ReporteHeatmap data={reservationData} />}
@@ -305,7 +206,6 @@ export default function Reportes() {
             </>
           )}
         </div>
-        
       </div>
     </div>
   );

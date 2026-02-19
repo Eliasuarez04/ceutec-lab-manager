@@ -38,7 +38,7 @@ const LoginForm = ({ onLogin, onForgotPassword }) => {
 
   return (
     <form onSubmit={(e) => { e.preventDefault(); onLogin(email, password); }} className="auth-form">
-      <h1>Portal de Recursos</h1>
+      <h1>CEUTEC-UNITEC SpaceOne</h1>
       <div className="input-wrapper">
         <MailIcon />
         <input type="email" placeholder="Correo Institucional" value={email} onChange={(e) => setEmail(e.target.value)} required />
