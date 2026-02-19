@@ -31,12 +31,14 @@ const ReporteUso = ({ data }) => {
     const dayCounts = [0, 0, 0, 0, 0, 0, 0];
     data.forEach(res => {
       if (res.startTime) {
-        const day = getDay(res.startTime.toDate());
+        // Convertir Timestamp a Date si es necesario
+        const date = res.startTime instanceof Timestamp ? res.startTime.toDate() : new Date(res.startTime);
+        const day = getDay(date);
         dayCounts[day]++;
       }
     });
     return {
-      labels: ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'],
+      labels: ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'],
       datasets: [{ label: 'Nº de Reservas', data: dayCounts, backgroundColor: 'rgba(0, 123, 255, 0.7)' }],
     };
   }, [data]);
@@ -59,7 +61,7 @@ const ReporteHeatmap = ({ data }) => {
     let maxReservations = 0;
     data.forEach(res => {
       if (res.startTime) {
-        const date = res.startTime.toDate();
+        const date = res.startTime instanceof Timestamp ? res.startTime.toDate() : new Date(res.startTime);
         const day = getDay(date);
         const hour = getHours(date);
         const hourIndex = hour - 7;
@@ -112,11 +114,11 @@ const ReporteInventario = ({ logs }) => {
                   <td>{log.timestamp ? format(log.timestamp.toDate(), 'dd/MM/yy HH:mm') : 'N/A'}</td>
                   <td>{log.labName}</td>
                   <td>{log.itemName}</td>
-                  <td><span className={`change-badge ${log.changeType.toLowerCase().replace(' ', '-')}`}>{log.changeType}</span></td>
+                  <td><span className={`change-badge ${log.changeType ? log.changeType.toLowerCase().replace(' ', '-') : ''}`}>{log.changeType}</span></td>
                   <td>{log.userEmail}</td>
                 </tr>
               )) : (
-                <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No hay registros de inventario.</td></tr>
+                <tr><td colSpan="5" style={{ textAlign: 'center', padding: '2rem' }}>No hay registros de inventario para esta sede en este rango.</td></tr>
               )}
             </tbody>
           </table>
@@ -130,8 +132,10 @@ export default function Reportes() {
   const currentSede = searchParams.get('sede') || "";
 
   const [activeTab, setActiveTab] = useState('uso');
+  // Inicializar fechas (último mes)
   const [startDate, setStartDate] = useState(format(new Date(new Date().setMonth(new Date().getMonth() - 1)), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
+  
   const [reservationData, setReservationData] = useState([]);
   const [inventoryLogData, setInventoryLogData] = useState([]);
   const [loading, setLoading] = useState(false);
@@ -139,19 +143,54 @@ export default function Reportes() {
   const fetchData = useCallback(async () => {
     if (!startDate || !endDate || !currentSede) return;
     setLoading(true);
+    
     try {
       const start = Timestamp.fromDate(startOfDay(parseISO(startDate)));
       const end = Timestamp.fromDate(endOfDay(parseISO(endDate)));
 
-      const resQuery = query(collection(db, 'reservations'), where("sede", "==", currentSede), where('startTime', '>=', start), where('startTime', '<=', end));
-      const logQuery = query(collection(db, 'inventory_logs'), where("sede", "==", currentSede), orderBy('timestamp', 'desc'));
+      // --- CAMBIO CLAVE: Consultamos por rango de fecha y filtramos Sede en JS para mayor resiliencia ---
+      const resQuery = query(
+        collection(db, 'reservations'), 
+        where('startTime', '>=', start), 
+        where('startTime', '<=', end)
+      );
+
+      // Los logs suelen ser menos, traemos los recientes
+      const logQuery = query(
+        collection(db, 'inventory_logs'), 
+        orderBy('timestamp', 'desc')
+      );
 
       const [resSnap, logSnap] = await Promise.all([getDocs(resQuery), getDocs(logQuery)]);
-      setReservationData(resSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
-      setInventoryLogData(logSnap.docs.map(doc => ({ id: doc.id, ...doc.data() })));
+      
+      const sedeNormalizada = currentSede.toLowerCase().replace('ceutec', '').trim();
+
+      // Filtrar Reservas
+      const filteredRes = resSnap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(res => {
+          const resSede = (res.sede || res.campus || "").toLowerCase();
+          return resSede.includes(sedeNormalizada) || sedeNormalizada.includes(resSede);
+        });
+
+      // Filtrar Logs
+      const filteredLogs = logSnap.docs
+        .map(doc => ({ id: doc.id, ...doc.data() }))
+        .filter(log => {
+          const logSede = (log.sede || log.campus || "").toLowerCase();
+          return logSede.includes(sedeNormalizada) || sedeNormalizada.includes(logSede);
+        });
+
+      setReservationData(filteredRes);
+      setInventoryLogData(filteredLogs);
+
+      if (filteredRes.length === 0 && filteredLogs.length === 0) {
+          toast("No se encontraron datos para los filtros seleccionados", { icon: 'ℹ️' });
+      }
+
     } catch (error) {
-      console.error(error);
-      toast.error("Error al cargar datos. Verifica los índices de Firebase.");
+      console.error("Error en Reportes:", error);
+      toast.error("Error al cargar datos. Verifica la conexión.");
     } finally {
       setLoading(false);
     }
@@ -181,7 +220,7 @@ export default function Reportes() {
         
         <header className="page-header-reports">
           <h1>Módulo de Reportería</h1>
-          <p>Visualizando datos de: <strong>{currentSede}</strong></p>
+          <p>Sede: <strong>{currentSede}</strong></p>
         </header>
         
         <div className="report-controls">
@@ -191,14 +230,25 @@ export default function Reportes() {
             <button className={activeTab === 'inventario' ? 'active' : ''} onClick={() => setActiveTab('inventario')}>Historial Inventario</button>
           </div>
           <div className="filters">
-            <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
-            <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            <div className="date-group">
+                <label>Desde:</label>
+                <input type="date" value={startDate} onChange={e => setStartDate(e.target.value)} />
+            </div>
+            <div className="date-group">
+                <label>Hasta:</label>
+                <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
+            </div>
             <CSVLink data={csvData} filename={`reporte_${currentSede}.csv`} className="export-btn">Descargar CSV</CSVLink>
           </div>
         </div>
         
         <div className="tab-content">
-          {loading ? <div className="loading-msg">Procesando datos...</div> : (
+          {loading ? (
+            <div className="loading-msg">
+                <div className="spinner"></div>
+                Procesando datos de {currentSede}...
+            </div>
+          ) : (
             <>
               {activeTab === 'uso' && <ReporteUso data={reservationData} />}
               {activeTab === 'heatmap' && <ReporteHeatmap data={reservationData} />}
