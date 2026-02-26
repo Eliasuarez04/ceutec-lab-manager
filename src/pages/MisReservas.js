@@ -3,7 +3,7 @@ import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebaseConfig';
-import { collection, query, where, getDocs, orderBy, doc, deleteDoc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, doc, deleteDoc, updateDoc, Timestamp } from 'firebase/firestore';
 import { format, isPast, isFuture, parseISO, startOfDay, endOfDay } from 'date-fns';
 import es from 'date-fns/locale/es';
 import toast from 'react-hot-toast';
@@ -128,7 +128,17 @@ export default function MisReservas() {
   const handleUpdateReservation = async (updatedData) => {
     try {
       const reservationRef = doc(db, 'reservations', editingReservation.id);
-      await updateDoc(reservationRef, updatedData);
+      
+      const dataToUpdate = {
+        ...updatedData,
+        // 🔴 MAPEO CORRECTO PARA BD
+        th: updatedData.thDocente,
+        attendees: updatedData.studentCount,
+        startTime: Timestamp.fromDate(new Date(updatedData.start)),
+        endTime: Timestamp.fromDate(new Date(updatedData.end)),
+      };
+
+      await updateDoc(reservationRef, dataToUpdate);
       toast.success("Reserva actualizada");
       setIsEditModalOpen(false);
       fetchReservations();
@@ -226,14 +236,18 @@ export default function MisReservas() {
       </div>
 
       {isEditModalOpen && (
-        <ReservationModal
-          isOpen={isEditModalOpen}
-          onClose={() => setIsEditModalOpen(false)}
-          spaceData={editingReservation}
-          existingReservation={editingReservation}
-          onSubmit={handleUpdateReservation}
-        />
-      )}
+  <ReservationModal
+    isOpen={isEditModalOpen}
+    onClose={() => setIsEditModalOpen(false)}
+    spaceData={{
+      id: editingReservation.labId,
+      name: editingReservation.labName
+    }}
+    existingReservation={editingReservation}
+    existingReservations={allReservations} // 🔴 Agrega esta línea
+    onSubmit={handleUpdateReservation}
+  />
+)}
     </div>
   );
 }

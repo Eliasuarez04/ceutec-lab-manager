@@ -8,7 +8,7 @@ import {
   sendEmailVerification,
   sendPasswordResetEmail 
 } from 'firebase/auth';
-import { doc, getDoc, setDoc, Timestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, Timestamp, onSnapshot } from 'firebase/firestore';
 
 const AuthContext = createContext();
 
@@ -85,24 +85,34 @@ export function AuthProvider({ children }) {
   }
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (user) => {
+    let unsubscribeDoc = null; // Variable para limpiar el escuchador de base de datos
+
+    const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
+
       if (user) {
-        try {
-          const docSnap = await getDoc(doc(db, 'users', user.uid));
+        // 🔴 CAMBIO CLAVE: Escuchador en tiempo real (onSnapshot)
+        // Cada vez que el documento del usuario cambie en Firebase, React se enterará al instante
+        unsubscribeDoc = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
           if (docSnap.exists()) {
             setUserData(docSnap.data());
           }
-        } catch (error) {
-          console.error("Error al obtener datos:", error);
-        }
+          setLoading(false);
+        }, (error) => {
+          console.error("Error en el listener de usuario:", error);
+          setLoading(false);
+        });
+
       } else {
         setUserData(null);
+        setLoading(false);
       }
-      setLoading(false);
     });
 
-    return unsubscribe;
+    return () => {
+      unsubscribeAuth();
+      if (unsubscribeDoc) unsubscribeDoc(); // Limpiamos ambos al desmontar
+    };
   }, []);
 
   const value = { currentUser, userData, signup, login, logout, resetPassword };

@@ -55,7 +55,7 @@ export default function Reservations() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [currentView, setCurrentView] = useState('day');
+  const [currentView, setCurrentView] = useState('month');
   
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
@@ -155,6 +155,9 @@ export default function Reservations() {
         userId: currentUser.uid,
         userEmail: currentUser.email,
         userName: currentUser.displayName || 'Usuario',
+        // 🔴 NORMALIZACIÓN DE CAMPOS PARA BD
+        th: data.thDocente || '',
+        attendees: data.studentCount || 0,
         startTime: Timestamp.fromDate(new Date(data.start)),
         endTime: Timestamp.fromDate(new Date(data.end)),
         createdAt: Timestamp.now(),
@@ -442,26 +445,33 @@ export default function Reservations() {
             <div className="loader-cal">Cargando...</div>
           ) : (
             <Calendar
-              localizer={localizer}
-              events={reservations}
-              startAccessor="start"
-              endAccessor="end"
-              style={{ height: 'calc(100vh - 420px)', minHeight: '500px' }}
-              culture="es"
-              messages={messages}
-              date={currentDate}
-              view={currentView}
-              onNavigate={setCurrentDate}
-              onView={setCurrentView}
-              selectable={canReserveInThisSede}
-              onSelectSlot={handleSlotSelect}
-              onSelectEvent={(ev) => { setSelectedEvent(ev); setIsViewModalOpen(true); }}
-            />
+  localizer={localizer}
+  events={reservations}
+  startAccessor="start"
+  endAccessor="end"
+  style={{ height: 'calc(100vh - 420px)', minHeight: '500px' }}
+  culture="es"
+  messages={messages}
+  date={currentDate}
+  view={currentView} // Esto ahora iniciará en 'month' gracias al cambio de arriba
+  onNavigate={setCurrentDate}
+  onView={setCurrentView}
+  selectable={canReserveInThisSede}
+  onSelectSlot={handleSlotSelect}
+  onSelectEvent={(ev) => { setSelectedEvent(ev); setIsViewModalOpen(true); }}
+/>
           )}
         </div>
       </div>
 
-      <ReservationModal isOpen={isBookingModalOpen} onClose={() => setIsBookingModalOpen(false)} spaceData={activeSpace} slotInfo={slotInfo} onSubmit={handleCreateReservation} />
+      <ReservationModal 
+  isOpen={isBookingModalOpen} 
+  onClose={() => setIsBookingModalOpen(false)} 
+  spaceData={activeSpace} 
+  slotInfo={slotInfo} 
+  onSubmit={handleCreateReservation} 
+  existingReservations={reservations} // 🔴 Agrega esta línea
+/>
       
       <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title="Detalles de la Reserva">
         {selectedEvent && (

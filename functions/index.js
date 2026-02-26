@@ -1,5 +1,9 @@
 // functions/index.js
-const { onDocumentCreated, onDocumentUpdated } = require("firebase-functions/v2/firestore");
+const { 
+  onDocumentCreated, 
+  onDocumentUpdated, 
+  onDocumentDeleted 
+} = require("firebase-functions/v2/firestore");
 const { logger } = require("firebase-functions");
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
@@ -7,10 +11,8 @@ const nodemailer = require("nodemailer");
 admin.initializeApp();
 const db = admin.firestore();
 
-// Declaramos la variable transporter aquí, pero no la inicializamos
 let transporter;
 
-// Función para inicializar el transporter solo cuando se necesite
 const initializeTransporter = () => {
   if (!transporter) {
     transporter = nodemailer.createTransport({
@@ -23,127 +25,181 @@ const initializeTransporter = () => {
   }
 };
 
-// --- FUNCIÓN DE RESERVAS ---
+// --- FUNCIÓN 1: CORREO DE NUEVA RESERVA ---
 exports.sendReservationEmail = onDocumentCreated(
   { document: "reservations/{reservationId}", region: "us-central1" },
   async (event) => {
     const snap = event.data;
-    if (!snap) { return; }
-    const reservationData = snap.data();
-    const reservationId = event.params.reservationId;
+    if (!snap) return;
+    const res = snap.data();
 
-    initializeTransporter(); // Llama a la función de inicialización
+    initializeTransporter();
 
     const appUrl = "https://ceutec-lab-manager.vercel.app";
-    const reservationLink = `${appUrl}/reservas?eventId=${reservationId}`;
+    const sedeEncoded = encodeURIComponent(res.sede || "");
+    const reservationLink = `${appUrl}/mis-reservas?sede=${sedeEncoded}`;
 
-    const admins = [];
-    try {
-      const adminQuery = await db.collection("users").where("role", "==", "admin").get();
-      adminQuery.forEach((doc) => admins.push(doc.data().email));
-    } catch (error) {
-      logger.error("Error getting admin users:", error);
-    }
-    
-    if (reservationData.userEmail && reservationData.userEmail !== 'Carga Académica') {
+    const formatHN = (date) => {
+      const hnDate = new Date(date.getTime() - (6 * 60 * 60 * 1000));
+      const dia = hnDate.getUTCDate().toString().padStart(2, '0');
+      const mes = (hnDate.getUTCMonth() + 1).toString().padStart(2, '0');
+      const anio = hnDate.getUTCFullYear();
+      const hora = hnDate.getUTCHours().toString().padStart(2, '0');
+      const min = hnDate.getUTCMinutes().toString().padStart(2, '0');
+      return { fecha: `${dia}/${mes}/${anio}`, hora: `${hora}:${min}` };
+    };
+
+    const start = formatHN(res.startTime.toDate());
+    const end = formatHN(res.endTime.toDate());
+
+    if (res.userEmail && res.userEmail !== 'Carga Académica') {
       const teacherMailOptions = {
-        from: `Portal de Laboratorios Ceutec <${process.env.GMAIL_EMAIL}>`,
-        to: reservationData.userEmail,
-        subject: "Confirmación de Reserva de Laboratorio",
+        from: `Portal Ceutec SpaceOne <${process.env.GMAIL_EMAIL}>`,
+        to: res.userEmail,
+        subject: "Confirmación de Reserva - Ceutec SpaceOne",
         html: `
-          <h1>¡Tu reserva ha sido confirmada!</h1>
-          <p>Has reservado exitosamente el siguiente espacio:</p>
-          <ul>
-            <li><strong>Laboratorio:</strong> ${reservationData.labName}</li>
-            <li><strong>Motivo:</strong> ${reservationData.purpose}</li>
-            <li><strong>Fecha:</strong> ${reservationData.startTime.toDate().toLocaleDateString("es-ES")}</li>
-            <li><strong>Hora:</strong> ${reservationData.startTime.toDate().toLocaleTimeString("es-ES", {hour: "2-digit", minute: "2-digit"})} - ${reservationData.endTime.toDate().toLocaleTimeString("es-ES", {hour: "2-digit", minute: "2-digit"})}</li>
-          </ul>
-          <p>Puedes ver los detalles de tu reserva haciendo clic en el siguiente enlace:</p>
-          <a href="${reservationLink}" style="padding: 10px 15px; background-color: #c8102e; color: white; text-decoration: none; border-radius: 5px;">Ver Detalles de la Reserva</a>
+          <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; border: 1px solid #ddd; border-radius: 12px; padding: 25px;">
+            <h2 style="color: #c8102e; border-bottom: 2px solid #c8102e; padding-bottom: 10px;">¡Reserva Confirmada!</h2>
+            <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+              <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Espacio:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${res.labName}</td></tr>
+              <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Materia:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${res.className || res.purpose}</td></tr>
+              <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Docente:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${res.userName}</td></tr>
+              <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Sección / TH:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">Sec: ${res.section || 'N/A'} | TH: ${res.th || 'N/A'}</td></tr>
+              <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Estudiantes:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${res.attendees || '0'}</td></tr>
+              <tr style="background-color: #fff5f5;">
+                <td style="padding: 10px; font-weight: bold; color: #c8102e;">Fecha:</td><td style="padding: 10px; font-weight: bold;">${start.fecha}</td>
+              </tr>
+              <tr style="background-color: #fff5f5;">
+                <td style="padding: 10px; font-weight: bold; color: #c8102e;">Horario:</td><td style="padding: 10px; font-weight: bold;">${start.hora} - ${end.hora}</td>
+              </tr>
+            </table>
+            <div style="text-align: center; margin-top: 30px;">
+              <a href="${reservationLink}" style="background-color: #c8102e; color: white; padding: 12px 25px; text-decoration: none; border-radius: 8px; font-weight: bold; display: inline-block;">Ver Mis Reservas</a>
+            </div>
+          </div>
         `,
       };
-      try {
-        await transporter.sendMail(teacherMailOptions);
-        logger.log("Correo de confirmación enviado a:", reservationData.userEmail);
-      } catch (error) {
-        logger.error("Error al enviar correo al docente:", error);
-      }
-    }
-
-    if (admins.length > 0) {
-      const adminMailOptions = {
-        from: `Notificaciones del Portal <${process.env.GMAIL_EMAIL}>`,
-        to: admins.join(", "),
-        subject: `Nueva Reserva: ${reservationData.labName}`,
-        html: `
-          <h1>Nueva Reserva Realizada</h1>
-          <p>El usuario <strong>${reservationData.userEmail}</strong> ha realizado una nueva reserva.</p>
-          <ul>
-            <li><strong>Laboratorio:</strong> ${reservationData.labName}</li>
-            <li><strong>Motivo:</strong> ${reservationData.purpose}</li>
-          </ul>
-          <p>Puedes ver los detalles de la reserva en la aplicación:</p>
-          <a href="${reservationLink}" style="padding: 10px 15px; background-color: #c8102e; color: white; text-decoration: none; border-radius: 5px;">Ver Reserva</a>
-        `,
-      };
-      try {
-        await transporter.sendMail(adminMailOptions);
-        logger.log("Correo de notificación enviado a los administradores.");
-      } catch (error) {
-        logger.error("Error al enviar correo a los administradores:", error);
-      }
+      await transporter.sendMail(teacherMailOptions);
     }
   }
 );
 
+// --- FUNCIÓN 2: CORREO CUANDO SE EDITA/MODIFICA ---
+exports.onReservationUpdated = onDocumentUpdated(
+  { document: "reservations/{reservationId}", region: "us-central1" },
+  async (event) => {
+    const before = event.data.before.data();
+    const after = event.data.after.data();
+    initializeTransporter();
 
-// --- FUNCIÓN DE NOTIFICACIONES DE INVENTARIO ---
+    const formatHNTime = (ts) => {
+      const date = ts.toDate();
+      const hnDate = new Date(date.getTime() - (6 * 60 * 60 * 1000));
+      return hnDate.getUTCHours().toString().padStart(2, '0') + ":" + hnDate.getUTCMinutes().toString().padStart(2, '0');
+    };
+
+    // Buscamos coordinadores de laboratorios
+    const coords = [];
+    const coordSnap = await db.collection("users").where("role", "==", "coord_labs").get();
+    coordSnap.forEach(doc => coords.push(doc.data().email));
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 25px; border-radius: 12px;">
+        <h2 style="color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 10px;">Reserva Modificada</h2>
+        <p>Se han actualizado los detalles de la reserva en: <b>${after.labName}</b></p>
+        <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
+          <tr style="background: #f8f9fa;">
+            <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left;">Campo</th>
+            <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left;">Antes</th>
+            <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left; color: #d9534f;">Ahora</th>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><b>Materia/Clase</b></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${before.className || before.purpose}</td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${after.className || after.purpose}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><b>Horario</b></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${formatHNTime(before.startTime)} - ${formatHNTime(before.endTime)}</td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${formatHNTime(after.startTime)} - ${formatHNTime(after.endTime)}</td>
+          </tr>
+          <tr>
+            <td style="padding: 10px; border: 1px solid #dee2e6;"><b>Alumnos</b></td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${before.attendees || 0}</td>
+            <td style="padding: 10px; border: 1px solid #dee2e6;">${after.attendees || 0}</td>
+          </tr>
+        </table>
+        <p style="font-size: 0.9rem; color: #666;">Docente: ${after.userName} (${after.userEmail})</p>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: `Portal SpaceOne <${process.env.GMAIL_EMAIL}>`,
+      to: [after.userEmail, ...coords].join(", "),
+      subject: `🔄 Reserva Modificada: ${after.labName}`,
+      html: htmlContent
+    };
+    await transporter.sendMail(mailOptions);
+  }
+);
+
+// --- FUNCIÓN 3: CORREO CUANDO SE CANCELA/ELIMINA ---
+exports.onReservationDeleted = onDocumentDeleted(
+  { document: "reservations/{reservationId}", region: "us-central1" },
+  async (event) => {
+    const deletedData = event.data.data();
+    initializeTransporter();
+
+    const coords = [];
+    const coordSnap = await db.collection("users").where("role", "==", "coord_labs").get();
+    coordSnap.forEach(doc => coords.push(doc.data().email));
+
+    const htmlContent = `
+      <div style="font-family: Arial, sans-serif; border: 2px solid #c8102e; padding: 25px; border-radius: 12px;">
+        <h2 style="color: #c8102e; border-bottom: 2px solid #c8102e; padding-bottom: 10px;">Reserva Cancelada</h2>
+        <p>Se ha eliminado la reserva para el espacio académico:</p>
+        <ul style="line-height: 2;">
+          <li><b>Espacio:</b> ${deletedData.labName}</li>
+          <li><b>Materia/Clase:</b> ${deletedData.className || deletedData.purpose}</li>
+          <li><b>Docente:</b> ${deletedData.userName} (${deletedData.userEmail})</li>
+        </ul>
+        <p style="color: #d9534f; font-weight: bold; margin-top: 20px;">El espacio ha sido liberado en el calendario.</p>
+      </div>
+    `;
+
+    const mailOptions = {
+      from: `Portal SpaceOne <${process.env.GMAIL_EMAIL}>`,
+      to: [deletedData.userEmail, ...coords].join(", "),
+      subject: `❌ Reserva Cancelada: ${deletedData.labName}`,
+      html: htmlContent
+    };
+    await transporter.sendMail(mailOptions);
+  }
+);
+
+// --- FUNCIÓN 4: STOCK DE INVENTARIO ---
 exports.checkStockLevels = onDocumentUpdated(
-  { document: "laboratories/{labId}/equipment/{equipmentId}", region: "us-central1" },
+  { document: "spaces/{labId}/equipment/{equipmentId}", region: "us-central1" },
   async (event) => {
     const beforeData = event.data.before.data();
     const afterData = event.data.after.data();
     const stockThreshold = afterData.stockThreshold;
-    if (!stockThreshold || stockThreshold <= 0) { return; }
+    if (!stockThreshold || stockThreshold <= 0) return;
 
     if (beforeData.quantity > stockThreshold && afterData.quantity <= stockThreshold) {
-      logger.log(`¡Alerta de stock bajo! Item: ${afterData.name}, Cantidad: ${afterData.quantity}, Umbral: ${stockThreshold}`);
-      
-      initializeTransporter(); // Llama a la función de inicialización
-
+      initializeTransporter();
       const admins = [];
-      try {
-        const adminQuery = await db.collection("users").where("role", "==", "admin").get();
-        adminQuery.forEach((doc) => admins.push(doc.data().email));
-      } catch (error) {
-        logger.error("Error al obtener administradores:", error);
-        return;
-      }
+      const adminQuery = await db.collection("users").where("role", "==", "superadmin").get();
+      adminQuery.forEach(doc => admins.push(doc.data().email));
 
       if (admins.length > 0) {
         const mailOptions = {
-          from: `Alertas del Portal <${process.env.GMAIL_EMAIL}>`,
+          from: `Alertas SpaceOne <${process.env.GMAIL_EMAIL}>`,
           to: admins.join(", "),
-          subject: `⚠️ Alerta de Stock Bajo: ${afterData.name}`,
-          html: `
-            <h1>Alerta de Inventario Bajo</h1>
-            <p>El siguiente ítem ha alcanzado o caído por debajo de su umbral de alerta:</p>
-            <ul>
-              <li><strong>Laboratorio:</strong> ${afterData.labName || 'No especificado'}</li>
-              <li><strong>Ítem:</strong> ${afterData.name}</li>
-              <li><strong>Cantidad Actual:</strong> <strong style="color: red;">${afterData.quantity}</strong></li>
-              <li><strong>Umbral de Alerta:</strong> ${stockThreshold}</li>
-            </ul>
-            <p>Por favor, revisa el inventario para planificar la reposición.</p>
-          `,
+          subject: `⚠️ Stock Bajo: ${afterData.name}`,
+          html: `<h3>Alerta de Inventario</h3><p>El ítem <b>${afterData.name}</b> está bajo el umbral en ${afterData.labName}.</p>`
         };
-        try {
-          await transporter.sendMail(mailOptions);
-          logger.log("Correo de alerta de stock bajo enviado.");
-        } catch (error) {
-          logger.error("Error al enviar correo de alerta:", error);
-        }
+        await transporter.sendMail(mailOptions);
       }
     }
   }

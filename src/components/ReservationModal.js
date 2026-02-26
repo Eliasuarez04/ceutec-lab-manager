@@ -1,42 +1,57 @@
+// src/components/ReservationModal.js
 import React, { useState, useEffect } from 'react';
 import Modal from './Modal';
-// Asegúrate de que esta ruta sea correcta en tu proyecto
 import { FACULTIES_DATA, RESERVATION_TYPES } from '../utils/academicMapping';
 import { format, setHours, setMinutes } from 'date-fns';
 import toast from 'react-hot-toast';
 import './styles/ReservationModal.css';
 
-const ReservationModal = ({ isOpen, onClose, spaceData, slotInfo, onSubmit, existingReservations }) => {
-  const [formData, setFormData] = useState({
+const ReservationModal = ({ isOpen, onClose, spaceData, slotInfo, onSubmit, existingReservations, existingReservation }) => {
+  const[formData, setFormData] = useState({
     reservationType: '', faculty: '', career: '', thDocente: '',
     section: '', className: '', studentCount: 0, purpose: '',
     startTime: '07:00', endTime: '08:30'
   });
 
-  const [availableCareers, setAvailableCareers] = useState([]);
+  const[availableCareers, setAvailableCareers] = useState([]);
 
-  // Inicializar datos cuando se abre el modal
+  // Lógica para pre-llenar datos si estamos editando, o limpiar si es nueva reserva
   useEffect(() => {
-    if (isOpen && slotInfo) {
-      setFormData(prev => ({
-        ...prev,
-        // Pre-llenamos con la hora del slot seleccionado
-        startTime: format(slotInfo.start, 'HH:mm'),
-        endTime: format(slotInfo.end, 'HH:mm'),
-        reservationType: '', faculty: '', career: '', thDocente: '', 
-        section: '', className: '', studentCount: 0, purpose: ''
-      }));
+    if (isOpen) {
+      if (existingReservation) {
+        // MODO EDICIÓN: Mapeamos los datos de la BD al formulario del modal
+        setFormData({
+          reservationType: existingReservation.reservationType || '',
+          faculty: existingReservation.faculty || '',
+          career: existingReservation.career || '',
+          thDocente: existingReservation.th || '', // Usar nombre de BD
+          section: existingReservation.section || '',
+          className: existingReservation.className || '',
+          studentCount: existingReservation.attendees || 0, // Usar nombre de BD
+          purpose: existingReservation.purpose || '',
+          startTime: format(existingReservation.startTime.toDate(), 'HH:mm'),
+          endTime: format(existingReservation.endTime.toDate(), 'HH:mm')
+        });
+      } else {
+        // MODO CREACIÓN: Limpiar campos
+        setFormData({
+          reservationType: '', faculty: '', career: '', thDocente: '',
+          section: '', className: '', studentCount: 0, purpose: '',
+          startTime: slotInfo ? format(slotInfo.start, 'HH:mm') : '07:00',
+          endTime: slotInfo ? format(slotInfo.end, 'HH:mm') : '08:30'
+        });
+      }
     }
-  }, [isOpen, slotInfo]);
+  }, [isOpen, existingReservation, slotInfo]);
 
-  // Lógica de Carreras Dinámicas (INTACTA)
+  // Lógica de Carreras Dinámicas
   useEffect(() => {
     if (formData.faculty) {
       setAvailableCareers(FACULTIES_DATA[formData.faculty] || []);
     } else {
       setAvailableCareers([]);
     }
-  }, [formData.faculty]);
+  },[formData.faculty]);
 
   const handleSubmit = (e) => {
     e.preventDefault();
@@ -45,31 +60,43 @@ const ReservationModal = ({ isOpen, onClose, spaceData, slotInfo, onSubmit, exis
       return toast.error(`¡Sobrecupo! Capacidad máxima: ${spaceData.capacity}`);
     }
 
-    // --- PROCESAMIENTO DE HORAS (INTACTO) ---
+    // 1. Calcular fechas finales de la nueva reserva
+    const baseDate = slotInfo ? slotInfo.start : (existingReservation ? existingReservation.startTime.toDate() : new Date());
     const [startH, startM] = formData.startTime.split(':');
     const [endH, endM] = formData.endTime.split(':');
 
-    const finalStart = setMinutes(setHours(new Date(slotInfo.start), startH), startM);
-    const finalEnd = setMinutes(setHours(new Date(slotInfo.start), endH), endM);
+    const finalStart = setMinutes(setHours(new Date(baseDate), startH), startM);
+    const finalEnd = setMinutes(setHours(new Date(baseDate), endH), endM);
 
     if (finalStart >= finalEnd) {
       return toast.error("La hora de fin debe ser posterior a la de inicio");
     }
 
-    // VALIDACIÓN DE SOLAPAMIENTO
-    const isOverlapping = existingReservations?.some(res => {
-      if (res.labId !== spaceData.id) return false;
-      const resStart = new Date(res.start);
-      const resEnd = new Date(res.end);
-      return finalStart < resEnd && finalEnd > resStart;
+    // 2. VALIDACIÓN DE CHOQUE DE HORARIOS (OVERLAP)
+    // Buscamos si hay alguna reserva que coincida en el mismo laboratorio y se cruce en el tiempo
+    const conflict = existingReservations?.find(res => {
+      // Si estamos editando, no comparamos con la misma reserva
+      if (existingReservation && res.id === existingReservation.id) return false;
+
+      // Solo validar reservas del mismo laboratorio
+      const sameLab = res.labId === spaceData.id;
+      
+      if (sameLab) {
+        const resStart = res.startTime?.toDate ? res.startTime.toDate() : new Date(res.start);
+        const resEnd = res.endTime?.toDate ? res.endTime.toDate() : new Date(res.end);
+
+        // Lógica de traslape: (InicioA < FinB) Y (FinA > InicioB)
+        return (finalStart < resEnd && finalEnd > resStart);
+      }
+      return false;
     });
 
-    if (isOverlapping) {
-      return toast.error("Este horario ya está ocupado.");
+    if (conflict) {
+      return toast.error(`⚠️ Error: Ya existe una reserva para ${conflict.className || 'otra materia'} en este horario.`);
     }
 
+    // 3. Si todo está bien, enviar datos
     onSubmit({ ...formData, start: finalStart, end: finalEnd });
-    onClose();
   };
 
   return (
@@ -95,23 +122,11 @@ const ReservationModal = ({ isOpen, onClose, spaceData, slotInfo, onSubmit, exis
           <div className="form-row-pro">
             <div className="field-group">
               <label>Hora Inicio</label>
-              <input 
-                type="time" 
-                required 
-                className="time-input"
-                value={formData.startTime} 
-                onChange={(e) => setFormData({...formData, startTime: e.target.value})} 
-              />
+              <input type="time" required className="time-input" value={formData.startTime} onChange={(e) => setFormData({...formData, startTime: e.target.value})} />
             </div>
             <div className="field-group">
               <label>Hora Fin</label>
-              <input 
-                type="time" 
-                required 
-                className="time-input"
-                value={formData.endTime} 
-                onChange={(e) => setFormData({...formData, endTime: e.target.value})} 
-              />
+              <input type="time" required className="time-input" value={formData.endTime} onChange={(e) => setFormData({...formData, endTime: e.target.value})} />
             </div>
           </div>
 
@@ -125,7 +140,6 @@ const ReservationModal = ({ isOpen, onClose, spaceData, slotInfo, onSubmit, exis
               <label>Facultad</label>
               <select required value={formData.faculty} onChange={(e) => setFormData({...formData, faculty: e.target.value, career: ''})}>
                 <option value="">Seleccione...</option>
-                {/* Aseguramos que FACULTIES_DATA existe, si no, usa array vacío */}
                 {Object.keys(FACULTIES_DATA || {}).map(f => <option key={f} value={f}>{f}</option>)}
               </select>
             </div>
@@ -163,14 +177,13 @@ const ReservationModal = ({ isOpen, onClose, spaceData, slotInfo, onSubmit, exis
             </div>
             <div className="field-group">
               <label>Observaciones</label>
-              <input type="text" placeholder="Software, equipo extra..." value={formData.purpose} onChange={(e) => setFormData({...formData, purpose: e.target.value})} />
+              <input type="text" placeholder="Opcional..." value={formData.purpose} onChange={(e) => setFormData({...formData, purpose: e.target.value})} />
             </div>
           </div>
 
-          {/* FOOTER DE ACCIONES */}
           <div className="modal-footer-pro">
             <button type="button" onClick={onClose} className="btn-cancel-pro">Cancelar</button>
-            <button type="submit" className="btn-save-pro">Confirmar Reserva</button>
+            <button type="submit" className="btn-save-pro">{existingReservation ? "Actualizar Reserva" : "Confirmar Reserva"}</button>
           </div>
         </form>
       </div>
