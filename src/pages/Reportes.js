@@ -10,6 +10,7 @@ import { CSVLink } from 'react-csv';
 import { Link, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import './styles/Reportes.css';
+import * as XLSX from 'xlsx';
 
 ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend);
 
@@ -140,6 +141,25 @@ export default function Reportes() {
   const [inventoryLogData, setInventoryLogData] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  const handleExportExcel = () => {
+    const reportData = reservationData.map(res => ({
+      'Sede': res.sede,
+      'Espacio': res.labName,
+      'Docente': res.userName,
+      'Materia': res.className || res.purpose,
+      'Fecha': res.startTime ? format(res.startTime.toDate(), 'dd/MM/yyyy') : '',
+      'Hora Programada': res.startTime ? `${format(res.startTime.toDate(), 'HH:mm')} - ${format(res.endTime.toDate(), 'HH:mm')}` : '',
+      'Check-In Real': res.checkInTime ? format(res.checkInTime.toDate(), 'HH:mm:ss') : 'N/A',
+      'Check-Out Real': res.checkOutTime ? format(res.checkOutTime.toDate(), 'HH:mm:ss') : 'N/A',
+      'Estado': res.fulfillmentStatus
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(reportData);
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, "Reporte Asistencia");
+    XLSX.writeFile(wb, `Reporte_CeuSpaces_${currentSede}.xlsx`);
+};
+
   const fetchData = useCallback(async () => {
     if (!startDate || !endDate || !currentSede) return;
     setLoading(true);
@@ -238,7 +258,9 @@ export default function Reportes() {
                 <label>Hasta:</label>
                 <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
             </div>
-            <CSVLink data={csvData} filename={`reporte_${currentSede}.csv`} className="export-btn">Descargar CSV</CSVLink>
+            <button onClick={handleExportExcel} className="export-btn-xlsx" style={{ background: '#1d6f42', color: 'white', padding: '10px 20px', borderRadius: '10px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>
+    📊 Exportar Reporte Operativo (Excel)
+</button>
           </div>
         </div>
         

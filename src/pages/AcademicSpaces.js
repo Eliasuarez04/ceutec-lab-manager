@@ -61,12 +61,16 @@ export default function AcademicSpaces() {
     fetchSpaces();
   }, [currentSede, urlTipo]);
 
-  const filteredSpaces = useMemo(() => {
+  // src/pages/AcademicSpaces.js
+const filteredSpaces = useMemo(() => {
     return spaces.filter(s => {
-      const nom = (s.name || s.Nombre || s.id || "").toLowerCase();
-      return nom.includes(searchTerm.toLowerCase());
+      const nom = (s.name || s.id || "").toLowerCase();
+      const tags = (s.tags || []).join(' ').toLowerCase(); // 🔴 BUSCA EN ETIQUETAS
+      const search = searchTerm.toLowerCase();
+      
+      return nom.includes(search) || tags.includes(search);
     });
-  }, [spaces, searchTerm]);
+}, [spaces, searchTerm]);
 
   const getSedeClass = (sedeName) => {
     const s = sedeName.toLowerCase();

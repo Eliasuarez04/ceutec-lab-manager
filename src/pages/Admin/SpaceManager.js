@@ -1,3 +1,4 @@
+// src/pages/Admin/SpaceManager.js
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '../../firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, setDoc } from 'firebase/firestore';
@@ -90,14 +91,16 @@ export default function SpaceManager() {
     name: '', brand: '', model: '', quantity: 1, location: '', observations: '', status: 'Disponible' 
   });
 
+  // 🔴 V2.3: Agregamos el campo 'tags' al estado inicial
   const [newSpaceData, setNewSpaceData] = useState({
-      name: '', building: '', floor: '', capacity: 20, type: 'Laboratorio', status: 'Disponible'
+      name: '', building: '', floor: '', capacity: 20, type: 'Laboratorio', status: 'Disponible', tags: []
   });
 
   const isUserInHisCity = useMemo(() => {
     if (userData?.role === 'superadmin') return true;
     const allowedSedes = REGION_MAPPING[userData?.city] || [];
-    return allowedSedes.includes(currentSede);
+    const normalizedSede = currentSede.toLowerCase().replace('ceutec', '').replace(/[()]/g, '').trim();
+    return allowedSedes.some(s => s.toLowerCase().includes(normalizedSede));
   }, [userData, currentSede]);
 
   const userManagedType = useMemo(() => {
@@ -119,11 +122,11 @@ export default function SpaceManager() {
   const fetchSpaces = useCallback(async () => {
     try {
       const snap = await getDocs(collection(db, 'spaces'));
-      const allDocs = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-      const filtered = allDocs.filter(s => {
-          const sedeBD = (s.sede || s.campus || "").toLowerCase().trim();
-          const sedeBusqueda = currentSede.toLowerCase().replace('ceutec', '').replace('sps', '').trim();
-          return sedeBD.includes(sedeBusqueda) || sedeBusqueda.includes(sedeBD);
+      const searchTarget = currentSede.toLowerCase().replace('ceutec', '').replace(/[()]/g, '').trim();
+      
+      const filtered = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(s => {
+          const sSede = (s.sede || s.campus || "").toLowerCase();
+          return sSede.includes(searchTarget) || searchTarget.includes(sSede);
       });
       setSpaces(filtered);
     } catch (error) { toast.error("Error al sincronizar"); }
@@ -138,7 +141,8 @@ export default function SpaceManager() {
       setNewSpaceData({
           name: '', building: '', floor: '', capacity: 20, 
           type: userManagedType || 'Laboratorio', 
-          status: 'Disponible'
+          status: 'Disponible',
+          tags: []
       });
       setIsNewSpaceModalOpen(true);
   };
@@ -268,12 +272,13 @@ export default function SpaceManager() {
 
               {isEditingSpace && (
                 <div className="edit-space-card floating-card fade-in">
-                    <h3>Configuración del Espacio</h3>
+                    <h3 style={{ color: '#c8102e', fontWeight: '900' }}>Configuración del Recurso</h3>
                     <form onSubmit={handleUpdateSpace} className="edit-grid-pro">
                         <div className="field"><label>Nombre</label><input type="text" value={selectedSpace.name} onChange={e => setSelectedSpace({...selectedSpace, name: e.target.value})} /></div>
                         <div className="field"><label>Edificio</label><input type="text" value={selectedSpace.building} onChange={e => setSelectedSpace({...selectedSpace, building: e.target.value})} /></div>
                         <div className="field"><label>Piso</label><input type="number" value={selectedSpace.floor} onChange={e => setSelectedSpace({...selectedSpace, floor: e.target.value})} /></div>
                         <div className="field"><label>Capacidad</label><input type="number" value={selectedSpace.capacity} onChange={e => setSelectedSpace({...selectedSpace, capacity: e.target.value})} /></div>
+                        
                         <div className="field">
                             <label>Estado</label>
                             <select value={selectedSpace.status} onChange={e => setSelectedSpace({...selectedSpace, status: e.target.value})}>
@@ -281,6 +286,21 @@ export default function SpaceManager() {
                                 <option value="En Mantenimiento">En Mantenimiento</option>
                             </select>
                         </div>
+
+                        {/* 🔴 V2.3: CAMPO DE ETIQUETAS PARA BUSCADOR INTELIGENTE */}
+                        <div className="field" style={{ gridColumn: 'span 3' }}>
+                            <label style={{ color: '#c8102e' }}>Atributos / Tags (Separados por coma)</label>
+                            <input 
+                                type="text" 
+                                placeholder="Ej: Proyector, Macs, Adobe Suite, AC"
+                                value={selectedSpace.tags?.join(', ') || ''} 
+                                onChange={e => setSelectedSpace({
+                                    ...selectedSpace, 
+                                    tags: e.target.value.split(',').map(tag => tag.trim()) 
+                                })} 
+                            />
+                        </div>
+
                         <div className="btn-row-space">
                             <button type="submit" className="btn-confirm">Guardar Cambios</button>
                             {userData?.role === 'superadmin' && <button type="button" className="btn-danger" onClick={handleDeleteSpace}>Eliminar</button>}
@@ -313,7 +333,7 @@ export default function SpaceManager() {
                     </div>
                 ) : (
                     <div className="read-only-notice-box" style={{background: '#f1f5f9', padding: '15px', borderRadius: '12px', borderLeft: '4px solid #94a3b8', marginBottom: '20px'}}>
-                        <p style={{margin:0, fontSize: '0.9rem', color: '#475569'}}>🔒 Estás viendo los recursos de <strong>{currentSede}</strong> en modo lectura. Solo puedes gestionar recursos de <strong>{userData.city}</strong>.</p>
+                        <p style={{margin:0, fontSize: '0.9rem', color: '#475569'}}>🔒 Modo lectura para <strong>{currentSede}</strong>.</p>
                     </div>
                 )}
 
@@ -342,7 +362,7 @@ export default function SpaceManager() {
         </main>
       </div>
 
-      {/* MODAL NUEVO ESPACIO ACTUALIZADO */}
+      {/* MODAL NUEVO ESPACIO ACTUALIZADO V2.3 */}
       <Modal isOpen={isNewSpaceModalOpen} onClose={() => setIsNewSpaceModalOpen(false)} title="Crear Nuevo Recurso">
           <form onSubmit={handleCreateSpace} className="academic-form-pro">
               <div className="form-row-pro">
@@ -375,12 +395,20 @@ export default function SpaceManager() {
               </div>
 
               <div className="form-row-pro" style={{marginTop:'15px'}}>
-                  <div className="field-group">
+                  <div className="field-group" style={{ flex: 1 }}>
                       <label>Capacidad (Personas)</label>
                       <input type="number" required value={newSpaceData.capacity} onChange={e => setNewSpaceData({...newSpaceData, capacity: Number(e.target.value)})} min="1" />
                   </div>
-                  <div className="field-group">
-                      {/* Espacio vacío para mantener la alineación de 2 columnas */}
+                  <div className="field-group" style={{ flex: 2 }}>
+                      <label style={{ color: '#c8102e' }}>Tags (Proyector, Macs, etc.)</label>
+                      <input 
+                          type="text" 
+                          placeholder="Separados por coma"
+                          onChange={e => setNewSpaceData({
+                              ...newSpaceData, 
+                              tags: e.target.value.split(',').map(tag => tag.trim()) 
+                          })} 
+                      />
                   </div>
               </div>
 

@@ -1,0 +1,36 @@
+.radar-container-glass {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(20px);
+    border-radius: 30px;
+    padding: 40px;
+    box-shadow: 0 10px 40px rgba(0,0,0,0.08);
+    max-width: 1500px;
+    margin: 0 auto;
+    border: 1px solid rgba(255,255,255,0.5);
+}
+
+.radar-header-pro { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #edf2f7; padding-bottom: 30px; margin-bottom: 30px; }
+.back-link-radar { text-decoration: none; color: #c8102e; font-weight: 800; font-size: 0.85rem; text-transform: uppercase; margin-bottom: 10px; display: block; }
+.red-text { color: #c8102e; }
+
+.radar-clock-box { text-align: right; background: #1e293b; color: white; padding: 15px 25px; border-radius: 20px; }
+.digital-time { font-size: 2.2rem; font-weight: 900; line-height: 1; font-family: monospace; color: #22c55e; }
+
+.radar-grid-layout { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 25px; }
+.radar-card-pro { background: white; border-radius: 25px; padding: 25px; border: 1.5px solid #edf2f7; border-top: 10px solid #cbd5e0; transition: 0.3s; }
+
+.radar-card-pro.free { border-top-color: #22c55e; }
+.radar-card-pro.waiting { border-top-color: #f59e0b; }
+.radar-card-pro.active { border-top-color: #c8102e; background: #fffcfc; }
+.radar-card-pro.late { border-top-color: #a855f7; animation: pulse-alert 2s infinite; }
+
+.room-name-pro { font-size: 1.8rem; font-weight: 900; margin: 15px 0; color: #1a202c; }
+.active-res-box { background: #f8fafc; border-radius: 15px; padding: 15px; border: 1px solid #edf2f7; }
+.type-badge-mini { font-size: 0.6rem; font-weight: 900; padding: 2px 8px; border-radius: 4px; display: inline-block; margin-bottom: 5px; }
+.type-badge-mini.academic_load { background: #e0f2fe; color: #0369a1; }
+.type-badge-mini.Manual { background: #fee2e2; color: #c8102e; }
+
+.next-item { display: flex; gap: 10px; font-size: 0.8rem; margin-top: 5px; }
+.n-time { color: #f59e0b; font-weight: 900; }
+
+@keyframes pulse-alert { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); box-shadow: 0 0 20px rgba(168, 85, 247, 0.1); } }

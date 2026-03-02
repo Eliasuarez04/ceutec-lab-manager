@@ -155,7 +155,6 @@ export default function Reservations() {
         userId: currentUser.uid,
         userEmail: currentUser.email,
         userName: currentUser.displayName || 'Usuario',
-        // 🔴 NORMALIZACIÓN DE CAMPOS PARA BD
         th: data.thDocente || '',
         attendees: data.studentCount || 0,
         startTime: Timestamp.fromDate(new Date(data.start)),
@@ -176,7 +175,7 @@ export default function Reservations() {
   };
 
   // ----------------------------------------------------------------------------------
-  // --- CARGA MASIVA: LECTURA Y PARSEO DE TIEMPO AM/PM ---
+  // --- CARGA MASIVA: LECTURA Y PARSEO DE TIEMPO AM/PM CON VÍNCULO DE DOCENTES ---
   // ----------------------------------------------------------------------------------
   const handleFileRead = async (e) => {
     const file = e.target.files[0];
@@ -192,10 +191,23 @@ export default function Reservations() {
 
     reader.onload = async (event) => {
       try {
-        const data = new Uint8Array(event.target.result);
-        const workbook = XLSX.read(data, { type: 'array' });
+        const dataBuffer = new Uint8Array(event.target.result);
+        const workbook = XLSX.read(dataBuffer, { type: 'array' });
         const sheetName = workbook.SheetNames[0];
         const jsonData = XLSX.utils.sheet_to_json(workbook.Sheets[sheetName]);
+
+        // 🔴 VÍNCULO INTELIGENTE: Mapeamos usuarios registrados para asociar UID y Email
+        const usersSnap = await getDocs(collection(db, 'users'));
+        const usersMap = {};
+        usersSnap.forEach(uDoc => {
+            const uData = uDoc.data();
+            if (uData.displayName) {
+                usersMap[uData.displayName.toLowerCase().trim()] = {
+                    uid: uDoc.id,
+                    email: uData.email
+                };
+            }
+        });
 
         const spacesSnap = await getDocs(collection(db, 'spaces'));
         const spaceMap = {};
@@ -225,24 +237,25 @@ export default function Reservations() {
                 
                 let startHour = 0; let startMinute = 0;
                 
-                // --- CORRECCIÓN DE AM/PM ---
                 if (typeof horaRaw === 'number') {
                     const totalMinutes = Math.round(horaRaw * 24 * 60);
                     startHour = Math.floor(totalMinutes / 60);
                     startMinute = totalMinutes % 60;
                 } else if (typeof horaRaw === 'string') {
                     const timeStr = horaRaw.trim().toUpperCase();
-                    // Captura Horas, Minutos y opcionalmente AM/PM
                     const matches = timeStr.match(/(\d+):(\d+)\s*(AM|PM)?/);
                     if (matches) {
                         startHour = parseInt(matches[1]);
                         startMinute = parseInt(matches[2]);
                         const period = matches[3];
-                        // Conversión a formato 24h
                         if (period === 'PM' && startHour < 12) startHour += 12;
                         if (period === 'AM' && startHour === 12) startHour = 0;
                     }
                 }
+
+                // 🔴 BUSCAR COINCIDENCIA DE DOCENTE PARA VÍNCULO
+                const nombreDocenteExcel = (row['nombre'] || row['docente_nombre'] || "").toLowerCase().trim();
+                const coincidencia = usersMap[nombreDocenteExcel];
 
                 const daysToReserve = [];
                 for (let char of diasCode) {
@@ -262,8 +275,9 @@ export default function Reservations() {
                             labName: targetSpace.name,
                             sede: targetSpace.sede || urlSede,
                             spaceType: targetSpace.type, 
-                            userId: currentUser.uid,
-                            userEmail: currentUser.email,
+                            // Asignación vinculada o genérica
+                            userId: coincidencia ? coincidencia.uid : "SYSTEM_GENERATED",
+                            userEmail: coincidencia ? coincidencia.email : (row['correo'] || "Carga Académica"),
                             userName: row['nombre'] || row['docente_nombre'] || 'Docente',
                             className: row['nombre_materia'] || 'Clase',
                             section: row['seccion'] ? row['seccion'].toString() : '',
@@ -445,33 +459,33 @@ export default function Reservations() {
             <div className="loader-cal">Cargando...</div>
           ) : (
             <Calendar
-  localizer={localizer}
-  events={reservations}
-  startAccessor="start"
-  endAccessor="end"
-  style={{ height: 'calc(100vh - 420px)', minHeight: '500px' }}
-  culture="es"
-  messages={messages}
-  date={currentDate}
-  view={currentView} // Esto ahora iniciará en 'month' gracias al cambio de arriba
-  onNavigate={setCurrentDate}
-  onView={setCurrentView}
-  selectable={canReserveInThisSede}
-  onSelectSlot={handleSlotSelect}
-  onSelectEvent={(ev) => { setSelectedEvent(ev); setIsViewModalOpen(true); }}
-/>
+              localizer={localizer}
+              events={reservations}
+              startAccessor="start"
+              endAccessor="end"
+              style={{ height: 'calc(100vh - 420px)', minHeight: '500px' }}
+              culture="es"
+              messages={messages}
+              date={currentDate}
+              view={currentView}
+              onNavigate={setCurrentDate}
+              onView={setCurrentView}
+              selectable={canReserveInThisSede}
+              onSelectSlot={handleSlotSelect}
+              onSelectEvent={(ev) => { setSelectedEvent(ev); setIsViewModalOpen(true); }}
+            />
           )}
         </div>
       </div>
 
       <ReservationModal 
-  isOpen={isBookingModalOpen} 
-  onClose={() => setIsBookingModalOpen(false)} 
-  spaceData={activeSpace} 
-  slotInfo={slotInfo} 
-  onSubmit={handleCreateReservation} 
-  existingReservations={reservations} // 🔴 Agrega esta línea
-/>
+          isOpen={isBookingModalOpen} 
+          onClose={() => setIsBookingModalOpen(false)} 
+          spaceData={activeSpace} 
+          slotInfo={slotInfo} 
+          onSubmit={handleCreateReservation} 
+          existingReservations={reservations}
+      />
       
       <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title="Detalles de la Reserva">
         {selectedEvent && (

@@ -19,7 +19,9 @@ import Reportes from './pages/Reportes';
 import SpaceImporter from './pages/Admin/SpaceImporter';
 import UserManagement from './pages/Admin/UserManagement'; 
 import UserProfile from './pages/UserProfile';
-import SedeSelector from './pages/SedeSelector'; 
+import SedeSelector from './pages/SedeSelector';
+import CampusLiveView from './pages/Admin/CampusLiveView'; // Arriba en los imports
+
 
 // Importación de Componentes Globales y de Diseño
 import Layout from './components/Layout';
@@ -198,6 +200,19 @@ function AppContent() {
           </PrivateRoute>
         } 
       />
+
+      <Route 
+  path="/admin/live-status" 
+  element={
+    <PrivateRoute>
+      <ProtectedRoute>
+        <Layout>
+          <CampusLiveView />
+        </Layout>
+      </ProtectedRoute>
+    </PrivateRoute>
+  } 
+/>
 
       <Route 
   path="/admin/importar-inventario" 
