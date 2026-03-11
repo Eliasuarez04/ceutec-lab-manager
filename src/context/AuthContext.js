@@ -20,28 +20,21 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
 
   // --- FUNCIÓN DE REGISTRO CON ROLES AUTOMÁTICOS ---
-  async function signup(email, password, faculty) {
+   async function signup(email, password, faculty, selectedRole) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    
-    // Lógica de dominios
     const isStaff = email.toLowerCase().endsWith('@unitec.edu.hn');
-
-    // Siempre enviamos verificación de correo
     await sendEmailVerification(user);
 
-    // Guardamos en Firestore
     return setDoc(doc(db, 'users', user.uid), {
       uid: user.uid,
       email: user.email.toLowerCase(),
       faculty: faculty,
-      // @unitec.edu.hn -> coordinador / @unitec.edu -> docente
-      role: isStaff ? 'coordinador' : 'docente',
-      // @unitec.edu.hn entran activos / @unitec.edu requieren aprobación
+      // Usar el rol seleccionado si es .hn, de lo contrario docente
+      role: isStaff ? selectedRole : 'docente',
       active: isStaff ? true : false, 
-      sede: '', 
-      typeAssigned: '', 
-      createdAt: Timestamp.now()
+      createdAt: Timestamp.now(),
+      city: "" 
     });
   }
 

@@ -1,0 +1,4 @@
+.qr-scanner-wrapper { text-align: center; padding: 20px; }
+.scanner-instruction { margin-bottom: 20px; }
+.target-room-highlight { color: #c8102e; font-weight: 900; font-size: 1.8rem; margin: 5px 0; }
+#reader { border: 2px solid #edf2f7; border-radius: 15px; overflow: hidden; }

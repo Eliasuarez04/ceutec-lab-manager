@@ -5,6 +5,8 @@ import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy,
 import { useAuth } from '../../context/AuthContext';
 import { Link, useSearchParams } from 'react-router-dom';
 import Modal from '../../components/Modal'; 
+// 🔴 CORRECCIÓN: Importamos el generador de QR
+import RoomQRGenerator from '../../components/RoomQRGenerator'; 
 import '../styles/SpaceManager.css';
 import '../../pages/styles/Dashboard.css';
 import toast from 'react-hot-toast';
@@ -86,12 +88,14 @@ export default function SpaceManager() {
   const [itemSearch, setItemSearch] = useState(''); 
   const [isEditingSpace, setIsEditingSpace] = useState(false);
   const [isNewSpaceModalOpen, setIsNewSpaceModalOpen] = useState(false);
+  
+  // 🔴 CORRECCIÓN: Definimos el estado para el modal de QR
+  const [isQRModalOpen, setIsQRModalOpen] = useState(false);
 
   const [newEquipment, setNewEquipment] = useState({ 
     name: '', brand: '', model: '', quantity: 1, location: '', observations: '', status: 'Disponible' 
   });
 
-  // 🔴 V2.3: Agregamos el campo 'tags' al estado inicial
   const [newSpaceData, setNewSpaceData] = useState({
       name: '', building: '', floor: '', capacity: 20, type: 'Laboratorio', status: 'Disponible', tags: []
   });
@@ -263,11 +267,18 @@ export default function SpaceManager() {
                     <h2>{selectedSpace.name}</h2>
                     <p>Sede: {currentSede} • Capacidad: {selectedSpace.capacity}</p>
                 </div>
-                {canManageSpace(selectedSpace) && (
-                    <button className="btn-edit-space" onClick={() => setIsEditingSpace(!isEditingSpace)}>
-                        {isEditingSpace ? 'Cerrar Edición' : '⚙️ Gestionar Espacio'}
+                <div className="header-actions" style={{ display: 'flex', gap: '10px' }}>
+                    {/* BOTÓN V2.4 */}
+                    <button className="btn-edit-space" style={{ background: '#1e293b' }} onClick={() => setIsQRModalOpen(true)}>
+                        📱 Generar QR de Acceso
                     </button>
-                )}
+                    
+                    {canManageSpace(selectedSpace) && (
+                        <button className="btn-edit-space" onClick={() => setIsEditingSpace(!isEditingSpace)}>
+                            {isEditingSpace ? 'Cerrar Edición' : '⚙️ Gestionar'}
+                        </button>
+                    )}
+                </div>
               </div>
 
               {isEditingSpace && (
@@ -287,7 +298,6 @@ export default function SpaceManager() {
                             </select>
                         </div>
 
-                        {/* 🔴 V2.3: CAMPO DE ETIQUETAS PARA BUSCADOR INTELIGENTE */}
                         <div className="field" style={{ gridColumn: 'span 3' }}>
                             <label style={{ color: '#c8102e' }}>Atributos / Tags (Separados por coma)</label>
                             <input 
@@ -362,7 +372,7 @@ export default function SpaceManager() {
         </main>
       </div>
 
-      {/* MODAL NUEVO ESPACIO ACTUALIZADO V2.3 */}
+      {/* MODAL NUEVO ESPACIO V2.3 */}
       <Modal isOpen={isNewSpaceModalOpen} onClose={() => setIsNewSpaceModalOpen(false)} title="Crear Nuevo Recurso">
           <form onSubmit={handleCreateSpace} className="academic-form-pro">
               <div className="form-row-pro">
@@ -419,6 +429,13 @@ export default function SpaceManager() {
               </div>
           </form>
       </Modal>
+
+      {/* 🔴 MODAL QR V2.4 PREMIUM */}
+<Modal isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} title="Generador de Ficha Técnica">
+    {selectedSpace && (
+        <RoomQRGenerator space={selectedSpace} />
+    )}
+</Modal>
     </div>
   );
 }

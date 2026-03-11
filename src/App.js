@@ -21,6 +21,8 @@ import UserManagement from './pages/Admin/UserManagement';
 import UserProfile from './pages/UserProfile';
 import SedeSelector from './pages/SedeSelector';
 import CampusLiveView from './pages/Admin/CampusLiveView'; // Arriba en los imports
+import ExecutiveAnalytics from './pages/Admin/ExecutiveAnalytics';
+import MaintenanceTickets from './pages/Admin/MaintenanceTickets';
 
 
 // Importación de Componentes Globales y de Diseño
@@ -214,6 +216,19 @@ function AppContent() {
   } 
 />
 
+<Route 
+  path="/admin/analitica" 
+  element={
+    <PrivateRoute>
+      <ProtectedRoute>
+        <Layout>
+          <ExecutiveAnalytics />
+        </Layout>
+      </ProtectedRoute>
+    </PrivateRoute>
+  } 
+/>
+
       <Route 
   path="/admin/importar-inventario" 
   element={
@@ -221,6 +236,19 @@ function AppContent() {
       <ProtectedRoute> {/* Eliminamos el requiredRole="superadmin" para que coordinadores entren */}
         <Layout>
           <SpaceInventoryImporter />
+        </Layout>
+      </ProtectedRoute>
+    </PrivateRoute>
+  } 
+/>
+
+<Route 
+  path="/admin/soporte-tecnico" 
+  element={
+    <PrivateRoute>
+      <ProtectedRoute>
+        <Layout>
+          <MaintenanceTickets />
         </Layout>
       </ProtectedRoute>
     </PrivateRoute>
