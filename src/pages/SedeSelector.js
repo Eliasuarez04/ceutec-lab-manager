@@ -7,8 +7,8 @@ const sedesPorCiudad = [
   {
     ciudad: "SPS",
     sedes: [
-      { name: "Ceutec SPS Norte", color: "linear-gradient(135deg, #c8102e 0%, #8a0b20 100%)", icon: "🏫", desc: "Campus Norte" },
-      { name: "Ceutec SPS Central", color: "linear-gradient(135deg, #6a11cb 0%, #2575fc 100%)", icon: "🏢", desc: "Campus Central" },
+      { name: "Ceutec SPS Norte", color: "linear-gradient(135deg, #c8102e 0%, #8a0b20 100%)", icon: "🏫", desc: "Sede Norte" },
+      { name: "Ceutec SPS Central", color: "linear-gradient(135deg, #6a11cb 0%, #2575fc 100%)", icon: "🏢", desc: "Sede Central" },
     ]
   },
   {
@@ -42,7 +42,6 @@ export default function SedeSelector() {
           <p>Selecciona la sede para gestionar espacios académicos:</p>
         </div>
         
-        {/* Layout de 3 columnas sin títulos de ciudad */}
         <div className="main-selection-layout" style={{ 
           display: 'grid', 
           gridTemplateColumns: 'repeat(3, 1fr)', 
@@ -66,16 +65,28 @@ export default function SedeSelector() {
                   style={{ 
                       background: sede.color,
                       margin: '0',
-                      width: '100%'
-                      // Hereda el tamaño original del archivo Dashboard.css
+                      width: '100%',
+                      // 🔴 CORRECCIÓN: Altura mínima fija para homogeneizar todas las cards
+                      minHeight: '280px', 
+                      display: 'flex',
+                      flexDirection: 'column',
+                      justifyContent: 'center',
+                      padding: '40px 20px' // Reducimos un poco el padding lateral
                   }}
                 >
-                  <div className="sede-card-icon">{sede.icon}</div>
+                  <div className="sede-card-icon" style={{ fontSize: '3.5rem' }}>{sede.icon}</div>
                   <div className="sede-card-info">
-                    <h3>{sede.desc}</h3>
-                    <span>{sede.name}</span>
+                    {/* 🔴 CORRECCIÓN: Tamaño de fuente dinámico para nombres largos */}
+                    <h3 style={{ 
+                        fontSize: sede.name.length > 20 ? '1.4rem' : '1.7rem',
+                        lineHeight: '1.2',
+                        marginBottom: '8px'
+                    }}>
+                        {sede.name}
+                    </h3>
+                    <span style={{ fontSize: '0.9rem', opacity: '0.8' }}>{sede.desc}</span>
                   </div>
-                  <div className="sede-card-arrow">➜</div>
+                  <div className="sede-card-arrow" style={{ marginTop: '15px' }}>➜</div>
                 </div>
               ))}
             </div>

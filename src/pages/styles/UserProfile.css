@@ -244,3 +244,105 @@
 
 .fade-in { animation: fadeIn 0.4s ease-out forwards; }
 @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
+
+.profile-activity-card {
+    background: white;
+    border-radius: 24px;
+    padding: 30px;
+    margin-top: 35px;
+    box-shadow: 0 10px 30px rgba(0,0,0,0.04);
+    border: 1px solid #edf2f7;
+}
+
+.activity-card-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 25px;
+}
+
+.activity-card-header h3 {
+    font-size: 1.1rem;
+    font-weight: 800;
+    color: #1e293b;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.activity-card-header .icon { font-size: 1.3rem; }
+
+.view-all-link {
+    font-size: 0.8rem;
+    font-weight: 700;
+    color: #c8102e;
+    text-decoration: none;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+}
+
+.activity-list-premium {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+}
+
+.activity-row-item {
+    display: flex;
+    align-items: center;
+    padding: 15px 20px;
+    background: #f8fafc;
+    border-radius: 16px;
+    border: 1px solid #edf2f7;
+    transition: all 0.3s ease;
+}
+
+.activity-row-item:hover {
+    transform: translateX(10px);
+    background: white;
+    border-color: #c8102e;
+    box-shadow: 0 4px 15px rgba(200, 16, 46, 0.05);
+}
+
+.activity-status-indicator {
+    width: 6px;
+    height: 35px;
+    background: #c8102e;
+    border-radius: 10px;
+    margin-right: 20px;
+}
+
+.activity-info-main {
+    flex: 1;
+}
+
+.activity-lab-name {
+    font-weight: 800;
+    color: #1a202c;
+    margin: 0;
+    font-size: 1rem;
+}
+
+.activity-class-name {
+    font-size: 0.85rem;
+    color: #64748b;
+    margin: 2px 0 0 0;
+    font-weight: 600;
+}
+
+.activity-date-tag {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: #94a3b8;
+    background: #fff;
+    padding: 6px 12px;
+    border-radius: 10px;
+    border: 1px solid #edf2f7;
+    text-transform: capitalize;
+}
+
+/* Ajuste para el grid principal del perfil */
+.profile-main-grid {
+    align-items: start; /* Alinea las columnas al inicio */
+}

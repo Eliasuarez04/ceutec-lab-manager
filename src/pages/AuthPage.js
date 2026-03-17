@@ -165,25 +165,58 @@ export default function AuthPage() {
 
   return (
     <>
-      <Modal isOpen={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} title="Recuperar Contraseña">
-        <form onSubmit={handlePasswordReset} className="modal-form-academic">
-          <div className="input-wrapper">
-            <MailIcon />
-            <input type="email" placeholder="nombre@unitec.edu" value={resetEmail} onChange={(e) => setResetEmail(e.target.value)} required />
-          </div>
-          <button type="submit" disabled={loading} className="auth-button">Enviar Enlace</button>
-        </form>
+      {/* MODAL DE RECUPERACIÓN DE CONTRASEÑA CORREGIDO */}
+      <Modal 
+        isOpen={isResetModalOpen} 
+        onClose={() => setIsResetModalOpen(false)} 
+        title="Recuperar Contraseña"
+      >
+        <div className="recovery-modal-content">
+          <p className="recovery-text">
+            Ingresa tu correo institucional y te enviaremos un enlace seguro para restablecer tu contraseña.
+          </p>
+          
+          <form onSubmit={handlePasswordReset} className="auth-form-recovery">
+            <div className="input-wrapper">
+              <MailIcon />
+              <input 
+                type="email" 
+                placeholder="nombre@unitec.edu" 
+                value={resetEmail} 
+                onChange={(e) => setResetEmail(e.target.value)} 
+                required 
+              />
+            </div>
+
+            <div className="recovery-actions">
+              <button type="submit" disabled={loading} className="auth-button full-width">
+                {loading ? 'Enviando...' : 'Enviar Enlace de Recuperación'}
+              </button>
+              <span className="cancel-recovery" onClick={() => setIsResetModalOpen(false)}>
+                Regresar al inicio de sesión
+              </span>
+            </div>
+          </form>
+        </div>
       </Modal>
 
       <div className="auth-body">
+        {/* Orbes decorativos */}
+        <div className="background-shape shape-1"></div>
+        <div className="background-shape shape-2"></div>
+        <div className="background-shape shape-3"></div>
+
         <div className={`auth-container ${isPanelActive ? 'right-panel-active' : ''}`}>
+          {/* ... El resto del código de Login y Registro se mantiene IGUAL que lo tienes ... */}
           <div className="form-container sign-up-container">
             <RegisterForm onRegister={handleRegister} />
           </div>
           <div className="form-container sign-in-container">
-            <LoginForm onLogin={handleLogin} onForgotPassword={() => setIsResetModalOpen(true)} />
+            <LoginForm 
+              onLogin={handleLogin} 
+              onForgotPassword={() => setIsResetModalOpen(true)} 
+            />
           </div>
-          
           <div className="overlay-container">
             <div className="overlay">
               <div className="overlay-panel overlay-left">

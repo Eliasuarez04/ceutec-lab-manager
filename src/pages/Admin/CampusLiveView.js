@@ -14,6 +14,10 @@ export default function CampusLiveView() {
   const [reservations, setReservations] = useState([]);
   const [now, setNow] = useState(new Date());
 
+  // 🔴 NUEVOS ESTADOS V2.4.1
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterType, setFilterType] = useState("TODOS");
+
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
@@ -44,8 +48,17 @@ export default function CampusLiveView() {
     return () => { unsubSpaces(); unsubRes(); };
   }, [currentSede]);
 
+  const handleAdminRelease = async (resId, labName) => {
+    if(!window.confirm(`¿Liberar espacio ${labName}?`)) return;
+    try {
+      await updateDoc(doc(db, 'reservations', resId), { checkOutTime: Timestamp.now(), fulfillmentStatus: 'Completada (Admin)' });
+      toast.success("Liberado.");
+    } catch (e) { toast.error("Error."); }
+  };
+
+  // 🔴 LÓGICA DE FILTRADO CONSOLIDADA V2.4.1
   const liveStatus = useMemo(() => {
-    return spaces.map(space => {
+    const baseList = spaces.map(space => {
       const todayRes = reservations.filter(res => res.labId === space.id && !res.fulfillmentStatus.includes('Completada')).sort((a, b) => a.startTime - b.startTime);
       const currentRes = todayRes.find(res => isWithinInterval(now, { start: res.startTime.toDate(), end: res.endTime.toDate() }));
       const nextRes = todayRes.filter(res => isAfter(res.startTime.toDate(), now) && res.id !== currentRes?.id);
@@ -57,8 +70,17 @@ export default function CampusLiveView() {
         else visualState = ((now - currentRes.startTime.toDate()) / 60000) > 15 ? 'late' : 'waiting';
       }
       return { ...space, currentRes, nextRes, visualState };
-    }).sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true}));
-  }, [spaces, reservations, now]);
+    });
+
+    // Aplicar Filtro de Pestaña y Búsqueda
+    return baseList
+      .filter(item => {
+        const matchesTab = filterType === "TODOS" || item.type?.toUpperCase() === filterType.toUpperCase();
+        const matchesSearch = item.name?.toLowerCase().includes(searchTerm.toLowerCase());
+        return matchesTab && matchesSearch;
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, undefined, {numeric: true}));
+  }, [spaces, reservations, now, filterType, searchTerm]);
 
   return (
     <div className="dashboard-wrapper">
@@ -66,7 +88,8 @@ export default function CampusLiveView() {
         <header className="radar-header-pro">
           <div className="radar-title-area">
             <Link to={`/dashboard?sede=${currentSede}`} className="back-link-radar">← Dashboard</Link>
-            <h1>Radar de Operaciones: <span className="red-text">{currentSede}</span></h1>
+            <h1>Monitor Operativo: <span className="red-text">{currentSede}</span></h1>
+            <p>V2.4.1 - Control de Asistencia y Radar de Campus</p>
           </div>
           <div className="radar-clock-box">
              <div className="digital-time">{format(now, "HH:mm:ss")}</div>
@@ -74,39 +97,73 @@ export default function CampusLiveView() {
           </div>
         </header>
 
-        <div className="radar-grid-layout">
-          {liveStatus.map(item => (
-            <div key={item.id} className={`radar-card-pro ${item.visualState}`}>
-              <div className="card-top-pro">
-                <span className="tag-type">{item.type}</span>
-                <span className="tag-cap">👥 {item.capacity}</span>
-              </div>
-              <h2 className="room-name-pro">{item.name}</h2>
-              <div className="card-status-info">
-                {item.visualState === 'free' && <div className="msg-free">✅ DISPONIBLE</div>}
-                {item.currentRes && (
-                  <div className="active-res-box">
-                    <div className={`type-badge-mini ${item.currentRes.reservationType}`}>
-                      {item.currentRes.reservationType === 'academic_load' ? '📚 CARGA ACADÉMICA' : '👤 MANUAL'}
-                    </div>
-                    <p className="c-name">{item.currentRes.className}</p>
-                    <p className="d-name">Docente: {item.currentRes.userName}</p>
-                    <p className="t-range">{format(item.currentRes.startTime.toDate(), 'HH:mm')} - {format(item.currentRes.endTime.toDate(), 'HH:mm')}</p>
-                    {item.visualState === 'late' && <div className="late-warning">⚠️ DOCENTE TARDE</div>}
-                  </div>
-                )}
-              </div>
-              <div className="upcoming-list-pro">
-                <p className="upcoming-label">SIGUIENTES HOY:</p>
-                {item.nextRes.slice(0, 2).map((res, i) => (
-                  <div key={i} className="next-item">
-                    <span className="n-time">{format(res.startTime.toDate(), 'HH:mm')}</span>
-                    <span className="n-title">{res.className}</span>
-                  </div>
-                ))}
-              </div>
+        {/* 🔴 NUEVA BARRA DE FILTROS V2.4.1 */}
+        <div className="radar-filters-bar">
+            <div className="radar-tabs">
+                <button className={filterType === "TODOS" ? "active" : ""} onClick={() => setFilterType("TODOS")}>TODOS</button>
+                <button className={filterType === "AULA" ? "active" : ""} onClick={() => setFilterType("AULA")}>AULAS</button>
+                <button className={filterType === "LABORATORIO" ? "active" : ""} onClick={() => setFilterType("LABORATORIO")}>LABS</button>
             </div>
-          ))}
+            
+            <div className="radar-search-input-wrapper">
+                <span className="search-icon-radar">🔍</span>
+                <input 
+                    type="text" 
+                    placeholder="Buscar salón por nombre..." 
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                />
+            </div>
+        </div>
+
+        <div className="radar-legend-bar">
+            <div className="leg-item"><span className="dot bg-free"></span> Disponible</div>
+            <div className="leg-item"><span className="dot bg-waiting"></span> Reservado</div>
+            <div className="leg-item"><span className="dot bg-active pulse"></span> En Curso</div>
+            <div className="leg-item"><span className="dot bg-late pulse-late"></span> No-Show</div>
+        </div>
+
+        <div className="radar-grid-layout">
+          {liveStatus.length === 0 ? (
+            <div className="radar-empty-state">
+              <span className="icon">📡</span>
+              <p>No se encontraron resultados para tu búsqueda.</p>
+            </div>
+          ) : (
+            liveStatus.map(item => (
+              <div key={item.id} className={`radar-card-pro ${item.visualState}`}>
+                <div className="card-top-pro">
+                  <span className="tag-type">{item.type}</span>
+                  <span className="tag-cap">👥 {item.capacity}</span>
+                </div>
+                <h2 className="room-name-pro">{item.name}</h2>
+                <div className="card-status-info">
+                  {item.visualState === 'free' && <div className="msg-free">✅ DISPONIBLE</div>}
+                  {item.currentRes && (
+                    <div className="active-res-box">
+                      <div className={`type-badge-mini ${item.currentRes.reservationType}`}>
+                        {item.currentRes.reservationType === 'academic_load' ? '📚 CARGA' : '👤 MANUAL'}
+                      </div>
+                      <p className="c-name">{item.currentRes.className}</p>
+                      <p className="d-name">{item.currentRes.userName}</p>
+                      <p className="t-range">{format(item.currentRes.startTime.toDate(), 'HH:mm')} - {format(item.currentRes.endTime.toDate(), 'HH:mm')}</p>
+                      {item.visualState === 'active' && <button onClick={() => handleAdminRelease(item.currentRes.id, item.name)} className="btn-admin-release">LIBERAR</button>}
+                      {item.visualState === 'late' && <div className="late-warning">⚠️ DOCENTE AUSENTE</div>}
+                    </div>
+                  )}
+                </div>
+                <div className="upcoming-list-pro">
+                  <p className="upcoming-label">SIGUIENTES:</p>
+                  {item.nextRes.slice(0, 2).map((res, i) => (
+                    <div key={i} className="next-item">
+                      <span className="n-time">{format(res.startTime.toDate(), 'HH:mm')}</span>
+                      <span className="n-title">{res.className}</span>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
     </div>

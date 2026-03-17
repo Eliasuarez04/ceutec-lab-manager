@@ -226,23 +226,32 @@ const UserProfile = () => {
               )}
             </div>
             
-            {/* Actividad Reciente */}
-            <div className="dashboard-card recent-activity-card" style={{marginTop: '30px'}}>
-              <h3>Actividad Reciente</h3>
-              {recentReservations.length > 0 ? (
-                <div className="activity-list">
-                  {recentReservations.map(res => (
-                    <div key={res.id} className="activity-item">
-                      <div className="activity-info">
-                        <strong>{res.labName}</strong>
-                        <small>{format(res.startTime.toDate(), "d 'de' MMMM", { locale: es })}</small>
-                      </div>
-                      <span className={`status-dot ${res.fulfillmentStatus?.toLowerCase()}`}></span>
-                    </div>
-                  ))}
-                </div>
-              ) : <p className="empty-text">Sin reservas recientes.</p>}
-            </div>
+            {/* Sección de Actividad Reciente Mejorada */}
+<div className="profile-activity-card">
+  <div className="activity-card-header">
+    <h3><span className="icon">🕒</span> Actividad Reciente</h3>
+    <Link to={`/mis-reservas?sede=${currentSede}`} className="view-all-link">Ver todo</Link>
+  </div>
+  
+  {recentReservations.length > 0 ? (
+    <div className="activity-list-premium">
+      {recentReservations.map(res => (
+        <div key={res.id} className="activity-row-item">
+          <div className="activity-status-indicator"></div>
+          <div className="activity-info-main">
+            <p className="activity-lab-name">{res.labName}</p>
+            <p className="activity-class-name">{res.className || res.purpose}</p>
+          </div>
+          <div className="activity-date-tag">
+            {format(res.startTime.toDate(), "d 'de' MMMM", { locale: es })}
+          </div>
+        </div>
+      ))}
+    </div>
+  ) : (
+    <p className="empty-text-profile">No tienes registros de actividad recientes.</p>
+  )}
+</div>
           </div>
 
           {/* --- COLUMNA DERECHA (ESTADÍSTICAS Y ACCESOS) --- */}

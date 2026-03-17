@@ -363,3 +363,96 @@ body { margin: 0; font-family: 'Montserrat', sans-serif; }
 .sign-up-container .auth-button {
     margin-top: 10px;
 }
+
+/* --- ESTILOS PARA EL MODAL DE RECUPERACIÓN V2.4.1 --- */
+
+.recovery-modal-content {
+    padding: 10px 5px;
+    text-align: center;
+}
+
+.recovery-text {
+    font-size: 0.9rem;
+    color: #64748b;
+    line-height: 1.5;
+    margin-bottom: 25px;
+}
+
+.auth-form-recovery {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+/* Forzar que el input del modal se vea igual al del login */
+.auth-form-recovery .input-wrapper input {
+    background-color: #f8fafc;
+    border: 2px solid #edf2f7;
+    padding: 14px 15px 14px 50px;
+    width: 100%;
+    border-radius: 12px;
+    font-family: 'Montserrat', sans-serif;
+    font-weight: 600;
+    transition: all 0.3s;
+}
+
+.auth-form-recovery .input-wrapper input:focus {
+    border-color: var(--ceutec-red);
+    background-color: white;
+    box-shadow: 0 4px 12px rgba(200, 16, 46, 0.08);
+}
+
+.recovery-actions {
+    display: flex;
+    flex-direction: column;
+    gap: 15px;
+    margin-top: 10px;
+}
+
+.auth-button.full-width {
+    width: 100%;
+    padding: 15px;
+}
+
+.cancel-recovery {
+    font-size: 0.85rem;
+    color: #94a3b8;
+    cursor: pointer;
+    font-weight: 600;
+    transition: color 0.2s;
+}
+
+.cancel-recovery:hover {
+    color: var(--ceutec-red);
+    text-decoration: underline;
+}
+
+/* Mejoras al componente Modal General */
+.modal-content {
+    border-radius: 24px !important;
+    padding: 40px !important;
+    border: none !important;
+    box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25) !important;
+}
+
+.modal-header {
+    border-bottom: 2px solid #f1f5f9 !important;
+    padding-bottom: 15px !important;
+    margin-bottom: 25px !important;
+}
+
+.modal-title {
+    font-weight: 800 !important;
+    color: #1e293b !important;
+    font-size: 1.4rem !important;
+}
+
+.modal-close-btn {
+    font-size: 2rem !important;
+    color: #cbd5e1 !important;
+    transition: color 0.2s !important;
+}
+
+.modal-close-btn:hover {
+    color: var(--ceutec-red) !important;
+}
