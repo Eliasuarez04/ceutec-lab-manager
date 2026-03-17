@@ -26,6 +26,7 @@ export const FACULTIES_DATA = {
   "Facultad de Ingeniería": [
     "Ingeniería en Gestión Logística",
     "Ingeniería en Informática",
+    "Técnico en Redes",
     "Ingeniería en Electrónica",
     "Ingeniería en Gestión de Ambiente y Des.",
     "Ingeniería Civil",
