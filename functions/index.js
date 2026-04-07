@@ -25,13 +25,19 @@ const initializeTransporter = () => {
   }
 };
 
-// --- FUNCIÓN 1: CORREO DE NUEVA RESERVA ---
+// --- FUNCIÓN 1: CORREO DE NUEVA RESERVA (FILTRADO) ---
 exports.sendReservationEmail = onDocumentCreated(
   { document: "reservations/{reservationId}", region: "us-central1" },
   async (event) => {
     const snap = event.data;
     if (!snap) return;
     const res = snap.data();
+
+    // 🔴 FILTRO V2.5: Si es Carga Académica, no enviar correo para evitar spam masivo
+    if (res.reservationType === 'academic_load') {
+      logger.log(`Silenciando correo: Registro de Carga Académica (${res.className})`);
+      return null;
+    }
 
     initializeTransporter();
 
@@ -40,7 +46,7 @@ exports.sendReservationEmail = onDocumentCreated(
     const reservationLink = `${appUrl}/mis-reservas?sede=${sedeEncoded}`;
 
     const formatHN = (date) => {
-      const hnDate = new Date(date.getTime() - (6 * 60 * 60 * 1000));
+      const hnDate = new Date(date.getTime() - (6 * 60 * 60 * 1000)); // Ajuste manual Honduras
       const dia = hnDate.getUTCDate().toString().padStart(2, '0');
       const mes = (hnDate.getUTCMonth() + 1).toString().padStart(2, '0');
       const anio = hnDate.getUTCFullYear();
@@ -84,12 +90,16 @@ exports.sendReservationEmail = onDocumentCreated(
   }
 );
 
-// --- FUNCIÓN 2: CORREO CUANDO SE EDITA/MODIFICA ---
+// --- FUNCIÓN 2: CORREO CUANDO SE EDITA/MODIFICA (FILTRADO) ---
 exports.onReservationUpdated = onDocumentUpdated(
   { document: "reservations/{reservationId}", region: "us-central1" },
   async (event) => {
-    const before = event.data.before.data();
     const after = event.data.after.data();
+
+    // 🔴 FILTRO: No notificar cambios en registros de carga académica
+    if (after.reservationType === 'academic_load') return null;
+
+    const before = event.data.before.data();
     initializeTransporter();
 
     const formatHNTime = (ts) => {
@@ -98,9 +108,8 @@ exports.onReservationUpdated = onDocumentUpdated(
       return hnDate.getUTCHours().toString().padStart(2, '0') + ":" + hnDate.getUTCMinutes().toString().padStart(2, '0');
     };
 
-    // Buscamos coordinadores de laboratorios
     const coords = [];
-    const coordSnap = await db.collection("users").where("role", "==", "coord_labs").get();
+    const coordSnap = await db.collection("users").where("role", "in", ["coord_labs", "superadmin"]).get();
     coordSnap.forEach(doc => coords.push(doc.data().email));
 
     const htmlContent = `
@@ -123,13 +132,8 @@ exports.onReservationUpdated = onDocumentUpdated(
             <td style="padding: 10px; border: 1px solid #dee2e6;">${formatHNTime(before.startTime)} - ${formatHNTime(before.endTime)}</td>
             <td style="padding: 10px; border: 1px solid #dee2e6;">${formatHNTime(after.startTime)} - ${formatHNTime(after.endTime)}</td>
           </tr>
-          <tr>
-            <td style="padding: 10px; border: 1px solid #dee2e6;"><b>Alumnos</b></td>
-            <td style="padding: 10px; border: 1px solid #dee2e6;">${before.attendees || 0}</td>
-            <td style="padding: 10px; border: 1px solid #dee2e6;">${after.attendees || 0}</td>
-          </tr>
         </table>
-        <p style="font-size: 0.9rem; color: #666;">Docente: ${after.userName} (${after.userEmail})</p>
+        <p style="font-size: 0.8rem; color: #666;">Usuario: ${after.userName} (${after.userEmail})</p>
       </div>
     `;
 
@@ -143,21 +147,24 @@ exports.onReservationUpdated = onDocumentUpdated(
   }
 );
 
-// --- FUNCIÓN 3: CORREO CUANDO SE CANCELA/ELIMINA ---
+// --- FUNCIÓN 3: CORREO CUANDO SE CANCELA/ELIMINA (FILTRADO) ---
 exports.onReservationDeleted = onDocumentDeleted(
   { document: "reservations/{reservationId}", region: "us-central1" },
   async (event) => {
     const deletedData = event.data.data();
-    initializeTransporter();
 
+    // 🔴 CRÍTICO: No enviar correos cuando se borra masivamente para actualizar el Excel
+    if (deletedData.reservationType === 'academic_load') return null;
+
+    initializeTransporter();
     const coords = [];
-    const coordSnap = await db.collection("users").where("role", "==", "coord_labs").get();
+    const coordSnap = await db.collection("users").where("role", "in", ["coord_labs", "superadmin"]).get();
     coordSnap.forEach(doc => coords.push(doc.data().email));
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; border: 2px solid #c8102e; padding: 25px; border-radius: 12px;">
         <h2 style="color: #c8102e; border-bottom: 2px solid #c8102e; padding-bottom: 10px;">Reserva Cancelada</h2>
-        <p>Se ha eliminado la reserva para el espacio académico:</p>
+        <p>Se ha eliminado la siguiente reserva manual:</p>
         <ul style="line-height: 2;">
           <li><b>Espacio:</b> ${deletedData.labName}</li>
           <li><b>Materia/Clase:</b> ${deletedData.className || deletedData.purpose}</li>

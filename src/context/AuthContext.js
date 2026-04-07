@@ -1,3 +1,4 @@
+// src/context/AuthContext.js
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { auth, db } from '../firebaseConfig';
 import { 
@@ -11,7 +12,6 @@ import {
 import { doc, getDoc, setDoc, Timestamp, onSnapshot } from 'firebase/firestore';
 
 const AuthContext = createContext();
-
 export const useAuth = () => useContext(AuthContext);
 
 export function AuthProvider({ children }) {
@@ -19,100 +19,63 @@ export function AuthProvider({ children }) {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  // --- FUNCIÓN DE REGISTRO CON ROLES AUTOMÁTICOS ---
-   async function signup(email, password, faculty, selectedRole) {
+  async function signup(email, password, displayName, th, selectedRole) {
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
     const isStaff = email.toLowerCase().endsWith('@unitec.edu.hn');
+
+    // 🔴 VALIDACIÓN AUTOMÁTICA CONTRA LA CARGA ACADÉMICA
+    const teacherRef = doc(db, 'active_teachers_list', th.trim());
+    const teacherSnap = await getDoc(teacherRef);
+    const isTeacherInExcel = teacherSnap.exists();
+
     await sendEmailVerification(user);
 
     return setDoc(doc(db, 'users', user.uid), {
       uid: user.uid,
       email: user.email.toLowerCase(),
-      faculty: faculty,
-      // Usar el rol seleccionado si es .hn, de lo contrario docente
+      displayName: displayName,
+      th: th,
       role: isStaff ? selectedRole : 'docente',
-      active: isStaff ? true : false, 
+      active: (isStaff || isTeacherInExcel), // Auto-activado si cumple
       createdAt: Timestamp.now(),
-      city: "" 
+      city: "", 
+      faculty: isTeacherInExcel ? "Validado por Malla" : "Pendiente"
     });
   }
 
-  // --- FUNCIÓN DE INICIO DE SESIÓN ---
   async function login(email, password) {
     const userCredential = await signInWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     
-    if (!userDoc.exists()) {
-      await signOut(auth);
-      throw new Error("No se encontró el perfil del usuario.");
-    }
+    if (!userDoc.exists()) { await signOut(auth); throw new Error("No existe perfil."); }
 
     const data = userDoc.data();
-
-    // 1. Validar si está activo
-    if (data.active === false) {
-      await signOut(auth);
-      throw new Error("user_not_active"); 
-    }
-
-    // 2. Validar si ya verificó el correo
-    if (!user.emailVerified) {
-      // Re-enviar si intenta entrar y no ha verificado
-      await sendEmailVerification(user);
-      await signOut(auth);
-      throw new Error("verify_email_first");
-    }
+    if (data.active === false) { await signOut(auth); throw new Error("user_not_active"); }
+    if (!user.emailVerified) { await sendEmailVerification(user); await signOut(auth); throw new Error("verify_email_first"); }
 
     return userCredential;
   }
 
-  function resetPassword(email) {
-    return sendPasswordResetEmail(auth, email);
-  }
-
-  function logout() {
-    return signOut(auth);
-  }
+  function resetPassword(email) { return sendPasswordResetEmail(auth, email); }
+  function logout() { return signOut(auth); }
 
   useEffect(() => {
-    let unsubscribeDoc = null; // Variable para limpiar el escuchador de base de datos
-
+    let unsubscribeDoc = null;
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
       setCurrentUser(user);
-
       if (user) {
-        // 🔴 CAMBIO CLAVE: Escuchador en tiempo real (onSnapshot)
-        // Cada vez que el documento del usuario cambie en Firebase, React se enterará al instante
+        // ESCUCHADOR EN TIEMPO REAL
         unsubscribeDoc = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
-          if (docSnap.exists()) {
-            setUserData(docSnap.data());
-          }
-          setLoading(false);
-        }, (error) => {
-          console.error("Error en el listener de usuario:", error);
+          if (docSnap.exists()) setUserData(docSnap.data());
           setLoading(false);
         });
-
-      } else {
-        setUserData(null);
-        setLoading(false);
-      }
+      } else { setUserData(null); setLoading(false); }
     });
-
-    return () => {
-      unsubscribeAuth();
-      if (unsubscribeDoc) unsubscribeDoc(); // Limpiamos ambos al desmontar
-    };
+    return () => { unsubscribeAuth(); if (unsubscribeDoc) unsubscribeDoc(); };
   }, []);
 
   const value = { currentUser, userData, signup, login, logout, resetPassword };
-
-  return (
-    <AuthContext.Provider value={value}>
-      {!loading && children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
 }
