@@ -19,28 +19,44 @@ export function AuthProvider({ children }) {
   const [userData, setUserData] = useState(null);
   const [loading, setLoading] = useState(true);
 
+  // --- REGISTRO AUTOMATIZADO Y BLINDADO V2.5.1 ---
   async function signup(email, password, displayName, th, selectedRole) {
+    const emailLower = email.toLowerCase().trim();
+    const isEdu = emailLower.endsWith('@unitec.edu');
+    const isStaff = emailLower.endsWith('@unitec.edu.hn');
+
+    // 1. VALIDACIÓN DE DOMINIO INSTITUCIONAL
+    if (!isEdu && !isStaff) {
+      throw new Error("Acceso denegado: Solo se permiten correos institucionales (@unitec.edu o @unitec.edu.hn)");
+    }
+
+    // 2. VALIDACIÓN DE IDENTIDAD PARA DOCENTES (.edu)
+    if (isEdu) {
+      const teacherRef = doc(db, 'active_teachers_list', th.trim());
+      const teacherSnap = await getDoc(teacherRef);
+      
+      if (!teacherSnap.exists()) {
+        throw new Error("Validación fallida: El No. Empleado (TH) no figura en la malla académica actual. Contacte a su coordinador.");
+      }
+    }
+
+    // 3. CREACIÓN DE CUENTA
     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
     const user = userCredential.user;
-    const isStaff = email.toLowerCase().endsWith('@unitec.edu.hn');
-
-    // 🔴 VALIDACIÓN AUTOMÁTICA CONTRA LA CARGA ACADÉMICA
-    const teacherRef = doc(db, 'active_teachers_list', th.trim());
-    const teacherSnap = await getDoc(teacherRef);
-    const isTeacherInExcel = teacherSnap.exists();
-
+    
     await sendEmailVerification(user);
 
+    // 4. GUARDADO DE PERFIL CON ACTIVACIÓN AUTOMÁTICA
     return setDoc(doc(db, 'users', user.uid), {
       uid: user.uid,
-      email: user.email.toLowerCase(),
+      email: emailLower,
       displayName: displayName,
       th: th,
       role: isStaff ? selectedRole : 'docente',
-      active: (isStaff || isTeacherInExcel), // Auto-activado si cumple
+      active: true, // Si pasó los filtros anteriores, entra activo
       createdAt: Timestamp.now(),
       city: "", 
-      faculty: isTeacherInExcel ? "Validado por Malla" : "Pendiente"
+      faculty: "Validado por Sistema"
     });
   }
 
@@ -49,11 +65,22 @@ export function AuthProvider({ children }) {
     const user = userCredential.user;
     const userDoc = await getDoc(doc(db, 'users', user.uid));
     
-    if (!userDoc.exists()) { await signOut(auth); throw new Error("No existe perfil."); }
+    if (!userDoc.exists()) { 
+      await signOut(auth); 
+      throw new Error("No existe un perfil asociado a esta cuenta."); 
+    }
 
     const data = userDoc.data();
-    if (data.active === false) { await signOut(auth); throw new Error("user_not_active"); }
-    if (!user.emailVerified) { await sendEmailVerification(user); await signOut(auth); throw new Error("verify_email_first"); }
+    if (data.active === false) { 
+      await signOut(auth); 
+      throw new Error("user_not_active"); 
+    }
+
+    if (!user.emailVerified) { 
+      await sendEmailVerification(user); 
+      await signOut(auth); 
+      throw new Error("verify_email_first"); 
+    }
 
     return userCredential;
   }
@@ -62,18 +89,33 @@ export function AuthProvider({ children }) {
   function logout() { return signOut(auth); }
 
   useEffect(() => {
+    let isMounted = true; 
     let unsubscribeDoc = null;
+
     const unsubscribeAuth = onAuthStateChanged(auth, async (user) => {
-      setCurrentUser(user);
       if (user) {
-        // ESCUCHADOR EN TIEMPO REAL
+        setCurrentUser(user);
         unsubscribeDoc = onSnapshot(doc(db, 'users', user.uid), (docSnap) => {
-          if (docSnap.exists()) setUserData(docSnap.data());
-          setLoading(false);
+          if (isMounted && docSnap.exists()) {
+            setUserData(docSnap.data());
+          }
+          if (isMounted) setLoading(false);
+        }, (error) => {
+          console.error("Error en Snapshot:", error);
+          if (isMounted) setLoading(false);
         });
-      } else { setUserData(null); setLoading(false); }
+      } else {
+        setCurrentUser(null);
+        setUserData(null);
+        setLoading(false);
+      }
     });
-    return () => { unsubscribeAuth(); if (unsubscribeDoc) unsubscribeDoc(); };
+
+    return () => {
+      isMounted = false; 
+      unsubscribeAuth();
+      if (unsubscribeDoc) unsubscribeDoc();
+    };
   }, []);
 
   const value = { currentUser, userData, signup, login, logout, resetPassword };

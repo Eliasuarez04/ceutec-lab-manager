@@ -3,8 +3,8 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { db } from '../../firebaseConfig';
 import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import { useSearchParams, Link } from 'react-router-dom';
-import { Bar, Doughnut, Line } from 'react-chartjs-2';
-import { format, startOfMonth, endOfMonth, subMonths } from 'date-fns';
+import { Bar, Doughnut } from 'react-chartjs-2';
+import { subMonths } from 'date-fns';
 import { es } from 'date-fns/locale';
 import '../styles/ExecutiveAnalytics.css';
 

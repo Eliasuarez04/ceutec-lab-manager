@@ -15,7 +15,7 @@ export default function QRScanner({ onScanSuccess, onScanError, targetRoomName }
     return () => {
       scanner.clear().catch(error => console.error("Failed to clear scanner", error));
     };
-  }, []);
+  }, [onScanSuccess, onScanError]);
 
   return (
     <div className="qr-scanner-wrapper">

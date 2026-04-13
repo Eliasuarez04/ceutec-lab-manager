@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { db } from '../../firebaseConfig';
 import { collection, getDocs, updateDoc, doc, query, where, orderBy } from 'firebase/firestore';
@@ -39,7 +39,7 @@ export default function UserManagement() {
     return REGION_MAPPING[cityKey] || ALL_SEDES;
   };
 
-  const fetchUsers = async () => {
+  const fetchUsers = useCallback(async () => {
     setLoading(true);
     try {
       let q;
@@ -77,11 +77,11 @@ export default function UserManagement() {
       toast.error("Error al cargar usuarios.");
     }
     setLoading(false);
-  };
+  }, [userData]);
 
   useEffect(() => {
     if (userData) fetchUsers();
-  }, [userData]);
+  }, [fetchUsers]);
 
   const handleUpdateUser = async (userId, currentData) => {
     const newRole = editRole[userId] || currentData.role;

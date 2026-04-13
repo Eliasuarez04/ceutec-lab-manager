@@ -20,7 +20,6 @@ export default function VerificarEmail() {
   // 2. Detectamos por el correo actual (que siempre está disponible en currentUser)
   const userEmail = currentUser?.email || "";
   const isDocenteDomain = userEmail.toLowerCase().endsWith('@unitec.edu');
-  const isStaffDomain = userEmail.toLowerCase().endsWith('@unitec.edu.hn');
 
   // Un docente está pendiente si tiene el dominio .edu Y (aún no hay userData o active es false)
   const isPendingApproval = isDocenteDomain && (userData?.active === false || !userData);

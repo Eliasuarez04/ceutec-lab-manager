@@ -1,9 +1,10 @@
+// src/pages/Admin/SpaceInventoryImporter.js
 import React, { useState } from 'react';
 import { db } from '../../firebaseConfig';
 import { collection, getDocs, doc, writeBatch } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
-import { Link, useSearchParams } from 'react-router-dom'; // Agregamos useSearchParams
+import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 
 const REGION_MAPPING = {
@@ -22,6 +23,7 @@ export default function SpaceInventoryImporter() {
   // CAPTURA DE SEDE PARA EL RETORNO SEGURO
   const currentSede = searchParams.get('sede') || userData?.sede || "";
 
+  // 🔴 SINCRONIZADO: El nombre de la función ahora coincide con el onChange del input
   const handleFileChange = (e) => setFile(e.target.files[0]);
 
   const processExcel = async () => {
@@ -64,6 +66,7 @@ export default function SpaceInventoryImporter() {
         let totalDeleted = 0;
         const newLogs = [];
 
+        // Usamos for...of para procesar las hojas una por una (Evita bloqueos de memoria)
         for (const sheetName of workbook.SheetNames) {
           const cleanSheetName = sheetName.toLowerCase().trim();
           const spaceDocId = nameToIdMap[cleanSheetName];
@@ -87,15 +90,23 @@ export default function SpaceInventoryImporter() {
           let batch = writeBatch(db);
           let opCounter = 0;
 
+          // 1. ELIMINAR REGISTROS PREVIOS
           for (const oldItem of oldItemsSnap.docs) {
             batch.delete(oldItem.ref);
             opCounter++;
             totalDeleted++;
+            
+            if (opCounter >= 400) {
+              await batch.commit();
+              batch = writeBatch(db);
+              opCounter = 0;
+            }
           }
 
-          jsonData.forEach((row) => {
+          // 2. INSERTAR NUEVOS REGISTROS
+          for (const row of jsonData) {
             const itemName = String(row['Nombre'] || '').trim();
-            if (!itemName) return;
+            if (!itemName) continue;
 
             const newItemRef = doc(equipmentRef); 
             
@@ -117,18 +128,19 @@ export default function SpaceInventoryImporter() {
             totalInserted++;
 
             if (opCounter >= 400) {
-              batch.commit();
+              await batch.commit();
               batch = writeBatch(db);
               opCounter = 0;
             }
-          });
+          }
 
           await batch.commit();
-          newLogs.push(`✅ "${sheetName}" actualizado (Carga Limpia).`);
+          newLogs.push(`✅ "${sheetName}" actualizado.`);
         }
 
         setLogs(newLogs);
-        toast.success(`Carga completa. Insertados: ${totalInserted}`, { id: toastId });
+        // Usamos totalDeleted y totalInserted en el toast final para satisfacer ESLint
+        toast.success(`Carga completa. Insertados: ${totalInserted}, Borrados: ${totalDeleted}`, { id: toastId });
 
       } catch (err) {
         console.error(err);
@@ -153,6 +165,7 @@ export default function SpaceInventoryImporter() {
         </div>
 
         <div className="import-zone" style={{ border: '2px dashed #c8102e', padding: '40px', borderRadius: '20px', textAlign: 'center', background: 'rgba(200, 16, 46, 0.02)', marginBottom: '20px' }}>
+            {/* 🔴 CORREGIDO: handleFileChange es el nombre correcto */}
             <input type="file" accept=".xlsx, .xls" onChange={handleFileChange} />
         </div>
 
@@ -161,11 +174,10 @@ export default function SpaceInventoryImporter() {
                 {loading ? 'Procesando...' : '🔥 Iniciar Reemplazo de Datos'}
             </button>
             
-            {/* BOTÓN CANCELAR CORREGIDO CON SEDE DINÁMICA */}
             <Link 
                 to={`/admin/inventario?sede=${encodeURIComponent(currentSede)}`} 
                 className="btn-cancel-pro" 
-                style={{textDecoration:'none', display:'flex', alignItems:'center'}}
+                style={{textDecoration:'none', display:'flex', alignItems:'center', justifyContent: 'center', background: '#eee', padding: '0 20px', borderRadius: '10px'}}
             >
                 Cancelar
             </Link>

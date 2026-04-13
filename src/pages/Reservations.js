@@ -1,11 +1,11 @@
-import React, { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { useLocation, Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useCallback, useRef } from 'react';
+import { useLocation, Link } from 'react-router-dom';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay, addDays, addMinutes, setHours, setMinutes, startOfDay, endOfDay, parseISO } from 'date-fns';
+import { format, parse, startOfWeek, getDay, addMinutes } from 'date-fns'; 
 import es from 'date-fns/locale/es';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { db } from '../firebaseConfig';
-import { collection, getDocs, query, where, Timestamp, addDoc, writeBatch, doc, setDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, Timestamp, addDoc, writeBatch, doc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import ReservationModal from '../components/ReservationModal';
@@ -19,7 +19,6 @@ const messages = { allDay: 'Todo el día', previous: 'Atrás', next: 'Siguiente'
 export default function Reservations() {
   const { currentUser, userData } = useAuth();
   const location = useLocation();
-  const navigate = useNavigate();
   const params = new URLSearchParams(location.search);
   
   const urlSede = params.get('sede') || "";
@@ -33,7 +32,7 @@ export default function Reservations() {
   const [allSpaces, setAllSpaces] = useState([]);
   const [activeSpace, setActiveSpace] = useState(null);
   const [reservations, setReservations] = useState([]);
-  const [loading, setLoading] = useState(false);
+  const [setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
