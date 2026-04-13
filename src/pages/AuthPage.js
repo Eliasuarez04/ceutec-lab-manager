@@ -191,7 +191,7 @@ export default function AuthPage() {
             <div className="overlay-panel-modern overlay-right">
               <img src={ceutecLogoWhite} className="logo-overlay" alt="logo" />
               <h2>¿Docente Nuevo?</h2>
-              <p>Regístrate para obtener acceso automatizado a laboratorios.</p>
+              <p>Regístrate para obtener acceso automatizado a tus reservas académicas.</p>
               <button className="btn-modern ghost" onClick={() => setIsPanelActive(true)}>Comenzar Registro</button>
             </div>
           </div>
