@@ -1,5 +1,4 @@
-// src/pages/AuthPage.js
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import toast from 'react-hot-toast';
@@ -54,14 +53,13 @@ export default function AuthPage() {
   const { login, signup, resetPassword } = useAuth();
   const navigate = useNavigate();
   const [isPanelActive, setIsPanelActive] = useState(false);
-  const [isResetModalOpen, setIsResetModalOpen] = useState(false);
-  const [resetEmail, setResetEmail] = useState('');
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
+  const[isResetModalOpen, setIsResetModalOpen] = useState(false);
+  const[resetEmail, setResetEmail] = useState('');
 
   // ESTADOS DE REGISTRO
-  const [regEmail, setRegEmail] = useState('');
+  const[regEmail, setRegEmail] = useState('');
   const [regName, setRegName] = useState('');
-  const [regTh, setRegTh] = useState('');
+  const[regTh, setRegTh] = useState('');
   const [regPassword, setRegPassword] = useState('');
   const [regConfirm, setRegConfirm] = useState('');
   const [selectedRole, setSelectedRole] = useState('docente');
@@ -69,32 +67,26 @@ export default function AuthPage() {
 
   // ESTADOS DE LOGIN
   const [loginEmail, setLoginEmail] = useState('');
-  const [loginPassword, setLoginPassword] = useState('');
+  const[loginPassword, setLoginPassword] = useState('');
   const [showLoginPass, setShowLoginPass] = useState(false);
-
-  // LÓGICA PARA DETECTAR STAFF .HN
-  const isStaff = regEmail.toLowerCase().endsWith('@unitec.edu.hn');
-
-  useEffect(() => {
-    const handleMouseMove = (e) => setMousePos({ x: e.clientX, y: e.clientY });
-    window.addEventListener('mousemove', handleMouseMove);
-    return () => window.removeEventListener('mousemove', handleMouseMove);
-  }, []);
 
   const handleLoginSubmit = async (e) => {
     e.preventDefault();
     const loadingToast = toast.loading("Autenticando...");
-    try { 
-      await login(loginEmail, loginPassword); 
+    try {
+      await login(loginEmail, loginPassword);
       toast.success("Bienvenido", { id: loadingToast });
-      navigate('/'); 
-    } catch (err) { toast.error("Error en datos", { id: loadingToast }); }
+      navigate('/');
+    } catch (err) {
+      if (err.message.includes("user_not_active")) toast.error("Acceso denegado. Contacte al administrador.", { id: loadingToast });
+      else toast.error("Credenciales incorrectas", { id: loadingToast });
+    }
   };
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     if (regPassword !== regConfirm) return toast.error("Las contraseñas no coinciden");
-    const loadingToast = toast.loading("Validando TH con Malla Académica...");
+    const loadingToast = toast.loading("Validando...");
     try {
       await signup(regEmail, regPassword, regName, regTh, selectedRole);
       toast.success("Registro Exitoso", { id: loadingToast });
@@ -104,10 +96,9 @@ export default function AuthPage() {
 
   return (
     <div className="modern-auth-body">
-      <div className="mouse-glow" style={{ left: mousePos.x, top: mousePos.y }}></div>
       <div className="star-field"></div>
-
-      <div className="brand-header-external fade-in-down">
+      
+      <div className="brand-header-external">
          <div className="spaceone-brand-text">SPACEONE</div>
          <div className="brand-sub-text">GESTIÓN ACADÉMICA</div>
       </div>
@@ -118,22 +109,19 @@ export default function AuthPage() {
         <div className="form-container-modern sign-up-container">
           <form onSubmit={handleRegisterSubmit} className="auth-form-modern">
             <h1 className="form-internal-title">Crear Cuenta</h1>
-            <p className="subtitle-internal">Validación por TH Docente</p>
+            <p className="subtitle-internal">VALIDACIÓN POR TH DOCENTE</p>
             
             <div className="input-group-modern">
-                <MailIcon />
-                <input type="email" placeholder="Correo institucional" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required />
+                <MailIcon /><input type="email" placeholder="Correo institucional" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required />
             </div>
             <div className="input-group-modern">
-                <UserIcon />
-                <input type="text" placeholder="Nombre Completo" value={regName} onChange={(e) => setRegName(e.target.value)} required />
+                <UserIcon /><input type="text" placeholder="Nombre Completo" value={regName} onChange={(e) => setRegName(e.target.value)} required />
             </div>
             <div className="input-group-modern">
-                <IDIcon />
-                <input type="text" placeholder="No. Empleado (TH)" value={regTh} onChange={(e) => setRegTh(e.target.value)} required />
+                <IDIcon /><input type="text" placeholder="No. Empleado (TH)" value={regTh} onChange={(e) => setRegTh(e.target.value)} required />
             </div>
 
-            {isStaff && (
+            {regEmail.toLowerCase().endsWith('@unitec.edu.hn') && (
               <div className="input-group-modern">
                 <BriefcaseIcon />
                 <select value={selectedRole} onChange={(e) => setSelectedRole(e.target.value)} className="premium-select">
@@ -153,10 +141,12 @@ export default function AuthPage() {
               {showRegPass ? <EyeOffIcon onClick={() => setShowRegPass(false)} /> : <EyeIcon onClick={() => setShowRegPass(true)} />}
             </div>
             <div className="input-group-modern">
-              <LockIcon />
-              <input type={showRegPass ? "text" : "password"} placeholder="Confirmar" value={regConfirm} onChange={(e) => setRegConfirm(e.target.value)} required />
+              <LockIcon /><input type={showRegPass ? "text" : "password"} placeholder="Confirmar" value={regConfirm} onChange={(e) => setRegConfirm(e.target.value)} required />
             </div>
-            <button type="submit" className="btn-modern main">Registrar y Validar</button>
+            <button type="submit" className="btn-modern main">Registrar</button>
+            <p className="mobile-switch-link" onClick={() => setIsPanelActive(false)}>
+                ¿Ya tienes cuenta? <span>Inicia Sesión</span>
+            </p>
           </form>
         </div>
 
@@ -164,10 +154,9 @@ export default function AuthPage() {
         <div className="form-container-modern sign-in-container">
           <form onSubmit={handleLoginSubmit} className="auth-form-modern">
             <h1 className="form-internal-title">Bienvenido</h1>
-            <p className="subtitle-internal">Ingresa tus credenciales</p>
+            <p className="subtitle-internal">INGRESA TUS CREDENCIALES</p>
             <div className="input-group-modern">
-                <MailIcon />
-                <input type="email" placeholder="Correo institucional" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
+                <MailIcon /><input type="email" placeholder="Correo institucional" value={loginEmail} onChange={(e) => setLoginEmail(e.target.value)} required />
             </div>
             <div className="input-group-modern">
               <LockIcon />
@@ -176,6 +165,9 @@ export default function AuthPage() {
             </div>
             <span onClick={() => setIsResetModalOpen(true)} className="recovery-link">¿Olvidaste tu contraseña?</span>
             <button type="submit" className="btn-modern main">Ingresar</button>
+            <p className="mobile-switch-link" onClick={() => setIsPanelActive(true)}>
+                ¿No tienes cuenta? <span>Regístrate aquí</span>
+            </p>
           </form>
         </div>
 
@@ -200,8 +192,11 @@ export default function AuthPage() {
 
       <Modal isOpen={isResetModalOpen} onClose={() => setIsResetModalOpen(false)} title="Recuperar Acceso">
         <div className="recovery-content">
-          <p>Ingresa tu correo institucional para enviarte un enlace seguro.</p>
-          <input type="email" placeholder="nombre@unitec.edu" className="input-modern-simple" onChange={(e) => setResetEmail(e.target.value)} />
+          <p>Se enviará un enlace a tu correo institucional para restablecer tu contraseña.</p>
+          <div className="input-group-modern" style={{maxWidth: '100%'}}>
+              <MailIcon />
+              <input type="email" placeholder="nombre@unitec.edu" className="input-modern-simple" onChange={(e) => setResetEmail(e.target.value)} />
+          </div>
           <button className="btn-modern main" style={{width: '100%', marginTop: '20px'}} onClick={async () => { await resetPassword(resetEmail); setIsResetModalOpen(false); toast.success("Enlace enviado."); }}>Enviar Enlace</button>
         </div>
       </Modal>

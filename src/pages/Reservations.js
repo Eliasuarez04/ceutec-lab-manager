@@ -32,25 +32,25 @@ export default function Reservations() {
   const [allSpaces, setAllSpaces] = useState([]);
   const [activeSpace, setActiveSpace] = useState(null);
   const [reservations, setReservations] = useState([]);
-  const [setLoading] = useState(false);
-  const [searchTerm, setSearchTerm] = useState('');
+  const [loading, setLoading] = useState(false);
+  const[searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState('month');
   
-  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const[isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const[isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [slotInfo, setSlotInfo] = useState(null);
 
-  const [isMassLoadOpen, setIsMassLoadOpen] = useState(false);
+  const[isMassLoadOpen, setIsMassLoadOpen] = useState(false);
   const [loadingMass, setLoadingMass] = useState(false);
   const [massStep, setMassStep] = useState(1); 
-  const [periodStart, setPeriodStart] = useState('');
+  const[periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
-  const [previewStats, setPreviewStats] = useState({ count: 0, spacesFound: 0 });
-  const [preparedReservations, setPreparedReservations] = useState([]);
+  const[previewStats, setPreviewStats] = useState({ count: 0, spacesFound: 0 });
+  const[preparedReservations, setPreparedReservations] = useState([]);
 
   const closeMassModal = useCallback(() => {
     setIsMassLoadOpen(false);
@@ -58,7 +58,7 @@ export default function Reservations() {
     setPreparedReservations([]);
     setPreviewStats({ count: 0, spacesFound: 0 });
     setLoadingMass(false);
-  }, []);
+  },[]);
 
   useEffect(() => {
     const handleClickOutside = (event) => {
@@ -68,7 +68,7 @@ export default function Reservations() {
     };
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
-  }, []);
+  },[]);
 
   useEffect(() => {
     const fetchSpaces = async () => {
@@ -91,7 +91,7 @@ export default function Reservations() {
       } catch (error) { console.error(error); }
     };
     fetchSpaces();
-  }, [urlSede, urlTipo, urlSpaceId]);
+  },[urlSede, urlTipo, urlSpaceId]);
 
   const fetchReservations = useCallback(async () => {
     if (!activeSpace) return;
@@ -137,7 +137,7 @@ export default function Reservations() {
             if (s.codigoOriginal) spaceMap[s.codigoOriginal.toString().trim().toUpperCase()] = s;
         });
 
-        const tempReservations = [];
+        const tempReservations =[];
         const usedSpaces = new Set();
         const [sy, sm, sd] = periodStart.split('-').map(Number);
         const [ey, em, ed] = periodEnd.split('-').map(Number);
