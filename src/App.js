@@ -280,18 +280,18 @@ export default function App() {
 
 // Creamos un componente pequeño para manejar la lógica de la alerta sin romper el App
 function AuthConsumer() {
-  const { currentUser, userData, useAuth } = require('./context/AuthContext'); // Asegúrate de que useAuth esté disponible si no lo importaste globalmente arriba
-  const auth = require('./context/AuthContext').useAuth(); // Ajuste seguro
+  // Solo requerimos useAuth y lo instanciamos directamente para no dejar variables sin usar
+  const auth = require('./context/AuthContext').useAuth(); 
   
-  // 1. No mostrar nada si no hay usuario (evita el error de 'undefined')
-  // 2. No mostrar si el correo no está verificado (para que no salga en la pantalla de verificación)
+  // 1. No mostrar nada si no hay usuario
+  // 2. No mostrar si el correo no está verificado
   // 3. No mostrar si el perfil ya está activo
   const shouldShowAlert = 
     auth.currentUser?.emailVerified && 
     auth.userData && 
     auth.userData.active === false;
 
-  // También verificamos que no estemos en la ruta de verificación por seguridad extra
+  // Verificamos que no estemos en la ruta de verificación por seguridad extra
   const isVerificationPage = window.location.pathname === '/verificar-email';
 
   if (shouldShowAlert && !isVerificationPage) {
