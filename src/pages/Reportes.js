@@ -5,8 +5,6 @@ import { db } from '../firebaseConfig';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
 import { format, getDay, getHours, startOfDay, endOfDay, parseISO } from 'date-fns';
-import { es } from 'date-fns/locale'; 
-import { CSVLink } from 'react-csv';
 import { Link, useSearchParams } from 'react-router-dom';
 import toast from 'react-hot-toast';
 import './styles/Reportes.css';
@@ -218,16 +216,7 @@ export default function Reportes() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  const csvData = useMemo(() => {
-    return reservationData.map(res => ({
-      Materia: res.className || res.purpose,
-      Laboratorio: res.labName,
-      Docente: res.userName,
-      Fecha: res.startTime ? format(res.startTime.toDate(), 'dd/MM/yyyy') : '',
-      Hora: res.startTime ? `${format(res.startTime.toDate(), 'HH:mm')} - ${format(res.endTime.toDate(), 'HH:mm')}` : ''
-    }));
-  }, [reservationData]);
-
+  
   return (
     <div className="dashboard-wrapper">
       <div className="reports-page-card">

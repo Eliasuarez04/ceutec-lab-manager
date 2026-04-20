@@ -5,7 +5,6 @@ import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore
 import { useSearchParams, Link } from 'react-router-dom';
 import { Bar, Doughnut } from 'react-chartjs-2';
 import { subMonths } from 'date-fns';
-import { es } from 'date-fns/locale';
 import '../styles/ExecutiveAnalytics.css';
 
 import {

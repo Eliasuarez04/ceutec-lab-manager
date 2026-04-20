@@ -1,7 +1,7 @@
 // src/pages/Admin/SpaceImporter.js
 import React, { useState } from 'react';
 import { db } from '../../firebaseConfig';
-import { collection, doc, writeBatch, Timestamp } from 'firebase/firestore';
+import { doc, writeBatch, Timestamp } from 'firebase/firestore';
 import * as XLSX from 'xlsx';
 import toast from 'react-hot-toast';
 import { useNavigate } from 'react-router-dom';

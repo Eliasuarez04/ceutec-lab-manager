@@ -81,7 +81,7 @@ export default function UserManagement() {
 
   useEffect(() => {
     if (userData) fetchUsers();
-  }, [fetchUsers]);
+  }, [fetchUsers, userData]);
 
   const handleUpdateUser = async (userId, currentData) => {
     const newRole = editRole[userId] || currentData.role;
