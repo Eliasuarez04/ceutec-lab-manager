@@ -4,7 +4,9 @@ const {
   onDocumentUpdated, 
   onDocumentDeleted 
 } = require("firebase-functions/v2/firestore");
+const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { logger } = require("firebase-functions");
+const functions = require("firebase-functions"); // IMPORTANTE: Necesario para leer variables de entorno
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
 
@@ -25,6 +27,61 @@ const initializeTransporter = () => {
   }
 };
 
+
+// --- NUEVA FUNCIÓN: REGISTRO SEGURO DE STAFF ---
+exports.registerStaffSecure = onCall(
+  { region: "us-central1", cors: true }, 
+  async (request) => {
+    const data = request.data;
+    
+    if (!data.email || !data.email.endsWith('@unitec.edu.hn')) {
+      throw new HttpsError('invalid-argument', 'Correo institucional inválido.');
+    }
+
+    // Usamos process.env para acceder a las variables configuradas
+    // Firebase v2 recomienda definir variables de entorno en la configuración del proyecto
+    const pinMap = {
+      "superadmin": process.env.PIN_SUPERADMIN,
+      "coord_labs": process.env.PIN_COORD_LABS,
+      "coord_aulas": process.env.PIN_COORD_AULAS,
+      "it_staff": process.env.PIN_IT_STAFF,
+      "admin_staff": process.env.PIN_ADMIN_STAFF
+    };
+
+    const expectedPin = pinMap[data.role];
+
+    if (!expectedPin || data.pin !== expectedPin) {
+      throw new HttpsError('permission-denied', 'PIN de autorización incorrecto o rol no soportado.');
+    }
+
+    try {
+      const userRecord = await admin.auth().createUser({
+        email: data.email,
+        password: data.password,
+        displayName: data.name,
+        emailVerified: false 
+      });
+
+      // CORRECCIÓN: Si data.city es undefined, enviamos cadena vacía o "Tegucigalpa"
+      const cityToSave = data.city ? data.city : "Tegucigalpa";
+
+      await db.collection('users').doc(userRecord.uid).set({
+        email: data.email,
+        name: data.name,
+        th: data.th || 'N/A',
+        role: data.role,
+        city: cityToSave, 
+        createdAt: admin.firestore.Timestamp.now(),
+        isActive: true
+      });
+
+      return { success: true, uid: userRecord.uid };
+    } catch (error) {
+      logger.error("Error detallado:", error);
+      throw new HttpsError('internal', error.message);
+    }
+  }
+);
 // --- FUNCIÓN 1: CORREO DE NUEVA RESERVA (FILTRADO) ---
 exports.sendReservationEmail = onDocumentCreated(
   { document: "reservations/{reservationId}", region: "us-central1" },
@@ -33,7 +90,6 @@ exports.sendReservationEmail = onDocumentCreated(
     if (!snap) return;
     const res = snap.data();
 
-    // 🔴 FILTRO V2.5: Si es Carga Académica, no enviar correo para evitar spam masivo
     if (res.reservationType === 'academic_load') {
       logger.log(`Silenciando correo: Registro de Carga Académica (${res.className})`);
       return null;
@@ -46,7 +102,7 @@ exports.sendReservationEmail = onDocumentCreated(
     const reservationLink = `${appUrl}/mis-reservas?sede=${sedeEncoded}`;
 
     const formatHN = (date) => {
-      const hnDate = new Date(date.getTime() - (6 * 60 * 60 * 1000)); // Ajuste manual Honduras
+      const hnDate = new Date(date.getTime() - (6 * 60 * 60 * 1000));
       const dia = hnDate.getUTCDate().toString().padStart(2, '0');
       const mes = (hnDate.getUTCMonth() + 1).toString().padStart(2, '0');
       const anio = hnDate.getUTCFullYear();
@@ -95,8 +151,6 @@ exports.onReservationUpdated = onDocumentUpdated(
   { document: "reservations/{reservationId}", region: "us-central1" },
   async (event) => {
     const after = event.data.after.data();
-
-    // 🔴 FILTRO: No notificar cambios en registros de carga académica
     if (after.reservationType === 'academic_load') return null;
 
     const before = event.data.before.data();
@@ -152,8 +206,6 @@ exports.onReservationDeleted = onDocumentDeleted(
   { document: "reservations/{reservationId}", region: "us-central1" },
   async (event) => {
     const deletedData = event.data.data();
-
-    // 🔴 CRÍTICO: No enviar correos cuando se borra masivamente para actualizar el Excel
     if (deletedData.reservationType === 'academic_load') return null;
 
     initializeTransporter();

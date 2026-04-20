@@ -11,10 +11,6 @@ import es from 'date-fns/locale/es';
 import './styles/UserProfile.css'; 
 
 const CITIES_LIST = ["San Pedro Sula", "Tegucigalpa", "La Ceiba"];
-const FACULTADES_LIST = [
-  "Ingeniería", "Ciencias de la Salud", "Ciencias Administrativas y Contables", 
-  "Diseño y Comunicación", "Derecho", "Postgrado"
-];
 
 const UserProfile = () => {
   const { currentUser, userData } = useAuth();
@@ -26,7 +22,6 @@ const UserProfile = () => {
   
   // Campos del perfil
   const [displayName, setDisplayName] = useState('');
-  const [faculty, setFaculty] = useState('');
   const [city, setCity] = useState('');
   const [th, setTh] = useState('');
 
@@ -48,13 +43,12 @@ const UserProfile = () => {
             const data = userDoc.data();
             setDisplayName(data.displayName || currentUser.displayName || '');
             
-            // Cargamos datos. Si existen, ya no se podrán cambiar (salvo admin)
-            setFaculty(data.faculty || '');
+            // Cargamos datos.
             setCity(data.city || '');
             setTh(data.th || '');
             
             // Si falta algún dato crítico, forzamos la edición
-            if (!data.city || !data.th || !data.faculty) {
+            if (!data.city || !data.th) {
                 setIsEditing(true);
             }
         }
@@ -84,7 +78,7 @@ const UserProfile = () => {
   const handleUpdate = async (e) => {
     e.preventDefault();
     
-    if (!city || !th || !faculty) {
+    if (!city || !th) {
         toast.error("Todos los campos marcados con * son obligatorios.");
         return;
     }
@@ -94,7 +88,6 @@ const UserProfile = () => {
       await updateProfile(currentUser, { displayName });
       await updateDoc(doc(db, "users", currentUser.uid), { 
           displayName, 
-          faculty,
           city, 
           th 
       });
@@ -168,7 +161,6 @@ const UserProfile = () => {
                             <option value="">Selecciona tu ciudad...</option>
                             {CITIES_LIST.map(c => <option key={c} value={c}>{c}</option>)}
                         </select>
-                        {!userData?.city && <small className="warning-text">⚠️ Una vez guardada, no podrás cambiarla.</small>}
                     </div>
                   )}
 
@@ -179,27 +171,10 @@ const UserProfile = () => {
                     <div className="form-group-profile">
                         <label>No. Empleado (TH) <span style={{color:'red'}}>*</span></label>
                         <input type="text" value={th} onChange={(e) => setTh(e.target.value)} required placeholder="Ej: 123456" />
-                        {!userData?.th && <small className="warning-text">⚠️ Asegúrate de ingresarlo correctamente.</small>}
-                    </div>
-                  )}
-
-                  {/* LOGICA DE FACULTAD: Si ya existe y no es admin, BLOQUEADO */}
-                  {(userData?.faculty && !isSuperAdmin) ? (
-                    <LockedField label="Facultad" value={userData.faculty} />
-                  ) : (
-                    <div className="form-group-profile">
-                        <label>Facultad <span style={{color:'red'}}>*</span></label>
-                        <select value={faculty} onChange={(e) => setFaculty(e.target.value)} required>
-                            <option value="">Selecciona tu facultad...</option>
-                            {FACULTADES_LIST.map(f => <option key={f} value={f}>{f}</option>)}
-                        </select>
                     </div>
                   )}
 
                   <div className="profile-form-actions">
-                    {(userData?.city && userData?.th && userData?.faculty) && (
-                        <button type="button" onClick={() => setIsEditing(false)} className="btn-secondary-card">Cancelar</button>
-                    )}
                     <button type="submit" disabled={loading} className="btn-primary-card">Confirmar Datos</button>
                   </div>
                 </form>
@@ -214,10 +189,6 @@ const UserProfile = () => {
                       <label>TH</label>
                       <p>🆔 {th}</p>
                     </div>
-                    <div className="detail-item-box">
-                      <label>Facultad</label>
-                      <p>🎓 {faculty}</p>
-                    </div>
                   </div>
                   <button onClick={() => setIsEditing(true)} className="btn-edit-profile-trigger">
                     ✏️ Editar Perfil
@@ -226,32 +197,31 @@ const UserProfile = () => {
               )}
             </div>
             
-            {/* Sección de Actividad Reciente Mejorada */}
-<div className="profile-activity-card">
-  <div className="activity-card-header">
-    <h3><span className="icon">🕒</span> Actividad Reciente</h3>
-    <Link to={`/mis-reservas?sede=${currentSede}`} className="view-all-link">Ver todo</Link>
-  </div>
-  
-  {recentReservations.length > 0 ? (
-    <div className="activity-list-premium">
-      {recentReservations.map(res => (
-        <div key={res.id} className="activity-row-item">
-          <div className="activity-status-indicator"></div>
-          <div className="activity-info-main">
-            <p className="activity-lab-name">{res.labName}</p>
-            <p className="activity-class-name">{res.className || res.purpose}</p>
-          </div>
-          <div className="activity-date-tag">
-            {format(res.startTime.toDate(), "d 'de' MMMM", { locale: es })}
-          </div>
-        </div>
-      ))}
-    </div>
-  ) : (
-    <p className="empty-text-profile">No tienes registros de actividad recientes.</p>
-  )}
-</div>
+            <div className="profile-activity-card">
+              <div className="activity-card-header">
+                <h3><span className="icon">🕒</span> Actividad Reciente</h3>
+                <Link to={`/mis-reservas?sede=${currentSede}`} className="view-all-link">Ver todo</Link>
+              </div>
+              
+              {recentReservations.length > 0 ? (
+                <div className="activity-list-premium">
+                  {recentReservations.map(res => (
+                    <div key={res.id} className="activity-row-item">
+                      <div className="activity-status-indicator"></div>
+                      <div className="activity-info-main">
+                        <p className="activity-lab-name">{res.labName}</p>
+                        <p className="activity-class-name">{res.className || res.purpose}</p>
+                      </div>
+                      <div className="activity-date-tag">
+                        {format(res.startTime.toDate(), "d 'de' MMMM", { locale: es })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <p className="empty-text-profile">No tienes registros de actividad recientes.</p>
+              )}
+            </div>
           </div>
 
           {/* --- COLUMNA DERECHA (ESTADÍSTICAS Y ACCESOS) --- */}
@@ -265,7 +235,6 @@ const UserProfile = () => {
               <span className="stat-label">Pendientes</span>
             </div>
 
-            {/* AQUI ESTAN LOS ACCESOS RÁPIDOS RESTAURADOS */}
             <div className="dashboard-card quick-links-card">
               <h3>Accesos Rápidos</h3>
               <div className="quick-links-stack">

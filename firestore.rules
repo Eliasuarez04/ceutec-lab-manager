@@ -1,0 +1,56 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    
+    // Función global para saber si está logueado
+    function isAuth() {
+      return request.auth != null;
+    }
+    
+    // Función para obtener los datos del usuario actual
+    function getUserData() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data;
+    }
+
+    // 🔴 REGLA 1: USUARIOS
+    match /users/{userId} {
+      allow read: if isAuth();
+      // Solo una Cloud Function (Admin) puede crear usuarios con roles especiales.
+      // El usuario solo puede editar su propio perfil, PERO bloqueamos que cambie su "role".
+      allow update: if isAuth() && request.auth.uid == userId 
+                    && !request.resource.data.diff(resource.data).affectedKeys().hasAny(['role']);
+    }
+
+    // 🔴 REGLA 2: ESPACIOS (AULAS Y LABS)
+    match /spaces/{spaceId} {
+      allow read: if isAuth();
+      // Solo coordinadores y superadmins pueden modificar el inventario
+      allow write: if isAuth() && getUserData().role in ['superadmin', 'coord_labs', 'coord_aulas'];
+    }
+
+    // 🔴 REGLA 3: RESERVAS Y GEO-FENCING (La Regla de Oro #2)
+    match /reservations/{reservationId} {
+      allow read: if isAuth();
+      
+      // Permitir crear SOLO si la sede de la reserva coincide con la ciudad del usuario
+      // (O si es superadmin que puede en todas)
+      allow create: if isAuth() && (
+        getUserData().role == 'superadmin' || 
+        request.resource.data.sede == getUserData().city ||
+        getUserData().role in ['coord_labs', 'coord_aulas']
+      );
+
+      // Solo pueden borrar o actualizar si son dueños de la reserva, o son coordinadores
+      allow update, delete: if isAuth() && (
+        resource.data.userId == request.auth.uid || 
+        getUserData().role in['superadmin', 'coord_labs', 'coord_aulas']
+      );
+    }
+    
+    // Lista blanca de docentes (Solo lectura para frontend, escritura por Cloud Functions)
+    match /active_teachers_list/{th} {
+      allow read: if true;
+      allow write: if false; 
+    }
+  }
+}

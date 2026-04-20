@@ -61,29 +61,24 @@ export function AuthProvider({ children }) {
   }
 
   async function login(email, password) {
-    const userCredential = await signInWithEmailAndPassword(auth, email, password);
-    const user = userCredential.user;
-    const userDoc = await getDoc(doc(db, 'users', user.uid));
-    
-    if (!userDoc.exists()) { 
-      await signOut(auth); 
-      throw new Error("No existe un perfil asociado a esta cuenta."); 
-    }
-
-    const data = userDoc.data();
-    if (data.active === false) { 
-      await signOut(auth); 
-      throw new Error("user_not_active"); 
-    }
-
-    if (!user.emailVerified) { 
-      await sendEmailVerification(user); 
-      await signOut(auth); 
-      throw new Error("verify_email_first"); 
-    }
-
-    return userCredential;
+  const userCredential = await signInWithEmailAndPassword(auth, email, password);
+  const user = userCredential.user;
+  const userDoc = await getDoc(doc(db, 'users', user.uid));
+  
+  if (!userDoc.exists()) { 
+    await signOut(auth); 
+    throw new Error("No existe un perfil asociado a esta cuenta."); 
   }
+
+  const data = userDoc.data();
+  if (data.active === false) { 
+    await signOut(auth); 
+    throw new Error("user_not_active"); 
+  }
+
+  // Eliminamos el throw de verificación de email aquí para manejarlo en el Frontend
+  return userCredential;
+}
 
   function resetPassword(email) { return sendPasswordResetEmail(auth, email); }
   function logout() { return signOut(auth); }

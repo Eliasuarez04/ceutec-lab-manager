@@ -1,63 +1,101 @@
-/* src/pages/VerificarEmail.css */
-.verify-container {
+.auth-body {
+  min-height: 100vh;
   display: flex;
-  justify-content: center;
   align-items: center;
-  height: 100vh;
-  background-color: var(--background-light);
-  padding: 1rem;
+  justify-content: center;
+  /* Fondo moderno con gradiente rojo UNITEC/CEUTEC */
+  background: linear-gradient(135deg, #8a0b20 0%, #c8102e 100%);
+  position: relative;
+  overflow: hidden;
+  padding: 20px;
+  font-family: 'Plus Jakarta Sans', 'Poppins', sans-serif;
 }
 
+.background-shape {
+  position: absolute;
+  filter: blur(80px);
+  z-index: 0;
+  border-radius: 50%;
+}
+
+/* Formas sutiles en tonos blancos/grises para dar brillo al fondo rojo */
+.shape-1 { width: 400px; height: 400px; background: rgba(255, 255, 255, 0.15); top: -100px; right: -100px; }
+.shape-2 { width: 300px; height: 300px; background: rgba(255, 255, 255, 0.08); bottom: -50px; left: -50px; }
+
 .verification-card {
-  background: rgba(255, 255, 255, 0.85);
-  backdrop-filter: blur(20px);
-  padding: 50px;
-  border-radius: 25px;
-  box-shadow: 0 15px 35px rgba(0,0,0,0.1);
-  max-width: 550px;
-  width: 90%;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  padding: 40px;
+  border-radius: 24px;
+  box-shadow: 0 25px 50px rgba(0, 0, 0, 0.4);
+  width: 100%;
+  max-width: 500px;
   text-align: center;
-  border: 1px solid rgba(255,255,255,0.6);
-  z-index: 10;
+  z-index: 1;
+  animation: fadeInUp 0.6s ease-out;
+}
+
+@keyframes fadeInUp {
+  from { opacity: 0; transform: translateY(30px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .status-icon {
-  font-size: 4rem;
+  font-size: 64px;
   margin-bottom: 20px;
+  display: block;
 }
 
-.status-icon.waiting { color: #f39c12; }
-.status-icon.email { color: #c8102e; }
-
 .verification-card h1 {
-  font-weight: 800;
+  color: #1e293b; /* Gris oscuro para el título */
+  font-size: 28px;
   margin-bottom: 15px;
-  color: #333;
+  font-weight: 800;
+}
+
+.verification-card p {
+  color: #475569; /* Gris medio para lectura cómoda */
 }
 
 .user-email-display {
-  color: #c8102e;
-  font-size: 1.2rem;
-  margin: 10px 0;
-  background: rgba(200, 16, 46, 0.05);
-  padding: 10px;
-  border-radius: 10px;
+  background: #f8fafc; /* Gris muy claro */
+  padding: 10px 15px;
+  border-radius: 12px;
+  color: #c8102e; /* Rojo institucional */
+  font-size: 18px;
   display: inline-block;
+  margin: 15px 0;
+  border: 1px dashed #cbd5e1;
+  font-weight: 700;
 }
 
 .info-box {
-  background: #f8f9fa;
+  background: #f8fafc;
+  border-left: 4px solid #c8102e; /* Línea de acento roja */
   padding: 20px;
-  border-radius: 15px;
-  margin: 20px 0;
-  border-left: 5px solid #f39c12;
+  margin: 25px 0;
   text-align: left;
-  font-size: 0.95rem;
-  color: #555;
+  border-radius: 0 12px 12px 0;
+  color: #334155;
 }
 
-.subtext {
-  font-size: 0.85rem;
-  color: #888;
-  margin-bottom: 30px;
+.auth-button {
+  width: 100%;
+  background: #1e293b; /* Botón gris oscuro elegante */
+  color: white;
+  padding: 14px;
+  border: none;
+  border-radius: 12px;
+  font-size: 16px;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  margin-top: 20px;
+  box-shadow: 0 4px 12px rgba(30, 41, 59, 0.2);
+}
+
+.auth-button:hover {
+  background: #c8102e; /* Al pasar el mouse, cambia al rojo institucional */
+  transform: translateY(-2px);
+  box-shadow: 0 6px 15px rgba(200, 16, 46, 0.3);
 }
