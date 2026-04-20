@@ -68,6 +68,15 @@ const ReservationModal = ({ isOpen, onClose, spaceData, slotInfo, onSubmit, exis
     const finalStart = setMinutes(setHours(new Date(baseDate), startH), startM);
     const finalEnd = setMinutes(setHours(new Date(baseDate), endH), endM);
 
+    /*const horasAnticipacion = 24; 
+    const tiempoActual = new Date();
+    const diferenciaHoras = (finalStart - tiempoActual) / (1000 * 60 * 60);
+
+    // Solo aplicar la regla si NO es una edición (para no bloquear actualizaciones de reservas ya hechas)
+    if (!existingReservation && diferenciaHoras < horasAnticipacion) {
+      return toast.error(`⚠️ Debe reservar con al menos ${horasAnticipacion} horas de anticipación por motivos de logística.`);
+    }*/
+
     if (finalStart >= finalEnd) {
       return toast.error("La hora de fin debe ser posterior a la de inicio");
     }

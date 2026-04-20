@@ -20,8 +20,6 @@ export const academicSpaceMap = {
   'CA/203': { name: 'Lab de Redes', sede: 'Centroamérica', tipo: 'Laboratorio' },
 };
 
-// src/utils/academicMapping.js
-
 export const FACULTIES_DATA = {
   "Facultad de Ingeniería": [
     "Ingeniería en Gestión Logística",
@@ -34,7 +32,7 @@ export const FACULTIES_DATA = {
   ],
   "Facultad de Ciencias Sociales": [
     "Licenciatura en Derecho",
-    "Licenciatura en Psicología",
+    "Licenciatura en Psicología", // Confirmada
     "Licenciatura en Periodismo",
     "Ciencias Exactas",
     "Humanidades"
@@ -42,8 +40,9 @@ export const FACULTIES_DATA = {
   "Facultad de Ciencias de la Salud": [
     "Licenciatura en Enfermería",
     "Licenciatura en Terapia Física y Ocupacional",
-    "Técnico en Urgencias Médicas",
-    "Técnico en Enfermería",
+    "Técnico Universitario en Urgencias Médicas", // Actualizado
+    "Técnico Universitario en Enfermería Auxiliar", // Actualizado
+    "Técnico Universitario en Desarrollo y Cuidado Infantil", // Nuevo
     "Nutrición"
   ],
   "Escuela de Arte y Diseño": [
@@ -72,5 +71,10 @@ export const RESERVATION_TYPES = [
   "Reserva de alumno",
   "Reserva de personal administrativo (Reuniones)",
   "Terna para graduación",
-  "Clase 100% presencial"
+  "Clase 100% presencial",
+  // --- NUEVOS DE CIENCIAS DE LA SALUD ---
+  "Simulación",
+  "PLA",
+  "ECOE/OSCE",
+  "EPOE/OSPE"
 ];
