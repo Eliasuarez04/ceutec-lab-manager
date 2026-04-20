@@ -32,13 +32,13 @@ export const FACULTIES_DATA = {
   ],
   "Facultad de Ciencias Sociales": [
     "Licenciatura en Derecho",
-    "Licenciatura en Psicología", // Confirmada
     "Licenciatura en Periodismo",
     "Ciencias Exactas",
     "Humanidades"
   ],
-  "Facultad de Ciencias de la Salud": [
+  "Escuela de Ciencias de la Salud": [
     "Licenciatura en Enfermería",
+    "Licenciatura en Psicología",
     "Licenciatura en Terapia Física y Ocupacional",
     "Técnico Universitario en Urgencias Médicas", // Actualizado
     "Técnico Universitario en Enfermería Auxiliar", // Actualizado
