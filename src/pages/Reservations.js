@@ -32,7 +32,8 @@ export default function Reservations() {
   const [allSpaces, setAllSpaces] = useState([]);
   const [activeSpace, setActiveSpace] = useState(null);
   const [reservations, setReservations] = useState([]);
-  const [loading, setLoading] = useState(false);
+  // CÓMO DEBE QUEDAR (dejamos un espacio antes de la coma):
+const [, setLoading] = useState(false);
   const[searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
