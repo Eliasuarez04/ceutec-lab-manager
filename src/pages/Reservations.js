@@ -32,26 +32,25 @@ export default function Reservations() {
   const [allSpaces, setAllSpaces] = useState([]);
   const [activeSpace, setActiveSpace] = useState(null);
   const [reservations, setReservations] = useState([]);
-  // CÓMO DEBE QUEDAR (dejamos un espacio antes de la coma):
-const [, setLoading] = useState(false);
-  const[searchTerm, setSearchTerm] = useState('');
+  const [, setLoading] = useState(false);
+  const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const [currentDate, setCurrentDate] = useState(new Date());
   const [currentView, setCurrentView] = useState('month');
   
-  const[isBookingModalOpen, setIsBookingModalOpen] = useState(false);
-  const[isViewModalOpen, setIsViewModalOpen] = useState(false);
+  const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
+  const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [slotInfo, setSlotInfo] = useState(null);
 
-  const[isMassLoadOpen, setIsMassLoadOpen] = useState(false);
+  const [isMassLoadOpen, setIsMassLoadOpen] = useState(false);
   const [loadingMass, setLoadingMass] = useState(false);
   const [massStep, setMassStep] = useState(1); 
-  const[periodStart, setPeriodStart] = useState('');
+  const [periodStart, setPeriodStart] = useState('');
   const [periodEnd, setPeriodEnd] = useState('');
-  const[previewStats, setPreviewStats] = useState({ count: 0, spacesFound: 0 });
-  const[preparedReservations, setPreparedReservations] = useState([]);
+  const [previewStats, setPreviewStats] = useState({ count: 0, spacesFound: 0 });
+  const [preparedReservations, setPreparedReservations] = useState([]);
 
   const closeMassModal = useCallback(() => {
     setIsMassLoadOpen(false);
@@ -146,7 +145,7 @@ const [, setLoading] = useState(false);
         const endDateObj = new Date(ey, em - 1, ed, 23, 59, 59);
 
         for (const row of jsonData) {
-            // 🔴 MAPEO FLEXIBLE DE COLUMNAS
+            // MAPEO FLEXIBLE DE COLUMNAS
             const findKey = (search) => Object.keys(row).find(k => k.toLowerCase().includes(search.toLowerCase()));
             
             const codigoEspacio = row[findKey('espacio_aprendizaje')]?.toString().trim().toUpperCase();
@@ -188,9 +187,11 @@ const [, setLoading] = useState(false);
                             labId: targetSpace.id, labName: targetSpace.name, sede: targetSpace.sede || urlSede, spaceType: targetSpace.type, 
                             userId: "SYSTEM_MALLA", 
                             userEmail: row[findKey('correo')] || "Carga Académica", 
-                            userName: row[findKey('nombre')] || row[findKey('docente_nombre')] || 'Docente',
-                            className: row[findKey('nombre_materia')] || 'Clase', 
-                            // 🔴 ASIGNACIÓN SEGÚN HEADERS DEL EXCEL
+                            
+                            // 🔥 CORRECCIÓN: Prioridad estricta para evitar colisión de "nombre"
+                            userName: row[findKey('nombre_docente')] || row[findKey('catedratico')] || row[findKey('profesor')] || 'Docente',
+                            className: row[findKey('nombre_materia')] || row[findKey('asignatura')] || row[findKey('clase')] || 'Clase', 
+                            
                             section: row[findKey('seccion')]?.toString() || '', 
                             th: row[findKey('codigo_th')]?.toString() || 'N/A',
                             subjectCode: row[findKey('codigo_materia')]?.toString() || 'N/A', 
@@ -234,29 +235,31 @@ const [, setLoading] = useState(false);
         });
         await teacherBatch.commit();
 
-        // PASO 2: LIMPIEZA
-        toast.loading("Paso 2/3: Limpiando Malla...", { id: 'processToast' });
-        const qExisting = query(collection(db, 'reservations'), where('startTime', '>=', Timestamp.fromDate(startSearch)), where('startTime', '<=', Timestamp.fromDate(endSearch)));
+        // PASO 2: LIMPIEZA TOTAL DE LA MALLA
+        toast.loading("Paso 2/3: Limpiando Malla Anterior...", { id: 'processToast' });
+        
+        // 1. Buscamos TODAS las reservas en ese rango de fechas
+        const qExisting = query(
+            collection(db, 'reservations'), 
+            where('startTime', '>=', Timestamp.fromDate(startSearch)), 
+            where('startTime', '<=', Timestamp.fromDate(endSearch))
+        );
         const snapshot = await getDocs(qExisting);
-        const existingByLab = {};
+        
+        const docsToDelete = [];
         snapshot.docs.forEach(docSnap => {
-            const d = docSnap.data();
-            if (!existingByLab[d.labId]) existingByLab[d.labId] = [];
-            existingByLab[d.labId].push({ ref: docSnap.ref, start: d.startTime.toDate().getTime(), end: d.endTime.toDate().getTime() });
-        });
-        const docsToDelete = new Set();
-        preparedReservations.forEach(newR => {
-            const potentials = existingByLab[newR.labId];
-            if (potentials) {
-                const nS = newR.startTime.toDate().getTime();
-                const nE = newR.endTime.toDate().getTime();
-                potentials.forEach(old => { if (nS < old.end && nE > old.start) docsToDelete.add(old.ref); });
+            const data = docSnap.data();
+            // 2. SOLO borramos las que son "Carga Académica". 
+            // Respetamos las reservas "Manuales" que hayan hecho los docentes.
+            if (data.reservationType === 'academic_load') {
+                docsToDelete.push(docSnap.ref);
             }
         });
-        const delArray = Array.from(docsToDelete);
-        for (let i = 0; i < delArray.length; i += batchSize) {
+
+        // 3. Ejecutamos el borrado masivo
+        for (let i = 0; i < docsToDelete.length; i += batchSize) {
             const b = writeBatch(db);
-            delArray.slice(i, i + batchSize).forEach(ref => b.delete(ref));
+            docsToDelete.slice(i, i + batchSize).forEach(ref => b.delete(ref));
             await b.commit();
         }
 
@@ -310,9 +313,22 @@ const [, setLoading] = useState(false);
             </div>
         </div>
 
-        <div className="calendar-main-card">
+      <div className="calendar-main-card">
           {activeSpace ? (
-            <Calendar localizer={localizer} events={reservations} style={{ height: 'calc(100vh - 420px)' }} culture="es" messages={messages} date={currentDate} view={currentView} onNavigate={setCurrentDate} onView={setCurrentView} selectable onSelectSlot={handleSlotSelect} onSelectEvent={(ev) => { setSelectedEvent(ev); setIsViewModalOpen(true); }} />
+            <Calendar 
+              localizer={localizer} 
+              events={reservations} 
+              style={{ height: '75vh', minHeight: '650px' }} /* 🔥 CORRECCIÓN: Altura dinámica y mínima garantizada */
+              culture="es" 
+              messages={messages} 
+              date={currentDate} 
+              view={currentView} 
+              onNavigate={setCurrentDate} 
+              onView={setCurrentView} 
+              selectable 
+              onSelectSlot={handleSlotSelect} 
+              onSelectEvent={(ev) => { setSelectedEvent(ev); setIsViewModalOpen(true); }} 
+            />
           ) : <div className="empty-state-calendar"><h3>Selecciona un espacio arriba ☝️</h3></div>}
         </div>
       </div>
