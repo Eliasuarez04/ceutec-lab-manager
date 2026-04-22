@@ -71,11 +71,13 @@
     margin-bottom: 30px;
 }
 
+/* Título ajustado para que no se desborde */
 .hero-main-info h1 {
     font-size: 3rem;
     font-weight: 900;
     margin: 10px 0;
     color: #1a202c;
+    word-break: break-word; /* Evita que palabras muy largas rompan la tarjeta */
 }
 
 .type-tag {
@@ -123,6 +125,7 @@
     padding: 30px;
     border-radius: 24px;
     box-shadow: 0 4px 20px rgba(0,0,0,0.03);
+    overflow-x: auto; /* Permite scroll horizontal si la tabla es muy ancha */
 }
 
 .inventory-title { font-size: 1.4rem; font-weight: 800; margin-bottom: 20px; color: #1a202c; }
@@ -146,4 +149,69 @@
     border-bottom: 1px solid #f1f5f9;
     color: #334155;
     font-weight: 600;
+}
+
+/* =========================================
+   📱 MAGIA RESPONSIVA PARA MÓVILES Y TABLETS 📱
+   ========================================= */
+@media (max-width: 768px) {
+    /* Navegación superior: Apilar botones en lugar de mantenerlos en una fila */
+    .detail-nav {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+        margin-bottom: 20px;
+    }
+    
+    .direct-reserva-btn {
+        width: 100%;
+        justify-content: center; /* Botón ancho fácil de tocar */
+    }
+
+    /* Reducir márgenes y paddings de la tarjeta principal */
+    .space-hero-card {
+        padding: 25px 20px;
+        border-radius: 18px;
+    }
+
+    /* Apilar el título y el badge de capacidad */
+    .hero-content {
+        flex-direction: column;
+        gap: 20px;
+    }
+
+    /* 🔥 CORRECCIÓN CRÍTICA: Ajustar el título gigante 🔥 */
+    .hero-main-info h1 {
+        font-size: 2rem; /* Tamaño mucho más manejable para móviles */
+        line-height: 1.2;
+    }
+
+    .location-text {
+        font-size: 0.95rem;
+    }
+
+    /* Ajustar el badge de capacidad para que no ocupe tanto espacio */
+    .capacity-badge-large {
+        width: 100%;
+        padding: 15px;
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+    }
+    
+    .cap-value {
+        font-size: 1.8rem;
+        margin: 0;
+    }
+
+    /* Ajustes a la sección de inventario */
+    .inventory-section {
+        padding: 20px 15px;
+    }
+    
+    .inventory-table-modern td, 
+    .inventory-table-modern th {
+        padding: 12px 10px;
+        font-size: 0.85rem;
+    }
 }

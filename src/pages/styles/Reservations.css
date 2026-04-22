@@ -15,6 +15,9 @@
 /* --- ENCABEZADO --- */
 .reservations-header-pro {
     margin-bottom: 30px;
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
 }
 
 .header-nav-left {
@@ -474,4 +477,84 @@
 @keyframes rotate {
     from { transform: rotate(0deg); }
     to { transform: rotate(360deg); }
+}
+
+/* =========================================
+   📱 MAGIA RESPONSIVA PARA MÓVILES (CALENDARIO) 📱
+   ========================================= */
+@media (max-width: 900px) {
+    /* 1. Ajuste del Contenedor Principal */
+    .reservations-container-glass {
+        padding: 20px;
+        margin: 10px;
+        border-radius: 18px;
+    }
+
+    /* 2. Ajuste del Header (Apilado Vertical) */
+    .reservations-header-pro {
+        flex-direction: column;
+        gap: 20px;
+        text-align: center;
+        align-items: center;
+    }
+
+    .header-nav-left {
+        align-items: center;
+    }
+
+    .reservations-header-pro h1 {
+        font-size: 1.8rem;
+    }
+
+    .header-actions, .btn-save-pro {
+        width: 100%;
+        display: flex;
+        justify-content: center;
+    }
+
+    /* 3. Ajuste del Buscador */
+    .search-selection-wrapper {
+        margin-bottom: 25px;
+    }
+    
+    .input-container {
+        padding: 10px 15px;
+    }
+    
+    .input-container input {
+        font-size: 0.95rem;
+    }
+
+    /* 4. 🔥 REPARACIÓN CRÍTICA DEL CALENDARIO 🔥 */
+    .calendar-main-card {
+        padding: 10px;
+        /* Permitir scroll horizontal si no cabe, pero sin romper la página */
+        overflow-x: auto; 
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* Reducimos el tamaño de las fuentes dentro del calendario */
+    .rbc-calendar {
+        min-width: 500px; /* Fuerza un ancho mínimo para que las celdas no colapsen a 1px */
+    }
+    
+    .rbc-toolbar {
+        flex-direction: column;
+        gap: 15px;
+        margin-bottom: 15px !important;
+    }
+
+    .rbc-toolbar-label {
+        font-size: 1.1rem !important;
+    }
+
+    .rbc-btn-group button {
+        padding: 5px 10px !important;
+        font-size: 0.8rem !important;
+    }
+
+    .rbc-event {
+        font-size: 0.7rem !important;
+        padding: 2px 4px !important;
+    }
 }

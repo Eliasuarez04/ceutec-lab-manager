@@ -203,3 +203,63 @@
 .card-body-content h3 { font-size: 1.4rem; font-weight: 800; margin-bottom: 10px; color: #2d3748; }
 .space-meta p { margin: 6px 0; font-size: 0.95rem; color: #718096; }
 .space-id-tag { display: inline-block; margin-top: 10px; font-family: monospace; font-size: 0.8rem; color: #cbd5e0; }
+
+/* =========================================
+   📱 MAGIA RESPONSIVA PARA MÓVILES Y TABLETS 📱
+   ========================================= */
+@media (max-width: 768px) {
+  /* Reduce los márgenes y paddings globales para aprovechar el ancho */
+  .labs-page-card {
+    padding: 20px;
+    margin: 10px;
+    border-radius: 20px;
+  }
+
+  .title-area h1 {
+    font-size: 1.8rem;
+  }
+  
+  .title-area p {
+    font-size: 1rem;
+  }
+
+  /* Ajusta la barra de búsqueda */
+  .filters-glass-bar {
+    padding: 15px;
+    margin-bottom: 30px;
+  }
+
+  .search-input-wrapper input {
+    font-size: 0.95rem;
+    padding: 12px 15px 12px 45px;
+  }
+
+  /* Fuerza que las tarjetas ocupen 1 sola columna ocupando todo el ancho */
+  .labs-grid {
+    grid-template-columns: 1fr;
+    gap: 20px;
+  }
+
+  .lab-card-modern {
+    padding: 25px;
+    min-height: auto; /* Quita la altura mínima rígida en móvil */
+  }
+
+  .card-body-content h3 {
+    font-size: 1.3rem;
+  }
+
+  /* Apila los botones horizontalmente pero con más espacio, o verticalmente si es necesario */
+  .card-actions-row {
+    flex-direction: column; /* Apila el botón secundario sobre el primario */
+    gap: 10px;
+    padding-top: 20px;
+  }
+
+  .btn-action-primary,
+  .btn-action-secondary {
+    width: 100%; /* Botones a pantalla completa */
+    padding: 14px;
+    font-size: 1rem;
+  }
+}

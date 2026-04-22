@@ -35,6 +35,64 @@ export default function SedeSelector() {
 
   return (
     <div className="dashboard-wrapper">
+      
+      {/* 🔥 ESTILOS INYECTADOS PARA HACERLO 100% RESPONSIVO 🔥 */}
+      <style>
+        {`
+          .main-selection-layout {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 30px;
+            max-width: 1200px;
+            margin: 0 auto;
+            align-items: start;
+          }
+          .column-group {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+          }
+          .card-sede-estilizada {
+            margin: 0;
+            width: 100%;
+            min-height: 280px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 40px 20px;
+          }
+          .icono-sede {
+            font-size: 3.5rem;
+          }
+          .titulo-sede {
+            line-height: 1.2;
+            margin-bottom: 8px;
+          }
+
+          /* 📱 MAGIA RESPONSIVA PARA MÓVILES Y TABLETS 📱 */
+          @media (max-width: 900px) {
+            .main-selection-layout {
+              grid-template-columns: 1fr; /* Convierte a 1 sola columna */
+              gap: 15px;
+            }
+            .column-group {
+              gap: 15px; /* Reduce el espacio entre tarjetas del mismo grupo */
+            }
+            .card-sede-estilizada {
+              min-height: 160px; /* Las hace más compactas en móvil */
+              padding: 25px 20px;
+            }
+            .icono-sede {
+              font-size: 2.5rem !important; /* Ícono más pequeño */
+              margin-bottom: 5px;
+            }
+            .titulo-sede {
+              font-size: 1.3rem !important; /* Forzamos texto legible que no se desborde */
+            }
+          }
+        `}
+      </style>
+
       <div className="sede-selector-container fade-in">
         
         <div className="selector-header">
@@ -42,45 +100,21 @@ export default function SedeSelector() {
           <p>Selecciona la sede para gestionar espacios académicos:</p>
         </div>
         
-        <div className="main-selection-layout" style={{ 
-          display: 'grid', 
-          gridTemplateColumns: 'repeat(3, 1fr)', 
-          gap: '30px', 
-          maxWidth: '1200px', 
-          margin: '0 auto',
-          alignItems: 'start'
-        }}>
+        <div className="main-selection-layout">
           
           {sedesPorCiudad.map((grupo) => (
-            <div key={grupo.ciudad} className="column-group" style={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                gap: '25px' 
-            }}>
+            <div key={grupo.ciudad} className="column-group">
               {grupo.sedes.map((sede) => (
                 <div 
                   key={sede.name} 
-                  className="sede-card-big" 
+                  className="sede-card-big card-sede-estilizada" 
                   onClick={() => handleSelect(sede.name)}
-                  style={{ 
-                      background: sede.color,
-                      margin: '0',
-                      width: '100%',
-                      // 🔴 CORRECCIÓN: Altura mínima fija para homogeneizar todas las cards
-                      minHeight: '280px', 
-                      display: 'flex',
-                      flexDirection: 'column',
-                      justifyContent: 'center',
-                      padding: '40px 20px' // Reducimos un poco el padding lateral
-                  }}
+                  style={{ background: sede.color }}
                 >
-                  <div className="sede-card-icon" style={{ fontSize: '3.5rem' }}>{sede.icon}</div>
+                  <div className="sede-card-icon icono-sede">{sede.icon}</div>
                   <div className="sede-card-info">
-                    {/* 🔴 CORRECCIÓN: Tamaño de fuente dinámico para nombres largos */}
-                    <h3 style={{ 
-                        fontSize: sede.name.length > 20 ? '1.4rem' : '1.7rem',
-                        lineHeight: '1.2',
-                        marginBottom: '8px'
+                    <h3 className="titulo-sede" style={{ 
+                        fontSize: sede.name.length > 20 ? '1.4rem' : '1.7rem'
                     }}>
                         {sede.name}
                     </h3>

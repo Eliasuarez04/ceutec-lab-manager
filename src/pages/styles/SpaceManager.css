@@ -78,6 +78,7 @@
     border-radius: 12px;
     outline: none;
     transition: 0.3s;
+    box-sizing: border-box; /* 🔥 PREVIENE DESBORDAMIENTOS */
 }
 
 .sidebar-search input:focus { border-color: #c8102e; box-shadow: 0 4px 10px rgba(200, 16, 46, 0.05); }
@@ -113,6 +114,8 @@
     padding: 25px;
     box-shadow: 0 10px 30px rgba(0,0,0,0.04);
     margin-bottom: 25px;
+    width: 100%;
+    box-sizing: border-box; /* 🔥 ASEGURA QUE NO ROMPA PANTALLA */
 }
 
 .space-master-header { display: flex; justify-content: space-between; align-items: center; }
@@ -130,14 +133,17 @@
     display: grid;
     grid-template-columns: repeat(4, 1fr);
     gap: 15px;
+    width: 100%;
 }
 
-.edit-grid-pro .field { display: flex; flex-direction: column; gap: 5px; }
+.edit-grid-pro .field { display: flex; flex-direction: column; gap: 5px; width: 100%; box-sizing: border-box; }
 .edit-grid-pro label { font-size: 0.75rem; font-weight: 700; color: #4a5568; text-transform: uppercase; }
 .edit-grid-pro input, .edit-grid-pro select {
     padding: 10px;
     border-radius: 10px;
     border: 1.5px solid #edf2f7;
+    width: 100%; /* 🔥 FUERZA LÍMITE DE ANCHO */
+    box-sizing: border-box; /* 🔥 EVITA QUE EL PADDING LO AGRANDE MÁS DEL 100% */
 }
 
 .btn-row-space { grid-column: span 4; display: flex; justify-content: flex-end; gap: 10px; margin-top: 15px; }
@@ -150,20 +156,23 @@
     box-shadow: 0 4px 20px rgba(0,0,0,0.02);
     margin-bottom: 25px;
     border: 1.5px solid #f1f5f9;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .add-item-panel-pro h4 { margin: 0 0 15px 0; color: #4a5568; }
 
 .add-item-grid-pro {
     display: grid;
-    grid-template-columns: repeat(3, 1fr) repeat(3, 1fr) auto; /* Ajustado a 7 columnas */
+    grid-template-columns: repeat(3, 1fr) repeat(3, 1fr) auto;
     gap: 12px;
     align-items: flex-end;
+    width: 100%;
 }
 
-.add-item-grid-pro .field { display: flex; flex-direction: column; gap: 5px; }
+.add-item-grid-pro .field { display: flex; flex-direction: column; gap: 5px; width: 100%; box-sizing: border-box; }
 .add-item-grid-pro label { font-size: 0.65rem; font-weight: 800; color: #c8102e; text-transform: uppercase; }
-.add-item-grid-pro input { padding: 10px; border-radius: 10px; border: 1.5px solid #edf2f7; font-size: 0.85rem; width: 100%; }
+.add-item-grid-pro input { padding: 10px; border-radius: 10px; border: 1.5px solid #edf2f7; font-size: 0.85rem; width: 100%; box-sizing: border-box; }
 
 .btn-add-item-final {
     background: #1e293b;
@@ -180,18 +189,18 @@
 .section-header-pro { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .search-box-items { position: relative; width: 350px; }
 .search-icon-inside { position: absolute; left: 15px; top: 50%; transform: translateY(-50%); color: #a0aec0; }
-.item-search-bar { width: 100%; padding: 10px 15px 10px 45px; border-radius: 12px; border: 1.5px solid #edf2f7; outline: none; }
+.item-search-bar { width: 100%; padding: 10px 15px 10px 45px; border-radius: 12px; border: 1.5px solid #edf2f7; outline: none; box-sizing: border-box; }
 
 /* --- TABLA --- */
-.table-wrapper-pro { background: white; border-radius: 20px; overflow: hidden; border: 1px solid #f1f5f9; }
+.table-wrapper-pro { background: white; border-radius: 20px; overflow: hidden; border: 1px solid #f1f5f9; width: 100%; }
 .inventory-table-pro { width: 100%; border-collapse: collapse; }
 .inventory-table-pro th { text-align: left; padding: 15px; color: #64748b; font-size: 0.7rem; text-transform: uppercase; border-bottom: 2px solid #f1f5f9; background: #fafafa; }
 .inventory-table-pro td { padding: 15px; border-bottom: 1px solid #f1f5f9; }
 
 /* FILA EDICIÓN */
 .editing-row-pro td { background: #fffcfc !important; }
-.edit-input { width: 100%; padding: 8px; border: 1.5px solid #c8102e; border-radius: 8px; font-size: 0.85rem; outline: none; }
-.edit-select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ddd; }
+.edit-input { width: 100%; padding: 8px; border: 1.5px solid #c8102e; border-radius: 8px; font-size: 0.85rem; outline: none; box-sizing: border-box; }
+.edit-select { width: 100%; padding: 8px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; }
 
 .status-pill { padding: 4px 10px; border-radius: 6px; font-size: 0.7rem; font-weight: 700; }
 .disponible { background: #dcfce7; color: #166534; }
@@ -201,8 +210,115 @@
 .btn-icon { border: none; background: transparent; cursor: pointer; font-size: 1.1rem; padding: 5px; }
 
 /* BOTONES HEADER */
-.btn-add-space-manual { background: #1e293b; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 700; cursor: pointer; }
-.btn-import-excel { background: #c8102e; color: white; padding: 10px 20px; border-radius: 12px; text-decoration: none; font-weight: 700; display: flex; align-items: center; }
+.btn-add-space-manual { background: #1e293b; color: white; border: none; padding: 10px 20px; border-radius: 12px; font-weight: 700; cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; }
+.btn-import-excel { background: #c8102e; color: white; padding: 10px 20px; border-radius: 12px; text-decoration: none; font-weight: 700; display: flex; flex-direction: column; align-items: center; justify-content: center; box-sizing: border-box; }
+.btn-import-excel span, .btn-add-space-manual span { font-size: 1.2rem; }
 
 .btn-confirm { background: #c8102e; color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; }
 .btn-danger { background: #ef4444; color: white; border: none; padding: 10px 20px; border-radius: 10px; font-weight: 700; cursor: pointer; }
+
+
+/* =========================================
+   📱 MAGIA RESPONSIVA PARA MÓVILES 📱
+   ========================================= */
+@media (max-width: 900px) {
+    /* Header */
+    .manager-top-header {
+        flex-direction: column;
+        gap: 20px;
+        align-items: stretch;
+        padding: 10px;
+    }
+
+    .header-actions-main {
+        flex-direction: row;
+        width: 100%;
+    }
+
+    .back-btn-modern, 
+    .btn-add-space-manual, 
+    .btn-import-excel {
+        flex: 1;
+        text-align: center;
+        padding: 15px 5px;
+        font-size: 0.8rem;
+    }
+
+    /* Layout Principal */
+    .manager-layout-grid {
+        flex-direction: column;
+        height: auto;
+        padding: 10px;
+        margin: 0;
+    }
+
+    .sidebar-pro {
+        width: 100%;
+        max-height: 400px;
+    }
+
+    /* 🔥 ARREGLO CRÍTICO: Formularios de Edición y Agregar 🔥 */
+    .edit-grid-pro,
+    .add-item-grid-pro {
+        display: flex !important; /* Fuerza a Flexbox ignorando el Grid */
+        flex-direction: column !important; /* Apila todo estrictamente hacia abajo */
+        gap: 15px;
+        width: 100%;
+    }
+
+    /* 🔥 Fuerza a que los div que envuelven los inputs ocupen todo el ancho y se apilen 🔥 */
+    .edit-grid-pro > div,
+    .add-item-grid-pro > div {
+        width: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
+    .btn-row-space {
+        width: 100%;
+        flex-direction: column;
+    }
+    
+    .btn-row-space button { width: 100%; }
+
+    .space-master-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 15px;
+    }
+
+    .btn-edit-space {
+        width: 100%;
+    }
+
+    .btn-add-item-final {
+        margin-top: 15px;
+        width: 100%;
+    }
+
+    .section-header-pro {
+        flex-direction: column;
+        align-items: stretch;
+        gap: 15px;
+    }
+
+    .search-box-items {
+        width: 100%;
+    }
+
+    /* Tabla con Scroll Táctil */
+    .table-wrapper-pro {
+        width: 100%;
+        overflow-x: auto;
+        -webkit-overflow-scrolling: touch;
+        border-radius: 12px;
+    }
+
+    .inventory-table-pro {
+        min-width: 600px;
+    }
+    
+    .floating-card {
+        padding: 20px 15px;
+    }
+}

@@ -259,3 +259,81 @@
 @keyframes pulse-red { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
 @keyframes pulse-late-anim { 0% { transform: scale(1); } 50% { transform: scale(1.03); } 100% { transform: scale(1); } }
 @keyframes pulse-alert { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.02); } }
+
+/* =========================================
+   📱 MAGIA RESPONSIVA PARA MÓVILES 📱
+   ========================================= */
+@media (max-width: 900px) {
+    /* Ajuste del contenedor maestro */
+    .radar-container-glass {
+        padding: 20px;
+        margin: 10px;
+        border-radius: 20px;
+    }
+
+    /* Evitar choque entre Reloj y Título */
+    .radar-header-pro {
+        flex-direction: column;
+        align-items: center; /* Centrar elementos */
+        text-align: center;
+        gap: 25px;
+    }
+
+    .radar-title-area h1 {
+        font-size: 1.8rem; /* Letra más manejable */
+    }
+
+    .radar-clock-box {
+        width: 100%;
+        text-align: center; /* Centrar la hora */
+    }
+
+    .digital-time {
+        font-size: 2.2rem;
+    }
+
+    /* Reparación de la barra de filtros y botones (Aulas/Labs) */
+    .radar-filters-bar {
+        flex-direction: column;
+        padding: 15px;
+        gap: 15px;
+    }
+
+    .radar-tabs {
+        width: 100%;
+        display: flex;
+    }
+
+    .radar-tabs button {
+        flex: 1; /* Los botones comparten el espacio disponible */
+        padding: 12px 5px;
+        font-size: 0.8rem;
+    }
+
+    .radar-search-input-wrapper {
+        width: 100%;
+        max-width: 100%;
+    }
+
+    /* Leyenda (flex-wrap salva el día) */
+    .radar-legend-bar {
+        flex-wrap: wrap; /* Si no caben, bajan de renglón automáticamente */
+        justify-content: center;
+        gap: 15px;
+    }
+
+    /* Tarjetas forzadas a 1 sola columna y sin desbordes de texto */
+    .radar-grid-layout {
+        grid-template-columns: 1fr;
+        gap: 20px;
+    }
+
+    .radar-card-pro {
+        padding: 25px 20px;
+    }
+
+    .room-name-pro {
+        font-size: 1.8rem;
+        word-break: break-word; /* Protege contra nombres larguísimos como "Broadcasting" */
+    }
+}

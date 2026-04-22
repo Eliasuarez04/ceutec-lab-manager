@@ -96,3 +96,95 @@
 .btn-edit-small, .btn-cancel-small { flex: 1; padding: 8px; border-radius: 8px; border: none; font-weight: 700; cursor: pointer; font-size: 0.8rem; }
 .btn-edit-small { background: #f1f5f9; color: #475569; }
 .btn-cancel-small { background: #fff5f5; color: #c8102e; }
+
+/* =========================================
+   📱 MAGIA RESPONSIVA PARA MÓVILES Y TABLETS 📱
+   ========================================= */
+@media (max-width: 768px) {
+    /* 1. Ajustes del Contenedor Principal */
+    .mis-reservas-container-glass {
+        padding: 20px;
+        margin: 10px;
+        border-radius: 18px;
+    }
+
+    /* 2. Ajustes del Header (Apilar y Centrar) */
+    .reservations-header-pro {
+        flex-direction: column;
+        gap: 20px;
+        align-items: stretch; /* Hace que los hijos tomen el ancho completo */
+        text-align: center;
+    }
+
+    .header-nav-left h1 {
+        font-size: 1.8rem;
+    }
+
+    .header-actions-right {
+        flex-direction: column; /* Apila los botones de Aulas y Labs */
+        width: 100%;
+    }
+
+    .btn-cal-mini {
+        justify-content: center; /* Centra el texto en los botones gigantes */
+        padding: 12px;
+        font-size: 1rem;
+    }
+
+    /* 3. 🔥 REPARACIÓN CRÍTICA: Controles y Filtros 🔥 */
+    .controls-bar-modern {
+        flex-direction: column; /* Evita el desbordamiento horizontal */
+        padding: 15px;
+        gap: 20px;
+        align-items: stretch;
+    }
+
+    .tabs-group {
+        width: 100%;
+        display: flex;
+    }
+
+    .tabs-group button {
+        flex: 1; /* Pestañas del mismo tamaño que ocupan el 100% */
+        text-align: center;
+        padding: 12px 10px;
+    }
+
+    .filters-group {
+        flex-direction: column;
+        width: 100%;
+        gap: 15px;
+    }
+
+    .date-inputs {
+        flex-direction: column; /* Las fechas se apilan verticalmente */
+        width: 100%;
+        gap: 8px;
+    }
+
+    .date-inputs input {
+        width: 100%; /* Las cajas de fecha toman todo el ancho */
+        padding: 10px;
+        font-size: 0.95rem;
+    }
+
+    .date-inputs span {
+        display: none; /* Ocultamos la palabra "al" en móvil para ahorrar espacio */
+    }
+
+    .btn-export-pdf {
+        width: 100%; /* Botón PDF gigante */
+        padding: 12px;
+        font-size: 1rem;
+    }
+
+    /* 4. Ajustes del Grid de Tarjetas */
+    .reservations-grid {
+        grid-template-columns: 1fr; /* Una sola columna para las reservas */
+        gap: 20px;
+    }
+
+    .reservation-card {
+        padding: 20px;
+    }
+}

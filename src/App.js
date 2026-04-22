@@ -265,8 +265,13 @@ export default function App() {
   return (
     <Router>
       <AuthProvider>
-        {/* Notificaciones Toast */}
-        <Toaster position="top-right" />
+        {/* Notificaciones Toast con z-index forzado para superar los Modales */}
+        <Toaster 
+          position="top-right" 
+          containerStyle={{
+            zIndex: 999999,
+          }}
+        />
         
         {/* ALERTA GLOBAL DE PERFIL - Consumimos el contexto dentro de un componente hijo o usamos una validación segura */}
         <AuthConsumer />
