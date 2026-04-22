@@ -32,7 +32,6 @@ export default function Reservations() {
   const [allSpaces, setAllSpaces] = useState([]);
   const [activeSpace, setActiveSpace] = useState(null);
   const [reservations, setReservations] = useState([]);
-  const [, setLoading] = useState(false);
   const [searchTerm, setSearchTerm] = useState('');
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
@@ -95,12 +94,16 @@ export default function Reservations() {
 
   const fetchReservations = useCallback(async () => {
     if (!activeSpace) return;
-    setLoading(true);
     try {
       const q = query(collection(db, 'reservations'), where('labId', '==', activeSpace.id));
       const snap = await getDocs(q);
       const data = snap.docs.map(doc => {
         const res = doc.data();
+        
+        if (!res.startTime || !res.endTime || typeof res.startTime.toDate !== 'function') {
+            return null;
+        }
+
         return {
           ...res,
           id: doc.id,
@@ -108,9 +111,13 @@ export default function Reservations() {
           end: res.endTime.toDate(),
           title: res.className ? `[${res.section || 'S/S'}] ${res.className}` : (res.purpose || 'Reservado')
         };
-      });
+      }).filter(Boolean);
+
       setReservations(data);
-    } catch (err) { console.error(err); } finally { setLoading(false); }
+    } catch (err) { 
+      console.error(err); 
+      toast.error("Error de sincronización con la base de datos.");
+    }
   }, [activeSpace]);
 
   useEffect(() => { fetchReservations(); }, [fetchReservations]);
@@ -145,7 +152,6 @@ export default function Reservations() {
         const endDateObj = new Date(ey, em - 1, ed, 23, 59, 59);
 
         for (const row of jsonData) {
-            // MAPEO FLEXIBLE DE COLUMNAS
             const findKey = (search) => Object.keys(row).find(k => k.toLowerCase().includes(search.toLowerCase()));
             
             const codigoEspacio = row[findKey('espacio_aprendizaje')]?.toString().trim().toUpperCase();
@@ -188,7 +194,6 @@ export default function Reservations() {
                             userId: "SYSTEM_MALLA", 
                             userEmail: row[findKey('correo')] || "Carga Académica", 
                             
-                            // 🔥 CORRECCIÓN: Prioridad estricta para evitar colisión de "nombre"
                             userName: row[findKey('nombre_docente')] || row[findKey('catedratico')] || row[findKey('profesor')] || 'Docente',
                             className: row[findKey('nombre_materia')] || row[findKey('asignatura')] || row[findKey('clase')] || 'Clase', 
                             
@@ -221,7 +226,6 @@ export default function Reservations() {
         const startSearch = new Date(sy, sm - 1, sd, 0, 0, 0);
         const endSearch = new Date(ey, em - 1, ed, 23, 59, 59);
 
-        // PASO 1: DOCENTES
         toast.loading("Paso 1/3: Autorizando Docentes (TH)...", { id: 'processToast' });
         const activeTeachersMap = {};
         preparedReservations.forEach(res => {
@@ -235,10 +239,8 @@ export default function Reservations() {
         });
         await teacherBatch.commit();
 
-        // PASO 2: LIMPIEZA TOTAL DE LA MALLA
         toast.loading("Paso 2/3: Limpiando Malla Anterior...", { id: 'processToast' });
         
-        // 1. Buscamos TODAS las reservas en ese rango de fechas
         const qExisting = query(
             collection(db, 'reservations'), 
             where('startTime', '>=', Timestamp.fromDate(startSearch)), 
@@ -249,21 +251,17 @@ export default function Reservations() {
         const docsToDelete = [];
         snapshot.docs.forEach(docSnap => {
             const data = docSnap.data();
-            // 2. SOLO borramos las que son "Carga Académica". 
-            // Respetamos las reservas "Manuales" que hayan hecho los docentes.
-            if (data.reservationType === 'academic_load') {
+            if (data.reservationType === 'academic_load' && data.sede === urlSede) {
                 docsToDelete.push(docSnap.ref);
             }
         });
 
-        // 3. Ejecutamos el borrado masivo
         for (let i = 0; i < docsToDelete.length; i += batchSize) {
             const b = writeBatch(db);
             docsToDelete.slice(i, i + batchSize).forEach(ref => b.delete(ref));
             await b.commit();
         }
 
-        // PASO 3: GUARDADO
         toast.loading(`Paso 3/3: Guardando ${preparedReservations.length} clases...`, { id: 'processToast' });
         for (let i = 0; i < preparedReservations.length; i += batchSize) {
             const b = writeBatch(db);
@@ -272,7 +270,14 @@ export default function Reservations() {
         }
 
         toast.success(`Carga exitosa.`, { id: 'processToast' });
-        closeMassModal();
+        
+        // 🔥 CORRECCIÓN: Forzamos el cierre del modal de forma directa e inmediata
+        setIsMassLoadOpen(false);
+        setMassStep(1);
+        setPreparedReservations([]);
+        setPreviewStats({ count: 0, spacesFound: 0 });
+        setLoadingMass(false);
+        
         fetchReservations(); 
     } catch (error) { toast.error(error.message, { id: 'processToast' }); setLoadingMass(false); }
   };
@@ -318,7 +323,7 @@ export default function Reservations() {
             <Calendar 
               localizer={localizer} 
               events={reservations} 
-              style={{ height: '75vh', minHeight: '650px' }} /* 🔥 CORRECCIÓN: Altura dinámica y mínima garantizada */
+              style={{ height: '75vh', minHeight: '650px' }} 
               culture="es" 
               messages={messages} 
               date={currentDate} 
@@ -370,22 +375,70 @@ export default function Reservations() {
         )}
       </Modal>
 
-      <Modal isOpen={isMassLoadOpen} onClose={closeMassModal} title="Carga Académica Masiva (Excel)">
-         <div style={{padding: '20px'}}>
+      {/* 🔥 MODAL DE CARGA MASIVA CON DISEÑO MODERNO 🔥 */}
+      <Modal isOpen={isMassLoadOpen} onClose={closeMassModal} title="Carga Académica Masiva">
+         <div style={{padding: '10px 20px 30px'}}>
             {massStep === 1 && (
-                <>
-                    <div style={{display: 'flex', gap: '20px', marginBottom: '20px'}}>
-                        <div style={{flex: 1}}> <label>Inicio Periodo:</label> <input type="date" className="form-control" value={periodStart} onChange={e => setPeriodStart(e.target.value)} /> </div>
-                        <div style={{flex: 1}}> <label>Fin Periodo:</label> <input type="date" className="form-control" value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} /> </div>
+                <div className="fade-in">
+                    <p style={{color: '#64748b', fontSize: '0.9rem', marginBottom: '20px', lineHeight: '1.5'}}>
+                        Define el rango de fechas del período académico y arrastra el archivo maestro (Excel) para procesar la carga en la sede: <strong>{urlSede}</strong>.
+                    </p>
+                    
+                    <div style={{display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px', marginBottom: '25px'}}>
+                        <div style={{display: 'flex', flexDirection: 'column'}}> 
+                            <label style={{fontSize: '0.8rem', fontWeight: '800', color: '#1e293b', marginBottom: '5px'}}>INICIO PERIODO:</label> 
+                            <input type="date" style={{padding: '14px', borderRadius: '12px', border: '2px solid #edf2f7', outline: 'none', fontFamily: 'inherit', fontWeight: '600'}} value={periodStart} onChange={e => setPeriodStart(e.target.value)} /> 
+                        </div>
+                        <div style={{display: 'flex', flexDirection: 'column'}}> 
+                            <label style={{fontSize: '0.8rem', fontWeight: '800', color: '#1e293b', marginBottom: '5px'}}>FIN PERIODO:</label> 
+                            <input type="date" style={{padding: '14px', borderRadius: '12px', border: '2px solid #edf2f7', outline: 'none', fontFamily: 'inherit', fontWeight: '600'}} value={periodEnd} onChange={e => setPeriodEnd(e.target.value)} /> 
+                        </div>
                     </div>
-                    <input type="file" accept=".xlsx, .xls" onChange={handleFileRead} />
-                </>
+                    
+                    {/* DROPZONE DE EXCEL */}
+                    <div style={{
+                        border: '2px dashed #c8102e', 
+                        borderRadius: '16px', 
+                        padding: '40px 20px', 
+                        textAlign: 'center',
+                        background: 'rgba(200, 16, 46, 0.03)',
+                        cursor: 'pointer',
+                        position: 'relative',
+                        transition: 'all 0.3s ease'
+                    }}>
+                        <input 
+                            type="file" 
+                            accept=".xlsx, .xls" 
+                            onChange={handleFileRead} 
+                            style={{
+                                opacity: 0, position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', cursor: 'pointer'
+                            }}
+                        />
+                        <div style={{fontSize: '2.5rem', marginBottom: '10px'}}>📁</div>
+                        <h4 style={{color: '#1e293b', margin: '0 0 5px 0'}}>Haz clic o arrastra el archivo Excel</h4>
+                        <p style={{color: '#64748b', fontSize: '0.8rem', margin: 0}}>Solo formatos .xlsx y .xls permitidos</p>
+                    </div>
+                </div>
             )}
+
             {massStep === 2 && (
-                <div style={{textAlign: 'center'}}>
-                    <p><strong>Clases Nuevas Detectadas:</strong> {previewStats.count}</p>
-                    <button onClick={confirmUpload} disabled={loadingMass} className="btn-save-pro">Confirmar y Guardar</button>
-                    <button onClick={closeMassModal} className="btn-cancel-pro">Cancelar</button>
+                <div className="fade-in" style={{textAlign: 'center', padding: '20px 0'}}>
+                    <div style={{fontSize: '3rem', marginBottom: '15px'}}>✨</div>
+                    <h2 style={{color: '#1e293b', marginBottom: '10px', fontWeight: '800'}}>Archivo Analizado</h2>
+                    
+                    <div style={{background: '#f8fafc', padding: '20px', borderRadius: '16px', marginBottom: '25px', border: '1px solid #edf2f7'}}>
+                        <p style={{margin: '0 0 5px 0', color: '#64748b', fontWeight: '600', textTransform: 'uppercase', fontSize: '0.8rem'}}>Clases Nuevas Detectadas</p>
+                        <h1 style={{margin: 0, color: '#c8102e', fontSize: '3rem', fontWeight: '900'}}>{previewStats.count}</h1>
+                    </div>
+                    
+                    <div style={{display: 'flex', gap: '15px'}}>
+                        <button onClick={closeMassModal} disabled={loadingMass} className="btn-cancel-pro" style={{flex: 1, padding: '16px', borderRadius: '14px', background: '#f1f5f9', color: '#64748b', border: 'none', fontWeight: '800', cursor: 'pointer'}}>
+                            Cancelar
+                        </button>
+                        <button onClick={confirmUpload} disabled={loadingMass} className="btn-save-pro" style={{flex: 2, padding: '16px', borderRadius: '14px', background: '#c8102e', color: 'white', border: 'none', fontWeight: '800', cursor: 'pointer'}}>
+                            {loadingMass ? 'Guardando...' : 'Confirmar y Subir'}
+                        </button>
+                    </div>
                 </div>
             )}
          </div>
