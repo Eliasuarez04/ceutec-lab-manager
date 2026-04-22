@@ -196,7 +196,7 @@ export default function Dashboard() {
               </Link>
 
               {/* GESTIÓN USUARIOS: Solo Académicos y SuperAdmin */}
-              {(isAdmin || isAcademic) && (
+              {(isAdmin) && (
                 <Link to={`/admin/usuarios?${sedeParam}`} className="teacher-card management-card">
                   <div className="card-top">
                     <div className="card-icon-wrapper bg-dark">👥</div>

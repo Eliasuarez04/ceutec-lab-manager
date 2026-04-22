@@ -68,15 +68,18 @@ export default function AuthPage() {
   const[resetEmail, setResetEmail] = useState('');
 
   // ESTADOS DE REGISTRO
-  const[regEmail, setRegEmail] = useState('');
+  const [regEmail, setRegEmail] = useState('');
   const [regName, setRegName] = useState('');
-  const[regTh, setRegTh] = useState('');
-  const [regCity, setRegCity] = useState(''); // Estado para la ciudad de todos los usuarios
+  const [regTh, setRegTh] = useState('');
+  const [regCity, setRegCity] = useState(''); 
   const [regPassword, setRegPassword] = useState('');
   const [regConfirm, setRegConfirm] = useState('');
-  const [selectedRole, setSelectedRole] = useState('docente');
+  
+  // 🔥 CORRECCIÓN: Inicializamos en 'superadmin' para que empate con la primera opción del menú
+  const [selectedRole, setSelectedRole] = useState('superadmin'); 
+  
   const [showRegPass, setShowRegPass] = useState(false);
-  const [regPin, setRegPin] = useState(''); 
+  const [regPin, setRegPin] = useState('');
 
   // ESTADOS DE LOGIN
   const [loginEmail, setLoginEmail] = useState('');

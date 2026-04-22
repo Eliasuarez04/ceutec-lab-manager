@@ -29,6 +29,7 @@ const initializeTransporter = () => {
 
 
 // --- NUEVA FUNCIÓN: REGISTRO SEGURO DE STAFF ---
+// --- NUEVA FUNCIÓN: REGISTRO SEGURO DE STAFF ---
 exports.registerStaffSecure = onCall(
   { region: "us-central1", cors: true }, 
   async (request) => {
@@ -38,10 +39,10 @@ exports.registerStaffSecure = onCall(
       throw new HttpsError('invalid-argument', 'Correo institucional inválido.');
     }
 
-    // Usamos process.env para acceder a las variables configuradas
-    // Firebase v2 recomienda definir variables de entorno en la configuración del proyecto
+    // 🔥 CORRECCIÓN: Se agrega el PIN del Coordinador Académico
     const pinMap = {
       "superadmin": process.env.PIN_SUPERADMIN,
+      "coordinador": process.env.PIN_COORDINADOR, 
       "coord_labs": process.env.PIN_COORD_LABS,
       "coord_aulas": process.env.PIN_COORD_AULAS,
       "it_staff": process.env.PIN_IT_STAFF,
@@ -50,7 +51,8 @@ exports.registerStaffSecure = onCall(
 
     const expectedPin = pinMap[data.role];
 
-    if (!expectedPin || data.pin !== expectedPin) {
+    // 🔥 SEGURIDAD: Agregamos .trim() para evitar que un espacio accidental rompa el PIN
+    if (!expectedPin || data.pin.trim() !== expectedPin.trim()) {
       throw new HttpsError('permission-denied', 'PIN de autorización incorrecto o rol no soportado.');
     }
 
@@ -62,7 +64,6 @@ exports.registerStaffSecure = onCall(
         emailVerified: false 
       });
 
-      // CORRECCIÓN: Si data.city es undefined, enviamos cadena vacía o "Tegucigalpa"
       const cityToSave = data.city ? data.city : "Tegucigalpa";
 
       await db.collection('users').doc(userRecord.uid).set({
