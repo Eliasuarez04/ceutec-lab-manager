@@ -6,7 +6,6 @@ const {
 } = require("firebase-functions/v2/firestore");
 const { onCall, HttpsError } = require("firebase-functions/v2/https");
 const { logger } = require("firebase-functions");
-const functions = require("firebase-functions"); // IMPORTANTE: Necesario para leer variables de entorno
 const admin = require("firebase-admin");
 const nodemailer = require("nodemailer");
 
@@ -27,8 +26,45 @@ const initializeTransporter = () => {
   }
 };
 
+// ============================================================================
+// 🔥 HELPERS DE ENRUTAMIENTO INTELIGENTE (CIUDAD Y ROL) 🔥
+// ============================================================================
+const getCityFromSede = (sede) => {
+  const s = (sede || "").toLowerCase();
+  if (s.includes("sps") || s.includes("norte") || s.includes("central")) return "San Pedro Sula";
+  if (s.includes("tgu") || s.includes("prado") || s.includes("centroamerica") || s.includes("ca")) return "Tegucigalpa";
+  if (s.includes("lce") || s.includes("ceiba")) return "La Ceiba";
+  return ""; 
+};
 
-// --- NUEVA FUNCIÓN: REGISTRO SEGURO DE STAFF ---
+const getTargetRole = (spaceType) => {
+  const type = (spaceType || "").toLowerCase();
+  if (type.includes("aula")) return "coord_aulas";
+  return "coord_labs"; // Por defecto, asume laboratorios si no se especifica
+};
+
+// Función maestra para obtener los correos de los coordinadores correctos
+const getTargetCoordinators = async (sede, spaceType) => {
+  const targetCity = getCityFromSede(sede);
+  const targetRole = getTargetRole(spaceType);
+  const emails = [];
+
+  // Obtenemos a los del rol específico y superadmins
+  const usersSnap = await db.collection("users").where("role", "in", [targetRole, "superadmin"]).get();
+  
+  usersSnap.forEach(doc => {
+    const data = doc.data();
+    // Filtro estricto: Solo enviamos si el usuario pertenece a la misma ciudad de la reserva
+    if (data.city === targetCity) {
+      emails.push(data.email);
+    }
+  });
+
+  return emails;
+};
+// ============================================================================
+
+
 // --- NUEVA FUNCIÓN: REGISTRO SEGURO DE STAFF ---
 exports.registerStaffSecure = onCall(
   { region: "us-central1", cors: true }, 
@@ -39,7 +75,6 @@ exports.registerStaffSecure = onCall(
       throw new HttpsError('invalid-argument', 'Correo institucional inválido.');
     }
 
-    // 🔥 CORRECCIÓN: Se agrega el PIN del Coordinador Académico
     const pinMap = {
       "superadmin": process.env.PIN_SUPERADMIN,
       "coordinador": process.env.PIN_COORDINADOR, 
@@ -51,7 +86,6 @@ exports.registerStaffSecure = onCall(
 
     const expectedPin = pinMap[data.role];
 
-    // 🔥 SEGURIDAD: Agregamos .trim() para evitar que un espacio accidental rompa el PIN
     if (!expectedPin || data.pin.trim() !== expectedPin.trim()) {
       throw new HttpsError('permission-denied', 'PIN de autorización incorrecto o rol no soportado.');
     }
@@ -83,7 +117,9 @@ exports.registerStaffSecure = onCall(
     }
   }
 );
-// --- FUNCIÓN 1: CORREO DE NUEVA RESERVA (FILTRADO) ---
+
+
+// --- FUNCIÓN 1: CORREO DE NUEVA RESERVA ---
 exports.sendReservationEmail = onDocumentCreated(
   { document: "reservations/{reservationId}", region: "us-central1" },
   async (event) => {
@@ -116,15 +152,22 @@ exports.sendReservationEmail = onDocumentCreated(
     const end = formatHN(res.endTime.toDate());
 
     if (res.userEmail && res.userEmail !== 'Carga Académica') {
+      // Obtenemos estrictamente a los coordinadores de la ciudad y rol correcto
+      const coordEmails = await getTargetCoordinators(res.sede, res.spaceType);
+      
+      // Armamos la lista de destinatarios: El docente + Los coordinadores filtrados
+      const toRecipients = [res.userEmail, ...coordEmails].filter(Boolean).join(", ");
+
       const teacherMailOptions = {
         from: `Portal Ceutec SpaceOne <${process.env.GMAIL_EMAIL}>`,
-        to: res.userEmail,
+        to: toRecipients,
         subject: "Confirmación de Reserva - Ceutec SpaceOne",
         html: `
           <div style="font-family: Arial, sans-serif; color: #333; max-width: 600px; border: 1px solid #ddd; border-radius: 12px; padding: 25px;">
             <h2 style="color: #c8102e; border-bottom: 2px solid #c8102e; padding-bottom: 10px;">¡Reserva Confirmada!</h2>
             <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
-              <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Espacio:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${res.labName}</td></tr>
+              <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Sede:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${res.sede}</td></tr>
+              <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Espacio:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${res.labName} (${res.spaceType || 'Laboratorio'})</td></tr>
               <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Materia:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${res.className || res.purpose}</td></tr>
               <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Docente:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">${res.userName}</td></tr>
               <tr><td style="padding: 8px; border-bottom: 1px solid #eee; font-weight: bold;">Sección / TH:</td><td style="padding: 8px; border-bottom: 1px solid #eee;">Sec: ${res.section || 'N/A'} | TH: ${res.th || 'N/A'}</td></tr>
@@ -147,7 +190,8 @@ exports.sendReservationEmail = onDocumentCreated(
   }
 );
 
-// --- FUNCIÓN 2: CORREO CUANDO SE EDITA/MODIFICA (FILTRADO) ---
+
+// --- FUNCIÓN 2: CORREO CUANDO SE EDITA/MODIFICA ---
 exports.onReservationUpdated = onDocumentUpdated(
   { document: "reservations/{reservationId}", region: "us-central1" },
   async (event) => {
@@ -163,14 +207,13 @@ exports.onReservationUpdated = onDocumentUpdated(
       return hnDate.getUTCHours().toString().padStart(2, '0') + ":" + hnDate.getUTCMinutes().toString().padStart(2, '0');
     };
 
-    const coords = [];
-    const coordSnap = await db.collection("users").where("role", "in", ["coord_labs", "superadmin"]).get();
-    coordSnap.forEach(doc => coords.push(doc.data().email));
+    // Filtro de enrutamiento
+    const coordEmails = await getTargetCoordinators(after.sede, after.spaceType);
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; border: 1px solid #ddd; padding: 25px; border-radius: 12px;">
         <h2 style="color: #0056b3; border-bottom: 2px solid #0056b3; padding-bottom: 10px;">Reserva Modificada</h2>
-        <p>Se han actualizado los detalles de la reserva en: <b>${after.labName}</b></p>
+        <p>Se han actualizado los detalles de la reserva en: <b>${after.labName}</b> (${after.sede})</p>
         <table style="width: 100%; border-collapse: collapse; margin: 20px 0;">
           <tr style="background: #f8f9fa;">
             <th style="padding: 10px; border: 1px solid #dee2e6; text-align: left;">Campo</th>
@@ -194,7 +237,7 @@ exports.onReservationUpdated = onDocumentUpdated(
 
     const mailOptions = {
       from: `Portal SpaceOne <${process.env.GMAIL_EMAIL}>`,
-      to: [after.userEmail, ...coords].join(", "),
+      to: [after.userEmail, ...coordEmails].filter(Boolean).join(", "),
       subject: `🔄 Reserva Modificada: ${after.labName}`,
       html: htmlContent
     };
@@ -202,7 +245,8 @@ exports.onReservationUpdated = onDocumentUpdated(
   }
 );
 
-// --- FUNCIÓN 3: CORREO CUANDO SE CANCELA/ELIMINA (FILTRADO) ---
+
+// --- FUNCIÓN 3: CORREO CUANDO SE CANCELA/ELIMINA ---
 exports.onReservationDeleted = onDocumentDeleted(
   { document: "reservations/{reservationId}", region: "us-central1" },
   async (event) => {
@@ -210,16 +254,17 @@ exports.onReservationDeleted = onDocumentDeleted(
     if (deletedData.reservationType === 'academic_load') return null;
 
     initializeTransporter();
-    const coords = [];
-    const coordSnap = await db.collection("users").where("role", "in", ["coord_labs", "superadmin"]).get();
-    coordSnap.forEach(doc => coords.push(doc.data().email));
+    
+    // Filtro de enrutamiento
+    const coordEmails = await getTargetCoordinators(deletedData.sede, deletedData.spaceType);
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; border: 2px solid #c8102e; padding: 25px; border-radius: 12px;">
         <h2 style="color: #c8102e; border-bottom: 2px solid #c8102e; padding-bottom: 10px;">Reserva Cancelada</h2>
         <p>Se ha eliminado la siguiente reserva manual:</p>
         <ul style="line-height: 2;">
-          <li><b>Espacio:</b> ${deletedData.labName}</li>
+          <li><b>Sede:</b> ${deletedData.sede}</li>
+          <li><b>Espacio:</b> ${deletedData.labName} (${deletedData.spaceType || 'Laboratorio'})</li>
           <li><b>Materia/Clase:</b> ${deletedData.className || deletedData.purpose}</li>
           <li><b>Docente:</b> ${deletedData.userName} (${deletedData.userEmail})</li>
         </ul>
@@ -229,13 +274,14 @@ exports.onReservationDeleted = onDocumentDeleted(
 
     const mailOptions = {
       from: `Portal SpaceOne <${process.env.GMAIL_EMAIL}>`,
-      to: [deletedData.userEmail, ...coords].join(", "),
+      to: [deletedData.userEmail, ...coordEmails].filter(Boolean).join(", "),
       subject: `❌ Reserva Cancelada: ${deletedData.labName}`,
       html: htmlContent
     };
     await transporter.sendMail(mailOptions);
   }
 );
+
 
 // --- FUNCIÓN 4: STOCK DE INVENTARIO ---
 exports.checkStockLevels = onDocumentUpdated(
