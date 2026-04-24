@@ -1,7 +1,8 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { db } from '../../firebaseConfig';
-import { collection, getDocs, updateDoc, doc, query, where, orderBy } from 'firebase/firestore';
+// 🔥 Importamos setDoc y Timestamp para la nueva función
+import { collection, getDocs, updateDoc, doc, query, where, orderBy, setDoc, Timestamp } from 'firebase/firestore';
 import { useAuth } from '../../context/AuthContext';
 import toast from 'react-hot-toast';
 
@@ -33,6 +34,11 @@ export default function UserManagement() {
   const [loading, setLoading] = useState(true);
   const [editSede, setEditSede] = useState({});
   const [editRole, setEditRole] = useState({});
+
+  // 🔥 Estados para el panel de SuperAdmin
+  const [newTeacherName, setNewTeacherName] = useState('');
+  const [newTeacherTH, setNewTeacherTH] = useState('');
+  const [isAddingTeacher, setIsAddingTeacher] = useState(false);
 
   const getAllowedSedes = (userCity) => {
     const cityKey = userCity || userData?.city;
@@ -105,6 +111,37 @@ export default function UserManagement() {
     }
   };
 
+  // 🔥 Nueva Función para Habilitar Docentes
+  const handleAddTeacher = async (e) => {
+    e.preventDefault();
+    if (!newTeacherName || !newTeacherTH) return toast.error("Llena ambos campos");
+    
+    setIsAddingTeacher(true);
+    const toastId = toast.loading("Guardando docente...");
+
+    try {
+      const thClean = newTeacherTH.trim();
+      
+      // Creamos el documento usando el TH como ID de documento en active_teachers_list
+      await setDoc(doc(db, 'active_teachers_list', thClean), {
+        th: thClean,
+        name: newTeacherName.trim().toUpperCase(),
+        email: "Pendiente de Registro", // Placeholder
+        lastUpdate: Timestamp.now()
+      });
+
+      toast.success(`Docente ${thClean} habilitado con éxito`, { id: toastId });
+      
+      setNewTeacherName('');
+      setNewTeacherTH('');
+    } catch (err) {
+      console.error(err);
+      toast.error("Error al guardar en base de datos", { id: toastId });
+    } finally {
+      setIsAddingTeacher(false);
+    }
+  };
+
   return (
     <div className="dashboard-wrapper">
       <div style={{ maxWidth: '1400px', margin: '0 auto', width: '100%', marginBottom: '20px' }}>
@@ -126,6 +163,67 @@ export default function UserManagement() {
                     : `Aprobaciones ${userData.city || ''} - Facultad ${userData?.faculty}`}
             </p>
         </header>
+
+        {/* 🔥 PANEL EXCLUSIVO PARA SUPERADMIN: HABILITAR DOCENTES 🔥 */}
+        {userData?.role === 'superadmin' && (
+          <div style={{ background: 'white', padding: '25px', borderRadius: '20px', marginBottom: '35px', borderLeft: '8px solid #166534', boxShadow: '0 4px 15px rgba(0,0,0,0.03)', border: '1px solid #edf2f7' }}>
+            <h3 style={{ margin: '0 0 10px 0', display: 'flex', alignItems: 'center', gap: '10px', color: '#1e293b' }}>
+              <span style={{ fontSize: '1.3rem' }}>👨‍🏫</span> Habilitar Docente (Malla Académica)
+            </h3>
+            <p style={{ color: '#64748b', fontSize: '0.95rem', marginBottom: '20px' }}>
+              Añade el Nombre y el TH de un docente inactivo para permitirle registrarse en la plataforma de forma automática.
+            </p>
+            
+            <form onSubmit={handleAddTeacher} style={{ display: 'flex', gap: '15px', flexWrap: 'wrap', alignItems: 'flex-end' }}>
+              
+              <div style={{ flex: '2', minWidth: '220px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ color: '#166534', fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase' }}>Nombre Completo</label>
+                <input 
+                  type="text" 
+                  placeholder="Ej. MARIO LEONEL CASTILLO" 
+                  value={newTeacherName} 
+                  onChange={(e) => setNewTeacherName(e.target.value)} 
+                  required 
+                  style={{ padding: '12px 15px', borderRadius: '12px', border: '2px solid #edf2f7', outline: 'none', fontSize: '0.95rem' }}
+                />
+              </div>
+
+              <div style={{ flex: '1', minWidth: '120px', display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                <label style={{ color: '#166534', fontSize: '0.8rem', fontWeight: '800', textTransform: 'uppercase' }}>No. Empleado (TH)</label>
+                <input 
+                  type="number" 
+                  placeholder="Ej. 10411" 
+                  value={newTeacherTH} 
+                  onChange={(e) => setNewTeacherTH(e.target.value)} 
+                  required 
+                  style={{ padding: '12px 15px', borderRadius: '12px', border: '2px solid #edf2f7', outline: 'none', fontSize: '0.95rem' }}
+                />
+              </div>
+
+              <button 
+                type="submit" 
+                disabled={isAddingTeacher}
+                style={{ 
+                  height: '46px', 
+                  flex: '1', 
+                  minWidth: '150px', 
+                  background: isAddingTeacher ? '#14532d' : '#166534',
+                  color: 'white',
+                  fontWeight: '800',
+                  border: 'none',
+                  borderRadius: '12px',
+                  cursor: 'pointer',
+                  display: 'flex',
+                  justifyContent: 'center',
+                  alignItems: 'center',
+                  transition: '0.3s'
+                }}
+              >
+                {isAddingTeacher ? 'Guardando...' : '+ Autorizar Docente'}
+              </button>
+            </form>
+          </div>
+        )}
 
         {loading ? <div className="loading-state">Cargando lista de usuarios...</div> : (
           <div className="table-wrapper">
