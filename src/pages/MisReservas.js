@@ -1,9 +1,9 @@
-// src/pages/MisReservas.js
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
 import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebaseConfig';
-import { collection, query, where, getDocs, orderBy, doc, deleteDoc, updateDoc, Timestamp } from 'firebase/firestore';
+// 🔥 IMPORTANTE: Agregamos "or" a la importación de Firestore para consultas múltiples y getDoc para la búsqueda
+import { collection, query, where, getDocs, orderBy, doc, deleteDoc, updateDoc, Timestamp, or, getDoc } from 'firebase/firestore';
 import { format, isPast, isFuture, parseISO, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import es from 'date-fns/locale/es';
 import toast from 'react-hot-toast';
@@ -38,6 +38,8 @@ const ReservationCard = ({ reservation, onCancel, onEdit, onCheckAction }) => {
         <p><strong>Materia/Motivo:</strong> {reservation.className || reservation.purpose}</p>
         <p><strong>Fecha:</strong> {format(reservation.startTime.toDate(), "eeee, dd 'de' MMMM", { locale: es })}</p>
         <p><strong>Horario:</strong> {`${format(reservation.startTime.toDate(), 'HH:mm')} - ${format(reservation.endTime.toDate(), 'HH:mm')}`}</p>
+        {/* Mostramos a nombre de quién está reservado si no somos nosotros */}
+        <p style={{fontSize: '0.8rem', color: '#64748b', marginTop: '10px'}}>👤 A nombre de: {reservation.userName}</p>
       </div>
 
       <div className="card-actions-ops" style={{ padding: '0 25px 15px' }}>
@@ -90,13 +92,20 @@ export default function MisReservas() {
     if (!currentUser) return;
     setLoading(true);
     try {
+      // 🔥 CORRECCIÓN: Buscamos reservas donde el usuario sea el DOCENTE o el GESTOR 🔥
       const q = query(
         collection(db, 'reservations'),
-        where('userId', '==', currentUser.uid),
-        orderBy('startTime', 'desc')
+        or(
+            where('userId', '==', currentUser.uid), // Es mi clase
+            where('reservedByEmail', '==', currentUser.email) // Yo la agendé por alguien más
+        ),
+        // orderBy('startTime', 'desc') -> NOTA: Al usar 'or', Firebase a veces pide index compuesto. Si falla, el sort lo hacemos en el front.
       );
       const querySnapshot = await getDocs(q);
       const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+      
+      // Ordenamos manualmente por fecha descendente
+      data.sort((a, b) => b.startTime.toDate() - a.startTime.toDate());
       setAllReservations(data);
     } catch (error) {
       console.error("Error: ", error);
@@ -114,7 +123,6 @@ export default function MisReservas() {
         await updateDoc(resRef, { checkInTime: Timestamp.now(), fulfillmentStatus: 'En Progreso' });
         toast.success("¡Clase iniciada!");
       } else {
-        // 🔴 MEJORA V2.3: Preguntar por el estado del equipo
         const { isConfirmed } = await MySwal.fire({
             title: '¿Finalizar clase?',
             text: '¿Hubo alguna incidencia técnica en el salón?',
@@ -144,14 +152,12 @@ export default function MisReservas() {
 
   useEffect(() => { fetchReservations(); }, [fetchReservations]);
 
-  // 🔴 AQUÍ ESTÁ LA FUNCIÓN QUE FALTABA
   const handleOpenEditModal = (reservation) => {
     setEditingReservation(reservation);
     setIsEditModalOpen(true);
   };
 
   const filteredReservations = useMemo(() => {
-    // 🔴 FILTRO: Ocultar carga académica en el historial personal
     let list = allReservations.filter(res => res.reservationType !== 'academic_load');
 
     if (activeTab === 'upcoming') {
@@ -187,20 +193,80 @@ export default function MisReservas() {
     });
   };
 
+  // 🔥 LÓGICA DE EDICIÓN CON CIERRE INMEDIATO UX (MisReservas.js) 🔥
   const handleUpdateReservation = async (updatedData) => {
+    // 1. UX CRÍTICO: Cerramos el modal INMEDIATAMENTE al dar clic en guardar
+    setIsEditModalOpen(false); 
+
+    const toastId = toast.loading("Verificando datos y guardando...");
     try {
+      let teacherName = updatedData.userName || currentUser.displayName; 
+      let teacherEmail = updatedData.userEmail || currentUser.email;
+      let teacherId = updatedData.userId || currentUser.uid;
+      let docenteEncontrado = false;
+
+      // Búsqueda del TH si lo modificaron
+      if (updatedData.thDocente && updatedData.thDocente !== editingReservation.th) {
+          const cleanTh = updatedData.thDocente.toString().trim();
+          
+          const teacherRef = doc(db, 'active_teachers_list', cleanTh);
+          const teacherSnap = await getDoc(teacherRef);
+          
+          if (teacherSnap.exists()) {
+              teacherName = teacherSnap.data().name;
+              if (teacherSnap.data().email && teacherSnap.data().email !== "Pendiente de Registro") {
+                  teacherEmail = teacherSnap.data().email;
+              }
+              docenteEncontrado = true;
+          } else {
+              const qUser = query(collection(db, 'users'), where('th', '==', cleanTh));
+              const uSnap = await getDocs(qUser);
+              if (!uSnap.empty) {
+                  const uData = uSnap.docs[0].data();
+                  teacherName = uData.displayName || uData.name || teacherName;
+                  teacherEmail = uData.email || teacherEmail;
+                  teacherId = uData.uid || teacherId;
+                  docenteEncontrado = true;
+              }
+          }
+
+          // Si cambiaron el TH pero no existe, pedimos nombre manual
+          if (!docenteEncontrado) {
+            toast.dismiss(toastId); 
+            const { value: manualName, isDismissed } = await MySwal.fire({
+                title: 'Docente no encontrado',
+                text: `El nuevo TH ${updatedData.thDocente} no existe. Ingresa el nombre manual:`,
+                input: 'text',
+                icon: 'warning',
+                showCancelButton: true,
+                confirmButtonText: 'Guardar',
+                confirmButtonColor: '#c8102e',
+                inputValidator: (value) => { if (!value) return 'El nombre es obligatorio' }
+            });
+
+            if (isDismissed) return; 
+            teacherName = manualName.toUpperCase();
+            toast.loading("Actualizando reserva...", { id: toastId });
+          }
+      }
+
       const reservationRef = doc(db, 'reservations', editingReservation.id);
       await updateDoc(reservationRef, {
         ...updatedData,
-        th: updatedData.thDocente,
+        userName: teacherName,
+        userEmail: teacherEmail,
+        userId: teacherId,
+        th: updatedData.thDocente || 'N/A',
         attendees: updatedData.studentCount,
         startTime: Timestamp.fromDate(new Date(updatedData.start)),
         endTime: Timestamp.fromDate(new Date(updatedData.end)),
       });
-      toast.success("Reserva actualizada");
-      setIsEditModalOpen(false);
+      
+      toast.success("Reserva actualizada", {id: toastId});
       fetchReservations();
-    } catch (e) { toast.error("Error al editar"); }
+    } catch (e) { 
+        toast.error("Error al editar", {id: toastId}); 
+    }
   };
 
   const handleExportPDF = () => {

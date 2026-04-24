@@ -5,14 +5,18 @@ import { format, parse, startOfWeek, getDay, addMinutes } from 'date-fns';
 import es from 'date-fns/locale/es';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { db } from '../firebaseConfig';
-import { collection, getDocs, query, where, Timestamp, addDoc, writeBatch, doc } from 'firebase/firestore';
+import { collection, getDocs, query, where, Timestamp, addDoc, writeBatch, doc, getDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import ReservationModal from '../components/ReservationModal';
 import './styles/Reservations.css'; 
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
+// 🔥 IMPORTAMOS SWEETALERT PARA LA ALERTA INTERACTIVA
+import Swal from 'sweetalert2';
+import withReactContent from 'sweetalert2-react-content';
 
+const MySwal = withReactContent(Swal);
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { es } });
 const messages = { allDay: 'Todo el día', previous: 'Atrás', next: 'Siguiente', today: 'Hoy', month: 'Mes', week: 'Semana', day: 'Día', agenda: 'Agenda', date: 'Fecha', time: 'Hora', event: 'Evento', noEventsInRange: 'No hay eventos en este rango.' };
 
@@ -26,8 +30,8 @@ export default function Reservations() {
   const urlSpaceId = params.get('spaceId');
 
   const canManageMassLoad = userData?.role === 'superadmin' || 
-                           userData?.role === 'coord_labs' || 
-                           userData?.role === 'coord_aulas';
+                            userData?.role === 'coord_labs' || 
+                            userData?.role === 'coord_aulas';
 
   const [allSpaces, setAllSpaces] = useState([]);
   const [activeSpace, setActiveSpace] = useState(null);
@@ -271,7 +275,6 @@ export default function Reservations() {
 
         toast.success(`Carga exitosa.`, { id: 'processToast' });
         
-        // 🔥 CORRECCIÓN: Forzamos el cierre del modal de forma directa e inmediata
         setIsMassLoadOpen(false);
         setMassStep(1);
         setPreparedReservations([]);
@@ -283,6 +286,107 @@ export default function Reservations() {
   };
 
   const handleSelectSpace = (space) => { setActiveSpace(space); setSearchTerm(space.name); setIsDropdownOpen(false); };
+
+  // 🔥 LÓGICA DE ALERTA, BÚSQUEDA Y CIERRE UX (Reservations.js) 🔥
+  const handleSubmitReservation = async (d) => {
+    // 1. UX CRÍTICO: Cerramos el modal INMEDIATAMENTE al dar clic en guardar
+    setIsBookingModalOpen(false);
+    
+    const toastId = toast.loading("Buscando docente y procesando...");
+    try {
+        let teacherName = "";
+        let teacherEmail = "pendiente@unitec.edu.hn"; // Correo provisional si no existe
+        let teacherId = "PENDIENTE_REGISTRO";
+        let docenteEncontrado = false;
+
+        // Búsqueda del TH en las bases de datos
+        if (d.thDocente) {
+            const cleanTh = d.thDocente.toString().trim();
+            
+            // Intento 1: active_teachers_list
+            const teacherRef = doc(db, 'active_teachers_list', cleanTh);
+            const teacherSnap = await getDoc(teacherRef);
+            
+            if (teacherSnap.exists()) {
+                teacherName = teacherSnap.data().name;
+                if (teacherSnap.data().email && teacherSnap.data().email !== "Pendiente de Registro") {
+                    teacherEmail = teacherSnap.data().email;
+                }
+                docenteEncontrado = true;
+            } else {
+                // Intento 2: Lista de usuarios activos
+                const qUser = query(collection(db, 'users'), where('th', '==', cleanTh));
+                const uSnap = await getDocs(qUser);
+                if (!uSnap.empty) {
+                    const uData = uSnap.docs[0].data();
+                    teacherName = uData.displayName || uData.name || teacherName;
+                    teacherEmail = uData.email || teacherEmail;
+                    teacherId = uData.uid || teacherId;
+                    docenteEncontrado = true;
+                }
+            }
+        }
+
+        // 🔥 SI NO SE ENCUENTRA AL DOCENTE, PEDIMOS EL NOMBRE MANUALMENTE 🔥
+        if (!docenteEncontrado && d.thDocente) {
+            toast.dismiss(toastId); // Pausamos el loading
+            
+            const { value: manualName, isDismissed } = await MySwal.fire({
+                title: 'Docente no encontrado',
+                text: `No encontramos a ningún docente con el TH ${d.thDocente}. Ingresa su nombre completo para registrar la reserva a su nombre:`,
+                input: 'text',
+                icon: 'warning',
+                inputPlaceholder: 'Ej. Juan Carlos Pérez',
+                showCancelButton: true,
+                confirmButtonText: 'Guardar Reserva',
+                cancelButtonText: 'Cancelar',
+                confirmButtonColor: '#c8102e',
+                inputValidator: (value) => {
+                    if (!value) {
+                        return '¡Necesitas ingresar el nombre del docente!'
+                    }
+                }
+            });
+
+            // Si cancela la alerta manual, se detiene el guardado
+            if (isDismissed) return; 
+            
+            teacherName = manualName.toUpperCase();
+            toast.loading("Guardando reserva manual...", { id: toastId }); // Retomamos el loading
+        } else if (!d.thDocente) {
+             // Fallback de seguridad si dejan el TH en blanco
+             teacherName = currentUser.displayName;
+             teacherEmail = currentUser.email;
+             teacherId = currentUser.uid;
+        }
+
+        // Guardado de la reserva en la BD
+        await addDoc(collection(db, 'reservations'), {
+            ...d, 
+            labId: activeSpace.id, 
+            labName: activeSpace.name, 
+            sede: urlSede, 
+            userId: teacherId, 
+            userEmail: teacherEmail, 
+            userName: teacherName, 
+            th: d.thDocente || 'N/A', 
+            reservedByEmail: currentUser.email,
+            reservedByName: currentUser.displayName,
+            attendees: d.studentCount, 
+            startTime: Timestamp.fromDate(new Date(d.start)), 
+            endTime: Timestamp.fromDate(new Date(d.end)), 
+            createdAt: Timestamp.now(), 
+            fulfillmentStatus: 'Pendiente', 
+            reservationType: 'Manual'
+        }); 
+        
+        toast.success("Reserva guardada con éxito", {id: toastId});
+        fetchReservations(); 
+    } catch (e) {
+        toast.error("Error al guardar reserva", {id: toastId});
+        console.error(e);
+    }
+  };
 
   return (
     <div className="dashboard-wrapper">
@@ -338,7 +442,14 @@ export default function Reservations() {
         </div>
       </div>
 
-      <ReservationModal isOpen={isBookingModalOpen} onClose={() => setIsBookingModalOpen(false)} spaceData={activeSpace} slotInfo={slotInfo} onSubmit={async (d) => { await addDoc(collection(db, 'reservations'), {...d, labId: activeSpace.id, labName: activeSpace.name, sede: urlSede, userId: currentUser.uid, userEmail: currentUser.email, userName: currentUser.displayName, th: d.thDocente, attendees: d.studentCount, startTime: Timestamp.fromDate(new Date(d.start)), endTime: Timestamp.fromDate(new Date(d.end)), createdAt: Timestamp.now(), fulfillmentStatus: 'Pendiente', reservationType: 'Manual'}); setIsBookingModalOpen(false); fetchReservations(); }} existingReservations={reservations} />
+      <ReservationModal 
+        isOpen={isBookingModalOpen} 
+        onClose={() => setIsBookingModalOpen(false)} 
+        spaceData={activeSpace} 
+        slotInfo={slotInfo} 
+        onSubmit={handleSubmitReservation} 
+        existingReservations={reservations} 
+      />
       
       <Modal isOpen={isViewModalOpen} onClose={() => setIsViewModalOpen(false)} title="Detalles de la Reserva">
         {selectedEvent && (
@@ -355,10 +466,32 @@ export default function Reservations() {
                      <span style={{fontSize: '1.1rem', fontWeight: '900', color: '#c8102e'}}>{selectedEvent.subjectCode || 'N/A'}</span>
                 </div>
 
-                <div className="detail-box"> <label style={{fontSize: '0.65rem', fontWeight:'800', color: '#c8102e'}}>DOCENTE</label> <p style={{fontWeight:'bold', fontSize:'0.9rem', margin:0}}>{selectedEvent.userName}</p> </div>
-                <div className="detail-box"> <label style={{fontSize: '0.65rem', fontWeight:'800', color: '#c8102e'}}>SECCIÓN</label> <p style={{margin:0, fontWeight:'600'}}>{selectedEvent.section || '---'}</p> </div>
-                <div className="detail-box"> <label style={{fontSize: '0.65rem', fontWeight:'800', color: '#c8102e'}}>TH</label> <p style={{fontWeight:'bold', margin:0}}>{selectedEvent.th || 'N/A'}</p> </div>
-                <div className="detail-box"> <label style={{fontSize: '0.65rem', fontWeight:'800', color: '#c8102e'}}>ESTUDIANTES</label> <p style={{margin:0, fontWeight:'600'}}>{selectedEvent.attendees || '0'}</p> </div>
+                <div className="detail-box"> 
+                    <label style={{fontSize: '0.65rem', fontWeight:'800', color: '#c8102e'}}>DOCENTE</label> 
+                    <p style={{fontWeight:'bold', fontSize:'0.9rem', margin:0}}>{selectedEvent.userName}</p> 
+                </div>
+                
+                <div className="detail-box"> 
+                    <label style={{fontSize: '0.65rem', fontWeight:'800', color: '#c8102e'}}>SECCIÓN</label> 
+                    <p style={{margin:0, fontWeight:'600'}}>{selectedEvent.section || '---'}</p> 
+                </div>
+                
+                <div className="detail-box"> 
+                    <label style={{fontSize: '0.65rem', fontWeight:'800', color: '#c8102e'}}>TH</label> 
+                    <p style={{fontWeight:'bold', margin:0}}>{selectedEvent.th || 'N/A'}</p> 
+                </div>
+                
+                <div className="detail-box"> 
+                    <label style={{fontSize: '0.65rem', fontWeight:'800', color: '#c8102e'}}>ESTUDIANTES</label> 
+                    <p style={{margin:0, fontWeight:'600'}}>{selectedEvent.attendees || '0'}</p> 
+                </div>
+
+                {selectedEvent.reservedByEmail && selectedEvent.reservedByEmail !== selectedEvent.userEmail && (
+                    <div className="detail-box" style={{gridColumn: 'span 2', background: '#f0f9ff', borderColor: '#bae6fd'}}> 
+                        <label style={{fontSize: '0.65rem', fontWeight:'800', color: '#0369a1'}}>RESERVADO POR (COORDINACIÓN)</label> 
+                        <p style={{margin:0, fontWeight:'600', fontSize:'0.85rem', color: '#0f172a'}}>{selectedEvent.reservedByEmail}</p> 
+                    </div>
+                )}
                 
                 <div className="detail-box time-box" style={{gridColumn: '1 / -1', background: '#fff5f5', padding: '15px', borderRadius: '12px', textAlign: 'center', border: '1px solid #fee2e2'}}>
                     <label style={{fontSize: '0.7rem', fontWeight:'800', color: '#c8102e'}}>FECHA Y HORARIO</label>
@@ -395,7 +528,6 @@ export default function Reservations() {
                         </div>
                     </div>
                     
-                    {/* DROPZONE DE EXCEL */}
                     <div style={{
                         border: '2px dashed #c8102e', 
                         borderRadius: '16px', 
