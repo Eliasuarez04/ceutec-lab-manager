@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebaseConfig';
 // 🔥 IMPORTANTE: Agregamos "or" a la importación de Firestore para consultas múltiples y getDoc para la búsqueda
-import { collection, query, where, getDocs, orderBy, doc, deleteDoc, updateDoc, Timestamp, or, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, deleteDoc, updateDoc, Timestamp, or, getDoc } from 'firebase/firestore';
 import { format, isPast, isFuture, parseISO, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import es from 'date-fns/locale/es';
 import toast from 'react-hot-toast';
