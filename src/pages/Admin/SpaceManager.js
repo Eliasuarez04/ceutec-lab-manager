@@ -14,12 +14,6 @@ import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
 
-const REGION_MAPPING = {
-  "San Pedro Sula": ["Ceutec SPS Norte", "Ceutec SPS Central"],
-  "Tegucigalpa": ["Ceutec TGU (Prado)", "Ceutec TGU (Centroamerica)"],
-  "La Ceiba": ["Ceutec LCE"]
-};
-
 // --- COMPONENTE: FILA DE INVENTARIO ---
 const InventoryRow = ({ item, onUpdate, onDelete, canEdit }) => {
   const [isEditing, setIsEditing] = useState(false);
@@ -88,7 +82,6 @@ export default function SpaceManager() {
   const [isEditingSpace, setIsEditingSpace] = useState(false);
   const [isNewSpaceModalOpen, setIsNewSpaceModalOpen] = useState(false);
   
-  // 🔴 CORRECCIÓN: Definimos el estado para el modal de QR
   const [isQRModalOpen, setIsQRModalOpen] = useState(false);
 
   const [newEquipment, setNewEquipment] = useState({ 
@@ -99,7 +92,6 @@ export default function SpaceManager() {
       name: '', building: '', floor: '', capacity: 20, type: 'Laboratorio', status: 'Disponible', tags: []
   });
 
-  // 🔥 CORRECCIÓN: Lógica ultra flexible para validación de ciudad (igual a Reservations.js)
   const isUserInHisCity = useMemo(() => {
     if (userData?.role === 'superadmin') return true;
     
@@ -125,7 +117,6 @@ export default function SpaceManager() {
     return null;
   }, [userData]);
 
-  // 🔥 CORRECCIÓN: Flexibilidad para reconocer el tipo de espacio (Laboratorios, Talleres, Clínicas)
   const canManageSpace = (space) => {
     if (!userData || !space) return false;
     if (userData.role === 'superadmin') return true;
@@ -212,7 +203,6 @@ export default function SpaceManager() {
 
   const handleUpdateSpace = async (e) => {
     e.preventDefault();
-    // Validar permisos antes de actualizar
     if (!canManageSpace(selectedSpace)) return toast.error("No tienes permisos para modificar este espacio.");
     try {
         await updateDoc(doc(db, 'spaces', selectedSpace.id), selectedSpace);
@@ -223,7 +213,6 @@ export default function SpaceManager() {
   };
 
   const handleDeleteSpace = () => {
-    // Validar permisos antes de eliminar
     if (!canManageSpace(selectedSpace)) return toast.error("Acción denegada. No tienes permisos para eliminar este espacio.");
     MySwal.fire({
         title: `¿Eliminar ${selectedSpace.name}?`,
@@ -289,7 +278,6 @@ export default function SpaceManager() {
                     <p>Sede: {currentSede} • Capacidad: {selectedSpace.capacity}</p>
                 </div>
                 <div className="header-actions" style={{ display: 'flex', gap: '10px' }}>
-                    {/* BOTÓN V2.4 */}
                     <button className="btn-edit-space" style={{ background: '#1e293b' }} onClick={() => setIsQRModalOpen(true)}>
                         📱 Generar QR de Acceso
                     </button>
@@ -393,7 +381,6 @@ export default function SpaceManager() {
         </main>
       </div>
 
-      {/* MODAL NUEVO ESPACIO V2.3 */}
       <Modal isOpen={isNewSpaceModalOpen} onClose={() => setIsNewSpaceModalOpen(false)} title="Crear Nuevo Recurso">
           <form onSubmit={handleCreateSpace} className="academic-form-pro">
               <div className="form-row-pro">
@@ -451,12 +438,11 @@ export default function SpaceManager() {
           </form>
       </Modal>
 
-      {/* 🔴 MODAL QR V2.4 PREMIUM */}
-<Modal isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} title="Generador de Ficha Técnica">
-    {selectedSpace && (
-        <RoomQRGenerator space={selectedSpace} />
-    )}
-</Modal>
+      <Modal isOpen={isQRModalOpen} onClose={() => setIsQRModalOpen(false)} title="Generador de Ficha Técnica">
+          {selectedSpace && (
+              <RoomQRGenerator space={selectedSpace} />
+          )}
+      </Modal>
     </div>
   );
 }
