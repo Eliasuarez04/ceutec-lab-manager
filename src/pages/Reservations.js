@@ -129,8 +129,35 @@ export default function Reservations() {
 
   useEffect(() => { fetchReservations(); }, [fetchReservations]);
 
+  // 🔥 VALIDACIÓN DE CIUDAD AL INTENTAR CREAR UNA RESERVA NUEVA 🔥
   const handleSlotSelect = (slot) => {
     if (slot.start < new Date()) return toast.error("No se pueden realizar reservas pasadas.");
+    
+    // Validar que el usuario solo reserve en su propia ciudad (Superadmin puede en todas)
+    if (userData?.role !== 'superadmin') {
+        const userCity = (userData?.city || "").toLowerCase().trim();
+        const currentSedeLower = urlSede.toLowerCase().trim();
+        let isSameCity = false;
+
+        if (userCity.includes('san pedro') || userCity.includes('sps') || userCity.includes('pedro')) {
+            if (currentSedeLower.includes('sps') || currentSedeLower.includes('norte') || currentSedeLower.includes('central') || currentSedeLower.includes('pedro')) {
+                isSameCity = true;
+            }
+        } else if (userCity.includes('tegucigalpa') || userCity.includes('tgu')) {
+            if (currentSedeLower.includes('tgu') || currentSedeLower.includes('prado') || currentSedeLower.includes('centro') || currentSedeLower.includes('tegucigalpa')) {
+                isSameCity = true;
+            }
+        } else if (userCity.includes('ceiba') || userCity.includes('lce')) {
+            if (currentSedeLower.includes('lce') || currentSedeLower.includes('ceiba')) {
+                isSameCity = true;
+            }
+        }
+
+        if (!isSameCity) {
+            return toast.error(`⛔ No puedes reservar en ${urlSede}. Tu sede asignada es ${userData?.city}.`);
+        }
+    }
+
     setSlotInfo(slot); 
     setEditingReservation(null); 
     setIsBookingModalOpen(true); 
@@ -306,7 +333,7 @@ export default function Reservations() {
         if (d.thDocente) {
             const cleanTh = d.thDocente.toString().trim();
             
-            // 🔥 CORRECCIÓN: Siempre buscamos el TH en la base de datos para corregir reservas antiguas
+            // CORRECCIÓN: Siempre buscamos el TH en la base de datos para corregir reservas antiguas
             const teacherRef = doc(db, 'active_teachers_list', cleanTh);
             const teacherSnap = await getDoc(teacherRef);
             
@@ -377,35 +404,46 @@ export default function Reservations() {
     } catch (e) { toast.error("Error operativo", {id: toastId}); console.error(e); }
   };
 
-  // 🔥 VALIDACIÓN ESTRICTA: CIUDAD Y ROL 🔥
+  // 🔥 MOTOR DE REGLAS DE SEGURIDAD CORREGIDO 🔥
   const canManageReservation = (resEvent) => {
     if (!userData || !resEvent) return false;
+    
+    // No permitimos editar reservas de la malla académica desde el calendario
     if (resEvent.reservationType === 'academic_load') return false; 
+    
+    // Superadmin puede hacer de todo
     if (userData.role === 'superadmin') return true;
 
+    // Extracción limpia de ciudades
     const userCity = (userData.city || "").toLowerCase();
     const resCity = (resEvent.sede || "").toLowerCase();
     let isSameCity = false;
 
-    if (userCity.includes('san pedro') || userCity.includes('sps')) {
-        if (resCity.includes('sps') || resCity.includes('norte') || resCity.includes('central') || resCity.includes('san pedro')) {
+    // Validación amplia para San Pedro Sula
+    if (userCity.includes('san pedro') || userCity.includes('sps') || userCity.includes('pedro')) {
+        if (resCity.includes('sps') || resCity.includes('norte') || resCity.includes('central') || resCity.includes('san pedro') || resCity.includes('pedro')) {
             isSameCity = true;
         }
     }
+    // Validación amplia para Tegucigalpa
     if (userCity.includes('tegucigalpa') || userCity.includes('tgu')) {
         if (resCity.includes('tgu') || resCity.includes('prado') || resCity.includes('centro') || resCity.includes('tegucigalpa')) {
             isSameCity = true;
         }
     }
+    // Validación amplia para La Ceiba
     if (userCity.includes('ceiba') || userCity.includes('lce')) {
         if (resCity.includes('lce') || resCity.includes('ceiba')) {
             isSameCity = true;
         }
     }
 
+    // Si no es de su ciudad, lo bloqueamos inmediatamente
     if (!isSameCity) return false;
 
+    // Validación de Rol vs Tipo de Espacio (Laboratorio vs Aula)
     const type = (resEvent.spaceType || urlTipo || "").toLowerCase();
+    
     if (userData.role === 'coord_labs' && (type.includes('lab') || type.includes('taller') || type.includes('clinica') || type.includes('clinicas') || type.includes('laboratorio'))) return true;
     if (userData.role === 'coord_aulas' && (type.includes('aula') || type.includes('teórico'))) return true;
 
