@@ -196,7 +196,10 @@ exports.onReservationUpdated = onDocumentUpdated(
   { document: "reservations/{reservationId}", region: "us-central1" },
   async (event) => {
     const after = event.data.after.data();
+    
+    // 🔥 IGNORAMOS: Si es carga académica o si se está inyectando un motivo de cancelación
     if (after.reservationType === 'academic_load') return null;
+    if (after.cancelReason) return null; 
 
     const before = event.data.before.data();
     initializeTransporter();
@@ -207,7 +210,6 @@ exports.onReservationUpdated = onDocumentUpdated(
       return hnDate.getUTCHours().toString().padStart(2, '0') + ":" + hnDate.getUTCMinutes().toString().padStart(2, '0');
     };
 
-    // Filtro de enrutamiento
     const coordEmails = await getTargetCoordinators(after.sede, after.spaceType);
 
     const htmlContent = `
@@ -254,9 +256,19 @@ exports.onReservationDeleted = onDocumentDeleted(
     if (deletedData.reservationType === 'academic_load') return null;
 
     initializeTransporter();
-    
-    // Filtro de enrutamiento
     const coordEmails = await getTargetCoordinators(deletedData.sede, deletedData.spaceType);
+
+    // 🔥 TRAZABILIDAD: Verificamos si la administración inyectó un motivo de eliminación
+    let reasonHtml = "";
+    if (deletedData.cancelReason) {
+        reasonHtml = `
+          <div style="margin-top: 20px; padding: 15px; background-color: #fff5f5; border-left: 5px solid #c8102e; border-radius: 5px;">
+            <p style="margin: 0; color: #c8102e; font-weight: bold; font-size: 0.9rem; text-transform: uppercase;">Motivo de Cancelación (Por Administración):</p>
+            <p style="margin: 5px 0 0 0; color: #333; font-size: 1rem;">"${deletedData.cancelReason}"</p>
+            <p style="margin: 10px 0 0 0; color: #666; font-size: 0.75rem;">Cancelado por: ${deletedData.canceledByAdmin}</p>
+          </div>
+        `;
+    }
 
     const htmlContent = `
       <div style="font-family: Arial, sans-serif; border: 2px solid #c8102e; padding: 25px; border-radius: 12px;">
@@ -268,6 +280,7 @@ exports.onReservationDeleted = onDocumentDeleted(
           <li><b>Materia/Clase:</b> ${deletedData.className || deletedData.purpose}</li>
           <li><b>Docente:</b> ${deletedData.userName} (${deletedData.userEmail})</li>
         </ul>
+        ${reasonHtml}
         <p style="color: #d9534f; font-weight: bold; margin-top: 20px;">El espacio ha sido liberado en el calendario.</p>
       </div>
     `;

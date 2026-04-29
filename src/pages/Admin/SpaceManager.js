@@ -1,4 +1,3 @@
-// src/pages/Admin/SpaceManager.js
 import React, { useState, useEffect, useCallback, useMemo } from 'react';
 import { db } from '../../firebaseConfig';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy, setDoc } from 'firebase/firestore';
@@ -100,11 +99,24 @@ export default function SpaceManager() {
       name: '', building: '', floor: '', capacity: 20, type: 'Laboratorio', status: 'Disponible', tags: []
   });
 
+  // 🔥 CORRECCIÓN: Lógica ultra flexible para validación de ciudad (igual a Reservations.js)
   const isUserInHisCity = useMemo(() => {
     if (userData?.role === 'superadmin') return true;
-    const allowedSedes = REGION_MAPPING[userData?.city] || [];
-    const normalizedSede = currentSede.toLowerCase().replace('ceutec', '').replace(/[()]/g, '').trim();
-    return allowedSedes.some(s => s.toLowerCase().includes(normalizedSede));
+    
+    const userCity = (userData?.city || "").toLowerCase().trim();
+    const currentSedeLower = (currentSede || "").toLowerCase().trim();
+
+    if (userCity.includes('san pedro') || userCity.includes('sps')) {
+        return currentSedeLower.includes('sps') || currentSedeLower.includes('norte') || currentSedeLower.includes('central') || currentSedeLower.includes('pedro');
+    }
+    if (userCity.includes('tegucigalpa') || userCity.includes('tgu')) {
+        return currentSedeLower.includes('tgu') || currentSedeLower.includes('prado') || currentSedeLower.includes('centro') || currentSedeLower.includes('tegucigalpa');
+    }
+    if (userCity.includes('ceiba') || userCity.includes('lce')) {
+        return currentSedeLower.includes('lce') || currentSedeLower.includes('ceiba');
+    }
+
+    return false;
   }, [userData, currentSede]);
 
   const userManagedType = useMemo(() => {
@@ -113,13 +125,19 @@ export default function SpaceManager() {
     return null;
   }, [userData]);
 
+  // 🔥 CORRECCIÓN: Flexibilidad para reconocer el tipo de espacio (Laboratorios, Talleres, Clínicas)
   const canManageSpace = (space) => {
     if (!userData || !space) return false;
     if (userData.role === 'superadmin') return true;
     if (!isUserInHisCity) return false;
+    
     if (userData.role === 'coordinador') return true;
-    if (userData.role === 'coord_labs' && space.type === 'Laboratorio') return true;
-    if (userData.role === 'coord_aulas' && space.type === 'Aula') return true;
+
+    const type = (space.type || "").toLowerCase();
+    
+    if (userData.role === 'coord_labs' && (type.includes('lab') || type.includes('taller') || type.includes('clinica') || type.includes('clínica'))) return true;
+    if (userData.role === 'coord_aulas' && (type.includes('aula') || type.includes('teórico') || type.includes('teorico'))) return true;
+    
     return false;
   };
 
@@ -194,7 +212,8 @@ export default function SpaceManager() {
 
   const handleUpdateSpace = async (e) => {
     e.preventDefault();
-    if (!isUserInHisCity) return toast.error("No tienes permisos en esta ciudad.");
+    // Validar permisos antes de actualizar
+    if (!canManageSpace(selectedSpace)) return toast.error("No tienes permisos para modificar este espacio.");
     try {
         await updateDoc(doc(db, 'spaces', selectedSpace.id), selectedSpace);
         toast.success("Información actualizada");
@@ -204,7 +223,8 @@ export default function SpaceManager() {
   };
 
   const handleDeleteSpace = () => {
-    if (!isUserInHisCity) return toast.error("Acción denegada por región.");
+    // Validar permisos antes de eliminar
+    if (!canManageSpace(selectedSpace)) return toast.error("Acción denegada. No tienes permisos para eliminar este espacio.");
     MySwal.fire({
         title: `¿Eliminar ${selectedSpace.name}?`,
         icon: 'warning', showCancelButton: true, confirmButtonColor: '#c8102e', confirmButtonText: 'Sí, eliminar'
@@ -213,6 +233,7 @@ export default function SpaceManager() {
             await deleteDoc(doc(db, 'spaces', selectedSpace.id));
             toast.success("Espacio eliminado");
             setSelectedSpace(null);
+            setIsEditingSpace(false);
             fetchSpaces();
         }
     });
@@ -313,7 +334,7 @@ export default function SpaceManager() {
 
                         <div className="btn-row-space">
                             <button type="submit" className="btn-confirm">Guardar Cambios</button>
-                            {userData?.role === 'superadmin' && <button type="button" className="btn-danger" onClick={handleDeleteSpace}>Eliminar</button>}
+                            {canManageSpace(selectedSpace) && <button type="button" className="btn-danger" onClick={handleDeleteSpace}>Eliminar</button>}
                         </div>
                     </form>
                 </div>

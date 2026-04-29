@@ -5,7 +5,7 @@ import { format, parse, startOfWeek, getDay, addMinutes } from 'date-fns';
 import es from 'date-fns/locale/es';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { db } from '../firebaseConfig';
-import { collection, getDocs, query, where, Timestamp, addDoc, writeBatch, doc, getDoc } from 'firebase/firestore';
+import { collection, getDocs, query, where, Timestamp, addDoc, writeBatch, doc, getDoc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useAuth } from '../context/AuthContext';
 import Modal from '../components/Modal';
 import ReservationModal from '../components/ReservationModal';
@@ -46,6 +46,9 @@ export default function Reservations() {
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [slotInfo, setSlotInfo] = useState(null);
+  
+  // 🔥 ESTADO PARA EDICIÓN DESDE EL CALENDARIO 🔥
+  const [editingReservation, setEditingReservation] = useState(null);
 
   const [isMassLoadOpen, setIsMassLoadOpen] = useState(false);
   const [loadingMass, setLoadingMass] = useState(false);
@@ -128,7 +131,9 @@ export default function Reservations() {
 
   const handleSlotSelect = (slot) => {
     if (slot.start < new Date()) return toast.error("No se pueden realizar reservas pasadas.");
-    setSlotInfo(slot); setIsBookingModalOpen(true); 
+    setSlotInfo(slot); 
+    setEditingReservation(null); 
+    setIsBookingModalOpen(true); 
   };
 
   const handleFileRead = async (e) => {
@@ -287,34 +292,29 @@ export default function Reservations() {
 
   const handleSelectSpace = (space) => { setActiveSpace(space); setSearchTerm(space.name); setIsDropdownOpen(false); };
 
-  // 🔥 LÓGICA DE ALERTA, BÚSQUEDA Y CIERRE UX (Reservations.js) 🔥
+  // 🔥 LÓGICA REFINADA: EDICIÓN Y CREACIÓN EN UN SOLO MÉTODO 🔥
   const handleSubmitReservation = async (d) => {
-    // 1. UX CRÍTICO: Cerramos el modal INMEDIATAMENTE al dar clic en guardar
-    setIsBookingModalOpen(false);
+    setIsBookingModalOpen(false); 
+    const toastId = toast.loading(editingReservation ? "Actualizando reserva..." : "Buscando docente y guardando...");
     
-    const toastId = toast.loading("Buscando docente y procesando...");
     try {
         let teacherName = "";
-        let teacherEmail = "pendiente@unitec.edu.hn"; // Correo provisional si no existe
+        let teacherEmail = "pendiente@unitec.edu.hn"; 
         let teacherId = "PENDIENTE_REGISTRO";
         let docenteEncontrado = false;
 
-        // Búsqueda del TH en las bases de datos
         if (d.thDocente) {
             const cleanTh = d.thDocente.toString().trim();
             
-            // Intento 1: active_teachers_list
+            // 🔥 CORRECCIÓN: Siempre buscamos el TH en la base de datos para corregir reservas antiguas
             const teacherRef = doc(db, 'active_teachers_list', cleanTh);
             const teacherSnap = await getDoc(teacherRef);
             
             if (teacherSnap.exists()) {
                 teacherName = teacherSnap.data().name;
-                if (teacherSnap.data().email && teacherSnap.data().email !== "Pendiente de Registro") {
-                    teacherEmail = teacherSnap.data().email;
-                }
+                if (teacherSnap.data().email && teacherSnap.data().email !== "Pendiente de Registro") teacherEmail = teacherSnap.data().email;
                 docenteEncontrado = true;
             } else {
-                // Intento 2: Lista de usuarios activos
                 const qUser = query(collection(db, 'users'), where('th', '==', cleanTh));
                 const uSnap = await getDocs(qUser);
                 if (!uSnap.empty) {
@@ -327,64 +327,124 @@ export default function Reservations() {
             }
         }
 
-        // 🔥 SI NO SE ENCUENTRA AL DOCENTE, PEDIMOS EL NOMBRE MANUALMENTE 🔥
         if (!docenteEncontrado && d.thDocente) {
-            toast.dismiss(toastId); // Pausamos el loading
-            
+            toast.dismiss(toastId); 
             const { value: manualName, isDismissed } = await MySwal.fire({
                 title: 'Docente no encontrado',
-                text: `No encontramos a ningún docente con el TH ${d.thDocente}. Ingresa su nombre completo para registrar la reserva a su nombre:`,
-                input: 'text',
-                icon: 'warning',
-                inputPlaceholder: 'Ej. Juan Carlos Pérez',
-                showCancelButton: true,
-                confirmButtonText: 'Guardar Reserva',
-                cancelButtonText: 'Cancelar',
-                confirmButtonColor: '#c8102e',
-                inputValidator: (value) => {
-                    if (!value) {
-                        return '¡Necesitas ingresar el nombre del docente!'
-                    }
-                }
+                text: `El TH ${d.thDocente} no existe. Ingresa el nombre manual:`,
+                input: 'text', icon: 'warning', showCancelButton: true, confirmButtonText: 'Guardar', confirmButtonColor: '#c8102e',
+                inputValidator: (value) => { if (!value) return '¡Necesitas ingresar el nombre del docente!' }
             });
-
-            // Si cancela la alerta manual, se detiene el guardado
             if (isDismissed) return; 
-            
             teacherName = manualName.toUpperCase();
-            toast.loading("Guardando reserva manual...", { id: toastId }); // Retomamos el loading
+            toast.loading(editingReservation ? "Actualizando manual..." : "Guardando manual...", { id: toastId }); 
         } else if (!d.thDocente) {
-             // Fallback de seguridad si dejan el TH en blanco
              teacherName = currentUser.displayName;
              teacherEmail = currentUser.email;
              teacherId = currentUser.uid;
         }
 
-        // Guardado de la reserva en la BD
-        await addDoc(collection(db, 'reservations'), {
-            ...d, 
-            labId: activeSpace.id, 
-            labName: activeSpace.name, 
-            sede: urlSede, 
-            userId: teacherId, 
-            userEmail: teacherEmail, 
-            userName: teacherName, 
-            th: d.thDocente || 'N/A', 
-            reservedByEmail: currentUser.email,
-            reservedByName: currentUser.displayName,
-            attendees: d.studentCount, 
-            startTime: Timestamp.fromDate(new Date(d.start)), 
-            endTime: Timestamp.fromDate(new Date(d.end)), 
-            createdAt: Timestamp.now(), 
-            fulfillmentStatus: 'Pendiente', 
-            reservationType: 'Manual'
-        }); 
+        if (editingReservation) {
+            const resRef = doc(db, 'reservations', editingReservation.id);
+            await updateDoc(resRef, {
+                ...d, 
+                userName: teacherName, 
+                userEmail: teacherEmail, 
+                userId: teacherId, 
+                th: d.thDocente || 'N/A', 
+                attendees: d.studentCount,
+                spaceType: activeSpace.type || urlTipo,
+                startTime: Timestamp.fromDate(new Date(d.start)), 
+                endTime: Timestamp.fromDate(new Date(d.end))
+            });
+            toast.success("Reserva actualizada con éxito", {id: toastId});
+        } else {
+            await addDoc(collection(db, 'reservations'), {
+                ...d, 
+                labId: activeSpace.id, labName: activeSpace.name, sede: urlSede, 
+                spaceType: activeSpace.type || urlTipo,
+                userId: teacherId, userEmail: teacherEmail, userName: teacherName, th: d.thDocente || 'N/A', 
+                reservedByEmail: currentUser.email, reservedByName: currentUser.displayName,
+                attendees: d.studentCount, 
+                startTime: Timestamp.fromDate(new Date(d.start)), endTime: Timestamp.fromDate(new Date(d.end)), 
+                createdAt: Timestamp.now(), fulfillmentStatus: 'Pendiente', reservationType: 'Manual'
+            }); 
+            toast.success("Reserva guardada con éxito", {id: toastId});
+        }
         
-        toast.success("Reserva guardada con éxito", {id: toastId});
+        setEditingReservation(null);
         fetchReservations(); 
-    } catch (e) {
-        toast.error("Error al guardar reserva", {id: toastId});
-        console.error(e);
+    } catch (e) { toast.error("Error operativo", {id: toastId}); console.error(e); }
+  };
+
+  // 🔥 VALIDACIÓN ESTRICTA: CIUDAD Y ROL 🔥
+  const canManageReservation = (resEvent) => {
+    if (!userData || !resEvent) return false;
+    if (resEvent.reservationType === 'academic_load') return false; 
+    if (userData.role === 'superadmin') return true;
+
+    const userCity = (userData.city || "").toLowerCase();
+    const resCity = (resEvent.sede || "").toLowerCase();
+    let isSameCity = false;
+
+    if (userCity.includes('san pedro') || userCity.includes('sps')) {
+        if (resCity.includes('sps') || resCity.includes('norte') || resCity.includes('central') || resCity.includes('san pedro')) {
+            isSameCity = true;
+        }
+    }
+    if (userCity.includes('tegucigalpa') || userCity.includes('tgu')) {
+        if (resCity.includes('tgu') || resCity.includes('prado') || resCity.includes('centro') || resCity.includes('tegucigalpa')) {
+            isSameCity = true;
+        }
+    }
+    if (userCity.includes('ceiba') || userCity.includes('lce')) {
+        if (resCity.includes('lce') || resCity.includes('ceiba')) {
+            isSameCity = true;
+        }
+    }
+
+    if (!isSameCity) return false;
+
+    const type = (resEvent.spaceType || urlTipo || "").toLowerCase();
+    if (userData.role === 'coord_labs' && (type.includes('lab') || type.includes('taller') || type.includes('clinica') || type.includes('clinicas') || type.includes('laboratorio'))) return true;
+    if (userData.role === 'coord_aulas' && (type.includes('aula') || type.includes('teórico'))) return true;
+
+    return false;
+  };
+
+  // 🔥 ELIMINAR CON MOTIVO PARA EL DOCENTE 🔥
+  const handleDeleteAdmin = async (resEvent) => {
+    setIsViewModalOpen(false); 
+    
+    const { value: reason, isDismissed } = await MySwal.fire({
+        title: 'Cancelar Reserva',
+        text: 'Ingresa el motivo de la cancelación. Este se enviará por correo al docente:',
+        input: 'textarea',
+        icon: 'warning',
+        inputPlaceholder: 'Ej. Mantenimiento preventivo del aire acondicionado...',
+        showCancelButton: true,
+        confirmButtonText: 'Confirmar y Notificar',
+        cancelButtonText: 'Regresar',
+        confirmButtonColor: '#c8102e',
+        inputValidator: (value) => {
+            if (!value) return 'Debes ingresar un motivo para justificar la cancelación.';
+        }
+    });
+
+    if (isDismissed || !reason) return;
+
+    const toastId = toast.loading("Cancelando reserva y enviando correo...");
+    try {
+        const resRef = doc(db, "reservations", resEvent.id);
+        
+        await updateDoc(resRef, { cancelReason: reason, canceledByAdmin: currentUser.displayName });
+        await deleteDoc(resRef);
+        
+        toast.success('Reserva cancelada con éxito.', { id: toastId });
+        fetchReservations();
+    } catch (error) {
+        console.error(error);
+        toast.error('Error al cancelar la reserva.', { id: toastId });
     }
   };
 
@@ -444,9 +504,10 @@ export default function Reservations() {
 
       <ReservationModal 
         isOpen={isBookingModalOpen} 
-        onClose={() => setIsBookingModalOpen(false)} 
+        onClose={() => { setIsBookingModalOpen(false); setEditingReservation(null); }} 
         spaceData={activeSpace} 
         slotInfo={slotInfo} 
+        existingReservation={editingReservation} 
         onSubmit={handleSubmitReservation} 
         existingReservations={reservations} 
       />
@@ -501,8 +562,29 @@ export default function Reservations() {
                     </p>
                 </div>
             </div>
-            <div className="modal-footer-pro" style={{marginTop: '25px', textAlign:'right'}}> 
-                <button onClick={() => setIsViewModalOpen(false)} className="btn-save-pro" style={{width:'100%'}}>Cerrar</button> 
+
+            {/* 🔥 BOTONES DE EDICIÓN Y CANCELACIÓN PARA ADMINISTRADORES 🔥 */}
+            {canManageReservation(selectedEvent) && (
+                <div style={{ display: 'flex', gap: '10px', marginTop: '20px', borderTop: '1px solid #edf2f7', paddingTop: '20px' }}>
+                    <button 
+                        onClick={() => { setEditingReservation(selectedEvent); setIsViewModalOpen(false); setIsBookingModalOpen(true); }} 
+                        className="btn-cancel-pro" 
+                        style={{ flex: 1, padding: '12px', borderRadius: '10px', background: '#1e293b', color: 'white', border: 'none', fontWeight: 'bold' }}
+                    >
+                        ✏️ Editar
+                    </button>
+                    <button 
+                        onClick={() => handleDeleteAdmin(selectedEvent)} 
+                        className="btn-save-pro" 
+                        style={{ flex: 1, padding: '12px', borderRadius: '10px', background: '#c8102e', color: 'white', border: 'none', fontWeight: 'bold' }}
+                    >
+                        🗑️ Eliminar
+                    </button>
+                </div>
+            )}
+
+            <div className="modal-footer-pro" style={{marginTop: '20px', textAlign:'right'}}> 
+                <button onClick={() => setIsViewModalOpen(false)} className="btn-save-pro" style={{width:'100%', background: '#f1f5f9', color: '#64748b'}}>Cerrar</button> 
             </div>
           </div>
         )}
