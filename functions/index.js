@@ -29,23 +29,15 @@ const initializeTransporter = () => {
 // ============================================================================
 // 🔥 HELPERS DE ENRUTAMIENTO INTELIGENTE (CIUDAD Y ROL) 🔥
 // ============================================================================
-const getCityFromSede = (sede) => {
-  const s = (sede || "").toLowerCase();
-  if (s.includes("sps") || s.includes("norte") || s.includes("central")) return "San Pedro Sula";
-  if (s.includes("tgu") || s.includes("prado") || s.includes("centroamerica") || s.includes("ca")) return "Tegucigalpa";
-  if (s.includes("lce") || s.includes("ceiba")) return "La Ceiba";
-  return ""; 
-};
 
 const getTargetRole = (spaceType) => {
   const type = (spaceType || "").toLowerCase();
-  if (type.includes("aula")) return "coord_aulas";
+  if (type.includes("aula") || type.includes("teórico") || type.includes("teorico")) return "coord_aulas";
   return "coord_labs"; // Por defecto, asume laboratorios si no se especifica
 };
 
 // Función maestra para obtener los correos de los coordinadores correctos
 const getTargetCoordinators = async (sede, spaceType) => {
-  const targetCity = getCityFromSede(sede);
   const targetRole = getTargetRole(spaceType);
   const emails = [];
 
@@ -54,8 +46,33 @@ const getTargetCoordinators = async (sede, spaceType) => {
   
   usersSnap.forEach(doc => {
     const data = doc.data();
-    // Filtro estricto: Solo enviamos si el usuario pertenece a la misma ciudad de la reserva
-    if (data.city === targetCity) {
+    
+    // 🔥 CORRECCIÓN: Lógica ultra flexible de ciudades traída desde el frontend
+    const userCity = (data.city || "").toLowerCase().trim();
+    const resCity = (sede || "").toLowerCase().trim();
+    let isSameCity = false;
+
+    // Validación amplia para San Pedro Sula
+    if (userCity.includes('san pedro') || userCity.includes('sps') || userCity.includes('pedro')) {
+        if (resCity.includes('sps') || resCity.includes('norte') || resCity.includes('central') || resCity.includes('pedro')) {
+            isSameCity = true;
+        }
+    } 
+    // Validación amplia para Tegucigalpa
+    else if (userCity.includes('tegucigalpa') || userCity.includes('tgu')) {
+        if (resCity.includes('tgu') || resCity.includes('prado') || resCity.includes('centro') || resCity.includes('tegucigalpa')) {
+            isSameCity = true;
+        }
+    } 
+    // Validación amplia para La Ceiba
+    else if (userCity.includes('ceiba') || userCity.includes('lce')) {
+        if (resCity.includes('lce') || resCity.includes('ceiba')) {
+            isSameCity = true;
+        }
+    }
+
+    // Si la ciudad coincide, agregamos el correo a la lista
+    if (isSameCity) {
       emails.push(data.email);
     }
   });
@@ -154,7 +171,6 @@ exports.sendReservationEmail = onDocumentCreated(
     if (res.userEmail && res.userEmail !== 'Carga Académica') {
       const coordEmails = await getTargetCoordinators(res.sede, res.spaceType);
       
-      // 🔥 CORRECCIÓN: Usamos Set para eliminar correos duplicados en la lista de destinatarios
       const toRecipients = [...new Set([res.userEmail, ...coordEmails].filter(Boolean))].join(", ");
 
       const teacherMailOptions = {
@@ -237,7 +253,6 @@ exports.onReservationUpdated = onDocumentUpdated(
 
     const mailOptions = {
       from: `Portal SpaceOne <${process.env.GMAIL_EMAIL}>`,
-      // 🔥 CORRECCIÓN: Usamos Set para evitar correos duplicados
       to: [...new Set([after.userEmail, ...coordEmails].filter(Boolean))].join(", "),
       subject: `🔄 Reserva Modificada: ${after.labName}`,
       html: htmlContent
@@ -285,7 +300,6 @@ exports.onReservationDeleted = onDocumentDeleted(
 
     const mailOptions = {
       from: `Portal SpaceOne <${process.env.GMAIL_EMAIL}>`,
-      // 🔥 CORRECCIÓN: Usamos Set para evitar correos duplicados
       to: [...new Set([deletedData.userEmail, ...coordEmails].filter(Boolean))].join(", "),
       subject: `❌ Reserva Cancelada: ${deletedData.labName}`,
       html: htmlContent
