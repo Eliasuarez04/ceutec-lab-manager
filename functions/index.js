@@ -152,11 +152,10 @@ exports.sendReservationEmail = onDocumentCreated(
     const end = formatHN(res.endTime.toDate());
 
     if (res.userEmail && res.userEmail !== 'Carga Académica') {
-      // Obtenemos estrictamente a los coordinadores de la ciudad y rol correcto
       const coordEmails = await getTargetCoordinators(res.sede, res.spaceType);
       
-      // Armamos la lista de destinatarios: El docente + Los coordinadores filtrados
-      const toRecipients = [res.userEmail, ...coordEmails].filter(Boolean).join(", ");
+      // 🔥 CORRECCIÓN: Usamos Set para eliminar correos duplicados en la lista de destinatarios
+      const toRecipients = [...new Set([res.userEmail, ...coordEmails].filter(Boolean))].join(", ");
 
       const teacherMailOptions = {
         from: `Portal Ceutec SpaceOne <${process.env.GMAIL_EMAIL}>`,
@@ -197,7 +196,6 @@ exports.onReservationUpdated = onDocumentUpdated(
   async (event) => {
     const after = event.data.after.data();
     
-    // 🔥 IGNORAMOS: Si es carga académica o si se está inyectando un motivo de cancelación
     if (after.reservationType === 'academic_load') return null;
     if (after.cancelReason) return null; 
 
@@ -239,7 +237,8 @@ exports.onReservationUpdated = onDocumentUpdated(
 
     const mailOptions = {
       from: `Portal SpaceOne <${process.env.GMAIL_EMAIL}>`,
-      to: [after.userEmail, ...coordEmails].filter(Boolean).join(", "),
+      // 🔥 CORRECCIÓN: Usamos Set para evitar correos duplicados
+      to: [...new Set([after.userEmail, ...coordEmails].filter(Boolean))].join(", "),
       subject: `🔄 Reserva Modificada: ${after.labName}`,
       html: htmlContent
     };
@@ -258,7 +257,6 @@ exports.onReservationDeleted = onDocumentDeleted(
     initializeTransporter();
     const coordEmails = await getTargetCoordinators(deletedData.sede, deletedData.spaceType);
 
-    // 🔥 TRAZABILIDAD: Verificamos si la administración inyectó un motivo de eliminación
     let reasonHtml = "";
     if (deletedData.cancelReason) {
         reasonHtml = `
@@ -287,7 +285,8 @@ exports.onReservationDeleted = onDocumentDeleted(
 
     const mailOptions = {
       from: `Portal SpaceOne <${process.env.GMAIL_EMAIL}>`,
-      to: [deletedData.userEmail, ...coordEmails].filter(Boolean).join(", "),
+      // 🔥 CORRECCIÓN: Usamos Set para evitar correos duplicados
+      to: [...new Set([deletedData.userEmail, ...coordEmails].filter(Boolean))].join(", "),
       subject: `❌ Reserva Cancelada: ${deletedData.labName}`,
       html: htmlContent
     };
