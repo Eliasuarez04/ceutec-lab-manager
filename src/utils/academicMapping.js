@@ -60,7 +60,7 @@ export const FACULTIES_DATA = {
       "Ingeniería en Gestión Logística"
   ],
   "Gastronomía": ["Licenciatura en Gastronomía", "Técnico en Gastronomía"],
-  "Otros": ["Innovación Educativa", "Vida Estudiantil", "Área de Acompañamiento", "Operaciones", "Admisiones"]
+  "Otros": ["Innovación Educativa", "Vida Estudiantil", "Área de Acompañamiento", "Operaciones", "Admisiones", "EFL"]
 };
 
 export const RESERVATION_TYPES = [
