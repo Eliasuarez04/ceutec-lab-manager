@@ -337,3 +337,47 @@
         word-break: break-word; /* Protege contra nombres larguísimos como "Broadcasting" */
     }
 }
+
+/* Estilos para el botón de Liberar Espacio */
+.btn-admin-release {
+  margin-top: 12px;
+  width: 100%;
+  padding: 8px;
+  background-color: transparent;
+  color: #64748b;
+  border: 1px solid #cbd5e1;
+  border-radius: 6px;
+  font-size: 0.75rem;
+  font-weight: 800;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  text-transform: uppercase;
+}
+
+.btn-admin-release:hover {
+  background-color: #f1f5f9;
+  color: #0f172a;
+  border-color: #94a3b8;
+}
+
+/* Modificamos los botones de tabs para que el de PENDIENTES se vea genial */
+.radar-tabs button {
+  padding: 8px 16px;
+  border: 2px solid transparent;
+  background: transparent;
+  color: #64748b;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.radar-tabs button.active {
+  background: #1e293b;
+  color: white;
+}
+
+/* Si un coordinador de otra ciudad entra, bloqueamos visualmente */
+.radar-card-pro .active-res-box p {
+  margin: 0 0 5px 0;
+}

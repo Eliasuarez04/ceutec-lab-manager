@@ -34,7 +34,8 @@ export const FACULTIES_DATA = {
     "Licenciatura en Derecho",
     "Licenciatura en Periodismo",
     "Ciencias Exactas",
-    "Humanidades"
+    "Humanidades",
+     "EFL"
   ],
   "Escuela de Ciencias de la Salud": [
     "Licenciatura en Enfermería",
@@ -59,8 +60,33 @@ export const FACULTIES_DATA = {
       "Licenciatura en Recursos Humanos",
       "Ingeniería en Gestión Logística"
   ],
-  "Gastronomía": ["Licenciatura en Gastronomía", "Técnico en Gastronomía"],
-  "Otros": ["Innovación Educativa", "Vida Estudiantil", "Área de Acompañamiento", "Operaciones", "Admisiones", "EFL"]
+  "Gastronomía": [
+      "Licenciatura en Gastronomía", 
+      "Técnico en Gastronomía"
+  ],
+  "Otros": [
+      "Innovación Educativa", 
+      "Vida Estudiantil", 
+      "Área de Acompañamiento", 
+      "Operaciones", 
+      "Admisiones", 
+      "CRAI",
+      "DGA", 
+      "Recursos Humanos", 
+      "Registro", 
+      "Servicios Generales",
+      "Atracción Preuniversitaria",
+      "IT",
+      "Asistencia Estudiantil",
+      "Institución Externa",
+      "Educación Continua",
+      "Centro de Empleabilidad",
+      "Centro de Emprendimiento e Innovación (CEI)",
+      "Comunicación y Relaciones Públicas",
+      "Contabilidad",
+      "Dirección de Universidad Virtual (DUV)",
+      "Finanzas"
+  ]
 };
 
 export const RESERVATION_TYPES = [

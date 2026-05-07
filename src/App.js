@@ -20,7 +20,7 @@ import SpaceImporter from './pages/Admin/SpaceImporter';
 import UserManagement from './pages/Admin/UserManagement'; 
 import UserProfile from './pages/UserProfile';
 import SedeSelector from './pages/SedeSelector';
-import CampusLiveView from './pages/Admin/CampusLiveView'; // Arriba en los imports
+import CampusLiveView from './pages/Admin/CampusLiveView'; 
 import ExecutiveAnalytics from './pages/Admin/ExecutiveAnalytics';
 import MaintenanceTickets from './pages/Admin/MaintenanceTickets';
 
@@ -29,7 +29,7 @@ import MaintenanceTickets from './pages/Admin/MaintenanceTickets';
 import Layout from './components/Layout';
 import PrivateRoute from './components/PrivateRoute';
 import ProtectedRoute from './components/ProtectedRoute';
-import GlobalProfileAlert from './components/GlobalProfileAlert'; // <--- Importado correctamente
+import GlobalProfileAlert from './components/GlobalProfileAlert'; 
 
 function AppContent() {
   return (
@@ -204,56 +204,56 @@ function AppContent() {
       />
 
       <Route 
-  path="/admin/live-status" 
-  element={
-    <PrivateRoute>
-      <ProtectedRoute>
-        <Layout>
-          <CampusLiveView />
-        </Layout>
-      </ProtectedRoute>
-    </PrivateRoute>
-  } 
-/>
-
-<Route 
-  path="/admin/analitica" 
-  element={
-    <PrivateRoute>
-      <ProtectedRoute>
-        <Layout>
-          <ExecutiveAnalytics />
-        </Layout>
-      </ProtectedRoute>
-    </PrivateRoute>
-  } 
-/>
+        path="/admin/live-status" 
+        element={
+          <PrivateRoute>
+            <ProtectedRoute>
+              <Layout>
+                <CampusLiveView />
+              </Layout>
+            </ProtectedRoute>
+          </PrivateRoute>
+        } 
+      />
 
       <Route 
-  path="/admin/importar-inventario" 
-  element={
-    <PrivateRoute>
-      <ProtectedRoute> {/* Eliminamos el requiredRole="superadmin" para que coordinadores entren */}
-        <Layout>
-          <SpaceInventoryImporter />
-        </Layout>
-      </ProtectedRoute>
-    </PrivateRoute>
-  } 
-/>
+        path="/admin/analitica" 
+        element={
+          <PrivateRoute>
+            <ProtectedRoute>
+              <Layout>
+                <ExecutiveAnalytics />
+              </Layout>
+            </ProtectedRoute>
+          </PrivateRoute>
+        } 
+      />
 
-<Route 
-  path="/admin/soporte-tecnico" 
-  element={
-    <PrivateRoute>
-      <ProtectedRoute>
-        <Layout>
-          <MaintenanceTickets />
-        </Layout>
-      </ProtectedRoute>
-    </PrivateRoute>
-  } 
-/>
+      <Route 
+        path="/admin/importar-inventario" 
+        element={
+          <PrivateRoute>
+            <ProtectedRoute> 
+              <Layout>
+                <SpaceInventoryImporter />
+              </Layout>
+            </ProtectedRoute>
+          </PrivateRoute>
+        } 
+      />
+
+      <Route 
+        path="/admin/soporte-tecnico" 
+        element={
+          <PrivateRoute>
+            <ProtectedRoute>
+              <Layout>
+                <MaintenanceTickets />
+              </Layout>
+            </ProtectedRoute>
+          </PrivateRoute>
+        } 
+      />
 
       {/* Redirección por defecto */}
       <Route path="*" element={<Navigate to="/" />} />
