@@ -77,14 +77,29 @@ export default function CampusLiveView() {
   };
 
   const handleAdminRelease = async (resId, labName) => {
-    if(!window.confirm(`¿Liberar espacio ${labName}? La clase desaparecerá del monitor.`)) return;
+    const { isConfirmed } = await MySwal.fire({
+      title: `¿Liberar ${labName}?`,
+      text: "La clase actual se marcará como completada y desaparecerá del monitor.",
+      icon: 'warning',
+      showCancelButton: true,
+      confirmButtonColor: '#c8102e',
+      cancelButtonColor: '#64748b',
+      confirmButtonText: 'Sí, liberar espacio',
+      cancelButtonText: 'Cancelar',
+      borderRadius: '12px'
+    });
+
+    if (!isConfirmed) return;
+
     try {
       await updateDoc(doc(db, 'reservations', resId), { 
         checkOutTime: Timestamp.now(), 
         fulfillmentStatus: 'Completada (Admin)' 
       });
       toast.success("Espacio liberado con éxito.");
-    } catch (e) { toast.error("Error al liberar espacio."); }
+    } catch (e) { 
+      toast.error("Error al liberar espacio."); 
+    }
   };
 
   const handleMarkAttendance = async (res, status) => {

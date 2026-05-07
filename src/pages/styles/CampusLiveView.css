@@ -381,3 +381,31 @@
 .radar-card-pro .active-res-box p {
   margin: 0 0 5px 0;
 }
+
+/* 🔥 SOLUCIÓN RESPONSIVE PARA LOS BOTONES DE FILTRO 🔥 */
+.radar-tabs {
+  display: flex;
+  flex-wrap: wrap; /* Esto es clave: hace que los botones bajen si no caben */
+  gap: 8px;
+  justify-content: center; /* Los centra para que se vean bien en pantallas pequeñas */
+  margin-bottom: 15px;
+}
+
+.radar-tabs button {
+  flex: 1 1 auto; /* Permite que los botones se adapten al espacio disponible */
+  min-width: 100px; /* Evita que se hagan demasiado pequeños */
+  padding: 8px 12px;
+  border: 2px solid transparent;
+  background: transparent;
+  color: #64748b;
+  font-weight: 700;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.2s;
+  font-size: 0.85rem; /* Letra un poco más pequeña para móviles */
+}
+
+.radar-tabs button.active {
+  background: #1e293b;
+  color: white;
+}
