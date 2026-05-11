@@ -1,6 +1,6 @@
 // src/pages/Admin/CampusLiveView.js
 import React, { useState, useEffect, useMemo } from 'react';
-import { collection, onSnapshot, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, onSnapshot, doc, updateDoc, Timestamp, query, where } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
 import { useSearchParams, Link } from 'react-router-dom';
 import { format, isWithinInterval, isAfter, startOfDay, endOfDay } from 'date-fns';
@@ -32,6 +32,7 @@ export default function CampusLiveView() {
     if (!currentSede) return;
     const searchTarget = currentSede.toLowerCase().replace('ceutec', '').replace(/[()]/g, '').trim();
 
+    // 1. Obtener los espacios (aulas y labs)
     const unsubSpaces = onSnapshot(collection(db, 'spaces'), (snap) => {
       setSpaces(snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .filter(s => {
@@ -40,16 +41,25 @@ export default function CampusLiveView() {
         }));
     });
 
-    const unsubRes = onSnapshot(collection(db, 'reservations'), (snap) => {
-      const hoyI = startOfDay(new Date());
-      const hoyF = endOfDay(new Date());
+    // 2. 🔥 CÓDIGO OPTIMIZADO PARA AHORRAR LECTURAS EN FIREBASE 🔥
+    const hoyI = Timestamp.fromDate(startOfDay(new Date()));
+    const hoyF = Timestamp.fromDate(endOfDay(new Date()));
+
+    const qRes = query(
+      collection(db, 'reservations'),
+      where('startTime', '>=', hoyI),
+      where('startTime', '<=', hoyF)
+    );
+
+    const unsubRes = onSnapshot(qRes, (snap) => {
       setReservations(snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .filter(r => {
           const rSede = (r.sede || "").toLowerCase();
-          const rFecha = r.startTime.toDate();
-          return (rSede.includes(searchTarget) || searchTarget.includes(rSede)) && (rFecha >= hoyI && rFecha <= hoyF);
+          // La base de datos ya filtró la fecha, solo filtramos la ciudad en el navegador
+          return (rSede.includes(searchTarget) || searchTarget.includes(rSede));
         }));
     });
+
     return () => { unsubSpaces(); unsubRes(); };
   }, [currentSede]);
 
