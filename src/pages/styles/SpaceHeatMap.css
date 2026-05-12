@@ -1,0 +1,188 @@
+/* src/pages/Admin/styles/SpaceHeatMap.css */
+
+.heatmap-container { 
+    padding: 20px; 
+    width: 100%; 
+    box-sizing: border-box;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+.heatmap-top-bar { margin-bottom: 20px; }
+.back-link-radar { color: #64748b; text-decoration: none; font-weight: bold; display: inline-block; transition: color 0.2s; }
+.back-link-radar:hover { color: #c8102e; }
+
+.heatmap-header { 
+    display: flex; 
+    justify-content: space-between; 
+    align-items: center; 
+    margin-bottom: 25px; 
+    flex-wrap: wrap; 
+    gap: 20px; 
+}
+.heatmap-header h1 { margin: 0; font-size: 1.8rem; color: #1e293b; }
+
+.heatmap-advanced-controls { display: flex; flex-direction: column; gap: 12px; align-items: flex-end; }
+
+/* Estilos de Botones de Filtro */
+.radar-tabs { display: flex; gap: 8px; }
+.radar-tabs button { padding: 6px 12px; border: 2px solid transparent; background: transparent; color: #64748b; font-weight: 700; border-radius: 8px; cursor: pointer; transition: all 0.2s; font-size: 0.8rem; }
+.radar-tabs button.active { background: #1e293b; color: white; }
+
+/* --- NUEVO: COMBOBOX (Buscador + Selector) --- */
+.search-select-combined {
+    position: relative;
+    width: 350px; /* Ancho cómodo para nombres largos */
+}
+
+.custom-combobox {
+    display: flex;
+    align-items: center;
+    background: white;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    padding: 0 10px;
+    width: 100%;
+    box-sizing: border-box;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.02);
+}
+
+.custom-combobox:focus-within { border-color: #c8102e; box-shadow: 0 0 0 3px rgba(200, 16, 46, 0.1); }
+
+.custom-combobox input {
+    border: none;
+    outline: none;
+    padding: 12px 10px;
+    width: 100%;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #1e293b;
+    background: transparent;
+}
+
+.clear-search-btn {
+    background: none;
+    border: none;
+    color: #94a3b8;
+    cursor: pointer;
+    font-size: 0.9rem;
+    padding: 5px;
+}
+.clear-search-btn:hover { color: #c8102e; }
+
+/* Lista desplegable flotante */
+.custom-dropdown-list {
+    position: absolute;
+    top: 105%;
+    left: 0;
+    width: 100%;
+    background: white;
+    border: 1px solid #cbd5e1;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    max-height: 250px;
+    overflow-y: auto;
+    z-index: 1000;
+    list-style: none;
+    padding: 5px 0;
+    margin: 0;
+    animation: fadeIn 0.2s ease;
+}
+
+.custom-dropdown-list li {
+    padding: 10px 15px;
+    cursor: pointer;
+    font-size: 0.9rem;
+    color: #334155;
+    border-bottom: 1px solid #f1f5f9;
+    transition: background 0.1s;
+}
+
+.custom-dropdown-list li:last-child { border-bottom: none; }
+.custom-dropdown-list li:hover { background: #f8fafc; color: #c8102e; font-weight: bold; }
+.custom-dropdown-list li.no-results { color: #94a3b8; cursor: default; background: transparent; }
+.custom-dropdown-list li.no-results:hover { background: transparent; color: #94a3b8; font-weight: normal; }
+
+
+/* Cuadrícula */
+.heatmap-grid { 
+    display: grid; 
+    grid-template-columns: 60px repeat(7, 1fr); 
+    background: white; 
+    border-radius: 12px; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.05); 
+    overflow-x: auto; 
+    width: 100%;
+}
+.day-header { text-align: center; padding: 10px; border-bottom: 1px solid #edf2f7; display: flex; flex-direction: column; }
+.day-name { text-transform: capitalize; font-weight: 800; font-size: 0.85rem; color: #1e293b; }
+.day-date { font-size: 0.75rem; color: #64748b; }
+
+/* Celdas y Tooltips Dinámicos */
+.hour-block { 
+    height: 38px; 
+    border: 1px solid #f1f5f9; 
+    transition: all 0.2s; 
+    position: relative; 
+}
+.heat-none { background-color: #f8fafc; }
+.heat-high { background-color: #c8102e; box-shadow: inset 0 0 5px rgba(0,0,0,0.1); cursor: pointer; }
+.heat-high:hover { background-color: #a00d25; }
+
+/* El Tooltip Flotante */
+.heatmap-tooltip {
+    display: none;
+    position: absolute;
+    bottom: 90%; 
+    left: 50%;
+    transform: translateX(-50%);
+    background: #1e293b;
+    color: white;
+    padding: 12px;
+    border-radius: 8px;
+    width: max-content;
+    max-width: 250px;
+    z-index: 100;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    pointer-events: none;
+    text-align: left;
+}
+
+.heatmap-tooltip::after {
+    content: '';
+    position: absolute;
+    top: 100%;
+    left: 50%;
+    margin-left: -6px;
+    border-width: 6px;
+    border-style: solid;
+    border-color: #1e293b transparent transparent transparent;
+}
+
+.hour-block:hover .heatmap-tooltip { display: block; animation: floatUp 0.2s ease-in-out; }
+
+.tt-title { font-weight: 900; font-size: 0.85rem; margin-bottom: 4px; border-bottom: 1px solid #334155; padding-bottom: 4px; }
+.tt-docente, .tt-hora { font-size: 0.75rem; margin-top: 3px; color: #cbd5e1; }
+
+@keyframes floatUp { 
+    from { opacity: 0; transform: translate(-50%, 10px); } 
+    to { opacity: 1; transform: translate(-50%, 0); } 
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.time-label { height: 38px; display: flex; align-items: center; justify-content: center; font-size: 0.75rem; font-weight: bold; color: #94a3b8; }
+.empty-heatmap { text-align: center; padding: 60px 20px; color: #64748b; font-size: 1.1rem; border: 2px dashed #cbd5e1; border-radius: 12px; background: white; margin-top: 20px; }
+
+.heatmap-legend { display: flex; align-items: center; justify-content: center; gap: 10px; margin-top: 20px; font-size: 0.8rem; font-weight: 600; color: #64748b; }
+.legend-bar { width: 150px; height: 12px; background: linear-gradient(to right, #f8fafc, #c8102e); border-radius: 6px; }
+
+/* Responsive */
+@media (max-width: 900px) {
+    .heatmap-header { flex-direction: column; align-items: flex-start; }
+    .heatmap-advanced-controls { width: 100%; align-items: flex-start; }
+    .search-select-combined { width: 100%; }
+}

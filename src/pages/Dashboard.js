@@ -43,7 +43,6 @@ export default function Dashboard() {
     try {
       const resRef = doc(db, 'reservations', activeRes.id);
       if (type === 'checkin') {
-        // En V2.4 este se dispara tras escanear el QR
         await updateDoc(resRef, { checkInTime: Timestamp.now(), fulfillmentStatus: 'En Progreso' });
         toast.success("¡Bienvenido! Clase iniciada.");
       } else {
@@ -81,7 +80,6 @@ export default function Dashboard() {
   const isIT = role === 'it_staff';
   const isGlobalStaff = role === 'admin_staff';
 
-  // Acceso general a administración
   const hasManagementAccess = isAdmin || isAcademic || isLabCoord || isAulaCoord || isIT || isGlobalStaff;
   const sedeParam = `sede=${encodeURIComponent(currentSede)}`;
 
@@ -100,7 +98,7 @@ export default function Dashboard() {
             </div>
         </div>
 
-        {/* --- TRACKER DE ACCIÓN RÁPIDA (V2.3/V2.4) --- */}
+        {/* --- TRACKER DE ACCIÓN RÁPIDA --- */}
         {activeRes && (
           <div className={`active-class-tracker-card ${activeRes.checkInTime ? 'in-progress' : 'upcoming'}`}>
             <div className="tracker-header">
@@ -128,11 +126,10 @@ export default function Dashboard() {
           </div>
         )}
 
-        {/* --- SECCIÓN 1: OPERACIONES (Siempre Visible) --- */}
+        {/* --- SECCIÓN 1: OPERACIONES --- */}
         <h2 className="section-title-dash">Reservas y Consultas</h2>
         <div className="teacher-card-grid">
           
-          {/* Tarjeta Aulas */}
           <div className="teacher-card">
             <div className="card-top">
               <div className="card-icon-wrapper bg-blue">🏫</div>
@@ -145,7 +142,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Tarjeta Laboratorios */}
           <div className="teacher-card">
             <div className="card-top">
               <div className="card-icon-wrapper bg-purple">🔬</div>
@@ -158,7 +154,6 @@ export default function Dashboard() {
             </div>
           </div>
 
-          {/* Tarjeta Mis Reservas */}
           <Link to={`/mis-reservas?${sedeParam}`} className="teacher-card clickable-card">
             <div className="card-top">
               <div className="card-icon-wrapper bg-green">📋</div>
@@ -168,7 +163,6 @@ export default function Dashboard() {
             <span className="card-cta">Ver mis registros &rarr;</span>
           </Link>
 
-          {/* Tarjeta Mi Perfil */}
           <Link to={`/perfil?${sedeParam}`} className="teacher-card clickable-card">
             <div className="card-top">
               <div className="card-icon-wrapper bg-orange">👤</div>
@@ -179,13 +173,12 @@ export default function Dashboard() {
           </Link>
         </div>
 
-        {/* --- SECCIÓN 2: ADMINISTRACIÓN (Segmentada por Rol) --- */}
+        {/* --- SECCIÓN 2: ADMINISTRACIÓN --- */}
         {hasManagementAccess && (
           <>
             <h2 className="section-title-dash admin-section-title">Herramientas Administrativas</h2>
             <div className="teacher-card-grid admin-grid">
               
-              {/* MONITOR RADAR: Todos los administrativos */}
               <Link to={`/admin/live-status?${sedeParam}`} className="teacher-card management-card">
                 <div className="card-top">
                   <div className="card-icon-wrapper bg-dark">📡</div>
@@ -195,7 +188,18 @@ export default function Dashboard() {
                 <span className="card-cta">Ver Radar &rarr;</span>
               </Link>
 
-              {/* GESTIÓN USUARIOS: Solo Académicos y SuperAdmin */}
+              {/* MAPA DE CALOR NUEVO */}
+              {(isAdmin || isAulaCoord) && (
+                <Link to={`/admin/mapa-calor?${sedeParam}`} className="teacher-card management-card">
+                  <div className="card-top">
+                    <div className="card-icon-wrapper bg-purple">🗺️</div>
+                    <h3>Mapa de Calor</h3>
+                    <p>Visualiza la saturación de espacios por semana.</p>
+                  </div>
+                  <span className="card-cta">Ver Heatmap &rarr;</span>
+                </Link>
+              )}
+
               {(isAdmin) && (
                 <Link to={`/admin/usuarios?${sedeParam}`} className="teacher-card management-card">
                   <div className="card-top">
@@ -207,7 +211,6 @@ export default function Dashboard() {
                 </Link>
               )}
 
-              {/* INFRAESTRUCTURA: Especializada por Recurso (Labs o Aulas) */}
               {(isAdmin || isLabCoord || isAulaCoord) && (
                 <Link to={`/admin/inventario?${sedeParam}`} className="teacher-card management-card">
                   <div className="card-top">
@@ -219,7 +222,6 @@ export default function Dashboard() {
                 </Link>
               )}
 
-              {/* SOPORTE TÉCNICO: IT y Cords de Labs */}
               {(isAdmin || isIT || isLabCoord) && (
                 <Link to={`/admin/soporte-tecnico?${sedeParam}`} className="teacher-card management-card">
                   <div className="card-top">
@@ -231,7 +233,6 @@ export default function Dashboard() {
                 </Link>
               )}
 
-              {/* ANALÍTICA EJECUTIVA: Gerencia, Académicos e IT */}
               {(isAdmin || isGlobalStaff || isAcademic || isIT) && (
                 <Link to={`/admin/analitica?${sedeParam}`} className="teacher-card management-card">
                   <div className="card-top">
@@ -243,7 +244,6 @@ export default function Dashboard() {
                 </Link>
               )}
 
-              {/* REPORTES GLOBALES: Siempre disponible para gestión */}
               <Link to={`/reportes?${sedeParam}`} className="teacher-card management-card">
                 <div className="card-top">
                   <div className="card-icon-wrapper bg-dark">📊</div>
@@ -258,7 +258,6 @@ export default function Dashboard() {
         )}
       </div>
 
-      {/* MODAL DEL ESCÁNER QR */}
       <Modal isOpen={isScannerOpen} onClose={() => setIsScannerOpen(false)} title="Validación Física de Presencia">
           <QRScanner 
             targetRoomName={activeRes?.labName} 

@@ -23,6 +23,7 @@ import SedeSelector from './pages/SedeSelector';
 import CampusLiveView from './pages/Admin/CampusLiveView'; 
 import ExecutiveAnalytics from './pages/Admin/ExecutiveAnalytics';
 import MaintenanceTickets from './pages/Admin/MaintenanceTickets';
+import SpaceHeatMap from './pages/Admin/SpaceHeatMap';
 
 
 // Importación de Componentes Globales y de Diseño
@@ -174,6 +175,12 @@ function AppContent() {
           </PrivateRoute>
         } 
       />
+
+      <Route path="/admin/mapa-calor" element={
+  <PrivateRoute><ProtectedRoute><Layout>
+    <SpaceHeatMap />
+  </Layout></ProtectedRoute></PrivateRoute>
+} />
 
       {/* Importador Excel (Solo SuperAdmin) */}
       <Route 
