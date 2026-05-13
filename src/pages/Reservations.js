@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocation, Link } from 'react-router-dom';
 import { Calendar, dateFnsLocalizer } from 'react-big-calendar';
-import { format, parse, startOfWeek, getDay, addMinutes } from 'date-fns'; 
+import { format, parse, startOfWeek, getDay, addMinutes, startOfMonth, endOfMonth, subMonths, addMonths } from 'date-fns';
 import es from 'date-fns/locale/es';
 import 'react-big-calendar/lib/css/react-big-calendar.css';
 import { db } from '../firebaseConfig';
@@ -12,13 +12,16 @@ import ReservationModal from '../components/ReservationModal';
 import './styles/Reservations.css'; 
 import toast from 'react-hot-toast';
 import * as XLSX from 'xlsx';
-// 🔥 IMPORTAMOS SWEETALERT PARA LA ALERTA INTERACTIVA
 import Swal from 'sweetalert2';
 import withReactContent from 'sweetalert2-react-content';
 
 const MySwal = withReactContent(Swal);
 const localizer = dateFnsLocalizer({ format, parse, startOfWeek, getDay, locales: { es } });
 const messages = { allDay: 'Todo el día', previous: 'Atrás', next: 'Siguiente', today: 'Hoy', month: 'Mes', week: 'Semana', day: 'Día', agenda: 'Agenda', date: 'Fecha', time: 'Hora', event: 'Evento', noEventsInRange: 'No hay eventos en este rango.' };
+
+// Definimos los límites visuales del calendario (6:00 AM a 9:00 PM)
+const minTime = new Date(1970, 1, 1, 6, 0, 0); 
+const maxTime = new Date(1970, 1, 1, 21, 0, 0); 
 
 export default function Reservations() {
   const { currentUser, userData } = useAuth();
@@ -40,14 +43,14 @@ export default function Reservations() {
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
   const dropdownRef = useRef(null);
   const [currentDate, setCurrentDate] = useState(new Date());
-  const [currentView, setCurrentView] = useState('month');
+  
+  const [currentView, setCurrentView] = useState('week');
   
   const [isBookingModalOpen, setIsBookingModalOpen] = useState(false);
   const [isViewModalOpen, setIsViewModalOpen] = useState(false);
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [slotInfo, setSlotInfo] = useState(null);
   
-  // 🔥 ESTADO PARA EDICIÓN DESDE EL CALENDARIO 🔥
   const [editingReservation, setEditingReservation] = useState(null);
 
   const [isMassLoadOpen, setIsMassLoadOpen] = useState(false);
@@ -102,7 +105,16 @@ export default function Reservations() {
   const fetchReservations = useCallback(async () => {
     if (!activeSpace) return;
     try {
-      const q = query(collection(db, 'reservations'), where('labId', '==', activeSpace.id));
+      const windowStart = Timestamp.fromDate(startOfMonth(subMonths(currentDate, 1)));
+      const windowEnd = Timestamp.fromDate(endOfMonth(addMonths(currentDate, 1)));
+
+      const q = query(
+          collection(db, 'reservations'), 
+          where('labId', '==', activeSpace.id),
+          where('startTime', '>=', windowStart),
+          where('startTime', '<=', windowEnd)
+      );
+      
       const snap = await getDocs(q);
       const data = snap.docs.map(doc => {
         const res = doc.data();
@@ -125,15 +137,19 @@ export default function Reservations() {
       console.error(err); 
       toast.error("Error de sincronización con la base de datos.");
     }
-  }, [activeSpace]);
+  }, [activeSpace, currentDate]); 
 
   useEffect(() => { fetchReservations(); }, [fetchReservations]);
 
-  // 🔥 VALIDACIÓN DE CIUDAD AL INTENTAR CREAR UNA RESERVA NUEVA 🔥
   const handleSlotSelect = (slot) => {
     if (slot.start < new Date()) return toast.error("No se pueden realizar reservas pasadas.");
     
-    // Validar que el usuario solo reserve en su propia ciudad (Superadmin puede en todas)
+    // Bloqueo visual del clic en el calendario
+    const startHour = slot.start.getHours();
+    if (startHour >= 21 || startHour < 6) {
+        return toast.error("⛔ Fuera de horario: El espacio académico está cerrado entre las 9:00 PM y las 6:00 AM.");
+    }
+    
     if (userData?.role !== 'superadmin') {
         const userCity = (userData?.city || "").toLowerCase().trim();
         const currentSedeLower = urlSede.toLowerCase().trim();
@@ -319,8 +335,20 @@ export default function Reservations() {
 
   const handleSelectSpace = (space) => { setActiveSpace(space); setSearchTerm(space.name); setIsDropdownOpen(false); };
 
-  // 🔥 LÓGICA REFINADA: EDICIÓN Y CREACIÓN EN UN SOLO MÉTODO 🔥
   const handleSubmitReservation = async (d) => {
+    // 🔥 BLOQUEO ESTRICTO DE HORARIO DESDE EL FORMULARIO MANUAL 🔥
+    const sDate = new Date(d.start);
+    const eDate = new Date(d.end);
+    
+    // Si la hora de inicio es menor a las 6:00 AM
+    if (sDate.getHours() < 6) {
+        return toast.error("⛔ Horario no permitido: Las clases no pueden iniciar antes de las 6:00 AM.");
+    }
+    // Si la hora de fin es mayor a las 21:00 (9 PM), o si son las 21 pero con minutos (ej: 21:30)
+    if (eDate.getHours() > 21 || (eDate.getHours() === 21 && eDate.getMinutes() > 0)) {
+        return toast.error("⛔ Horario no permitido: El campus y los espacios cierran exactamente a las 9:00 PM.");
+    }
+
     setIsBookingModalOpen(false); 
     const toastId = toast.loading(editingReservation ? "Actualizando reserva..." : "Buscando docente y guardando...");
     
@@ -333,7 +361,6 @@ export default function Reservations() {
         if (d.thDocente) {
             const cleanTh = d.thDocente.toString().trim();
             
-            // CORRECCIÓN: Siempre buscamos el TH en la base de datos para corregir reservas antiguas
             const teacherRef = doc(db, 'active_teachers_list', cleanTh);
             const teacherSnap = await getDoc(teacherRef);
             
@@ -404,44 +431,35 @@ export default function Reservations() {
     } catch (e) { toast.error("Error operativo", {id: toastId}); console.error(e); }
   };
 
-  // 🔥 MOTOR DE REGLAS DE SEGURIDAD CORREGIDO 🔥
   const canManageReservation = (resEvent) => {
     if (!userData || !resEvent) return false;
     
-    // No permitimos editar reservas de la malla académica desde el calendario
     if (resEvent.reservationType === 'academic_load') return false; 
     
-    // Superadmin puede hacer de todo
     if (userData.role === 'superadmin') return true;
 
-    // Extracción limpia de ciudades
     const userCity = (userData.city || "").toLowerCase();
     const resCity = (resEvent.sede || "").toLowerCase();
     let isSameCity = false;
 
-    // Validación amplia para San Pedro Sula
     if (userCity.includes('san pedro') || userCity.includes('sps') || userCity.includes('pedro')) {
         if (resCity.includes('sps') || resCity.includes('norte') || resCity.includes('central') || resCity.includes('san pedro') || resCity.includes('pedro')) {
             isSameCity = true;
         }
     }
-    // Validación amplia para Tegucigalpa
     if (userCity.includes('tegucigalpa') || userCity.includes('tgu')) {
         if (resCity.includes('tgu') || resCity.includes('prado') || resCity.includes('centro') || resCity.includes('tegucigalpa')) {
             isSameCity = true;
         }
     }
-    // Validación amplia para La Ceiba
     if (userCity.includes('ceiba') || userCity.includes('lce')) {
         if (resCity.includes('lce') || resCity.includes('ceiba')) {
             isSameCity = true;
         }
     }
 
-    // Si no es de su ciudad, lo bloqueamos inmediatamente
     if (!isSameCity) return false;
 
-    // Validación de Rol vs Tipo de Espacio (Laboratorio vs Aula)
     const type = (resEvent.spaceType || urlTipo || "").toLowerCase();
     
     if (userData.role === 'coord_labs' && (type.includes('lab') || type.includes('taller') || type.includes('clinica') || type.includes('clinicas') || type.includes('laboratorio'))) return true;
@@ -450,7 +468,6 @@ export default function Reservations() {
     return false;
   };
 
-  // 🔥 ELIMINAR CON MOTIVO PARA EL DOCENTE 🔥
   const handleDeleteAdmin = async (resEvent) => {
     setIsViewModalOpen(false); 
     
@@ -534,7 +551,9 @@ export default function Reservations() {
               onView={setCurrentView} 
               selectable 
               onSelectSlot={handleSlotSelect} 
-              onSelectEvent={(ev) => { setSelectedEvent(ev); setIsViewModalOpen(true); }} 
+              onSelectEvent={(ev) => { setSelectedEvent(ev); setIsViewModalOpen(true); }}
+              min={minTime} 
+              max={maxTime}
             />
           ) : <div className="empty-state-calendar"><h3>Selecciona un espacio arriba ☝️</h3></div>}
         </div>
@@ -601,7 +620,6 @@ export default function Reservations() {
                 </div>
             </div>
 
-            {/* 🔥 BOTONES DE EDICIÓN Y CANCELACIÓN PARA ADMINISTRADORES 🔥 */}
             {canManageReservation(selectedEvent) && (
                 <div style={{ display: 'flex', gap: '10px', marginTop: '20px', borderTop: '1px solid #edf2f7', paddingTop: '20px' }}>
                     <button 
@@ -628,7 +646,6 @@ export default function Reservations() {
         )}
       </Modal>
 
-      {/* 🔥 MODAL DE CARGA MASIVA CON DISEÑO MODERNO 🔥 */}
       <Modal isOpen={isMassLoadOpen} onClose={closeMassModal} title="Carga Académica Masiva">
          <div style={{padding: '10px 20px 30px'}}>
             {massStep === 1 && (

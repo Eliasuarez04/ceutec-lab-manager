@@ -3,7 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { db } from '../firebaseConfig';
 // 🔥 IMPORTANTE: Agregamos "or" a la importación de Firestore para consultas múltiples y getDoc para la búsqueda
-import { collection, query, where, getDocs, doc, deleteDoc, updateDoc, Timestamp, or, getDoc } from 'firebase/firestore';
+import { collection, query, where, getDocs, doc, deleteDoc, updateDoc, Timestamp, or, getDoc, limit } from 'firebase/firestore';
 import { format, isPast, isFuture, parseISO, startOfDay, endOfDay, isWithinInterval } from 'date-fns';
 import es from 'date-fns/locale/es';
 import toast from 'react-hot-toast';
@@ -92,14 +92,14 @@ export default function MisReservas() {
     if (!currentUser) return;
     setLoading(true);
     try {
-      // 🔥 CORRECCIÓN: Buscamos reservas donde el usuario sea el DOCENTE o el GESTOR 🔥
+      // 🔥 CORRECCIÓN Y BLINDAJE 🔥
       const q = query(
         collection(db, 'reservations'),
         or(
             where('userId', '==', currentUser.uid), // Es mi clase
             where('reservedByEmail', '==', currentUser.email) // Yo la agendé por alguien más
         ),
-        // orderBy('startTime', 'desc') -> NOTA: Al usar 'or', Firebase a veces pide index compuesto. Si falla, el sort lo hacemos en el front.
+        limit(200) // 🔥 CANDADO: Evita descargar el historial de años anteriores
       );
       const querySnapshot = await getDocs(q);
       const data = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));

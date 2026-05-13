@@ -288,9 +288,26 @@ export default function AuthPage() {
           <p>Se enviará un enlace a tu correo institucional para restablecer tu contraseña.</p>
           <div className="input-group-modern" style={{maxWidth: '100%'}}>
               <MailIcon />
-              <input type="email" placeholder="nombre@unitec.edu" className="input-modern-simple" onChange={(e) => setResetEmail(e.target.value)} />
+              <input type="email" placeholder="nombre@unitec.edu.hn" className="input-modern-simple" onChange={(e) => setResetEmail(e.target.value)} />
           </div>
-          <button className="btn-modern main" style={{width: '100%', marginTop: '20px'}} onClick={async () => { await resetPassword(resetEmail); setIsResetModalOpen(false); toast.success("Enlace enviado."); }}>Enviar Enlace</button>
+          <button 
+            className="btn-modern main" 
+            style={{width: '100%', marginTop: '20px'}} 
+            onClick={async () => { 
+                if(!resetEmail) return toast.error("Ingresa un correo válido.");
+                const toastId = toast.loading("Procesando...");
+                try {
+                    await resetPassword(resetEmail); 
+                    setIsResetModalOpen(false); 
+                    toast.success("Enlace enviado a tu correo.", {id: toastId}); 
+                } catch (error) {
+                    // Si el correo no existe o hay error, le avisamos sin romper la app
+                    toast.error("Error: Verifica que el correo esté registrado.", {id: toastId});
+                }
+            }}
+          >
+            Enviar Enlace
+          </button>
         </div>
       </Modal>
     </div>

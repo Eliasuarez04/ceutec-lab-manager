@@ -1,4 +1,3 @@
-// src/pages/Admin/CampusLiveView.js
 import React, { useState, useEffect, useMemo } from 'react';
 import { collection, onSnapshot, doc, updateDoc, Timestamp, query, where } from 'firebase/firestore';
 import { db } from '../../firebaseConfig';
@@ -23,16 +22,19 @@ export default function CampusLiveView() {
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("TODOS");
 
+  // Reloj interno que se actualiza cada segundo
   useEffect(() => {
     const timer = setInterval(() => setNow(new Date()), 1000);
     return () => clearInterval(timer);
   }, []);
 
+  // 🔥 PARCHE: Extraemos el número del día (ej: 15). Cuando cambie a 16 a la medianoche, reactivará el useEffect.
+  const currentDayNumber = now.getDate();
+
   useEffect(() => {
     if (!currentSede) return;
     const searchTarget = currentSede.toLowerCase().replace('ceutec', '').replace(/[()]/g, '').trim();
 
-    // 1. Obtener los espacios (aulas y labs)
     const unsubSpaces = onSnapshot(collection(db, 'spaces'), (snap) => {
       setSpaces(snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .filter(s => {
@@ -41,7 +43,7 @@ export default function CampusLiveView() {
         }));
     });
 
-    // 2. 🔥 CÓDIGO OPTIMIZADO PARA AHORRAR LECTURAS EN FIREBASE 🔥
+    // Se recalcula automáticamente si el "currentDayNumber" cambia a la medianoche
     const hoyI = Timestamp.fromDate(startOfDay(new Date()));
     const hoyF = Timestamp.fromDate(endOfDay(new Date()));
 
@@ -55,13 +57,12 @@ export default function CampusLiveView() {
       setReservations(snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .filter(r => {
           const rSede = (r.sede || "").toLowerCase();
-          // La base de datos ya filtró la fecha, solo filtramos la ciudad en el navegador
           return (rSede.includes(searchTarget) || searchTarget.includes(rSede));
         }));
     });
 
     return () => { unsubSpaces(); unsubRes(); };
-  }, [currentSede]);
+  }, [currentSede, currentDayNumber]); // 🔴 AÑADIMOS currentDayNumber AQUÍ
 
   // 🔥 VALIDACIÓN CORREGIDA: Exclusiva para Coord. de Aulas y por Ciudad Estricta 🔥
   const canManageAttendance = () => {

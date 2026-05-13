@@ -1,6 +1,6 @@
 // src/pages/Reportes.js
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { collection, getDocs, query, where, Timestamp, orderBy } from 'firebase/firestore';
+import { collection, getDocs, query, where, Timestamp, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
@@ -156,7 +156,7 @@ export default function Reportes() {
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Reporte Asistencia");
     XLSX.writeFile(wb, `Reporte_CeuSpaces_${currentSede}.xlsx`);
-};
+  };
 
   const fetchData = useCallback(async () => {
     if (!startDate || !endDate || !currentSede) return;
@@ -166,24 +166,28 @@ export default function Reportes() {
       const start = Timestamp.fromDate(startOfDay(parseISO(startDate)));
       const end = Timestamp.fromDate(endOfDay(parseISO(endDate)));
 
-      // --- CAMBIO CLAVE: Consultamos por rango de fecha y filtramos Sede en JS para mayor resiliencia ---
+      // 1. 🔥 Candado para Reservas (Fecha + Límite) 🔥
       const resQuery = query(
         collection(db, 'reservations'), 
         where('startTime', '>=', start), 
-        where('startTime', '<=', end)
+        where('startTime', '<=', end),
+        limit(1000)
       );
 
-      // Los logs suelen ser menos, traemos los recientes
+      // 2. 🔥 EL PARCHE: Candado para el Inventario (Fecha + Orden + Límite) 🔥
       const logQuery = query(
         collection(db, 'inventory_logs'), 
-        orderBy('timestamp', 'desc')
+        where('timestamp', '>=', start),
+        where('timestamp', '<=', end),
+        orderBy('timestamp', 'desc'),
+        limit(1000)
       );
 
       const [resSnap, logSnap] = await Promise.all([getDocs(resQuery), getDocs(logQuery)]);
       
       const sedeNormalizada = currentSede.toLowerCase().replace('ceutec', '').trim();
 
-      // Filtrar Reservas
+      // Filtrar Reservas por Sede
       const filteredRes = resSnap.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(res => {
@@ -191,7 +195,7 @@ export default function Reportes() {
           return resSede.includes(sedeNormalizada) || sedeNormalizada.includes(resSede);
         });
 
-      // Filtrar Logs
+      // Filtrar Logs por Sede
       const filteredLogs = logSnap.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(log => {
@@ -203,12 +207,12 @@ export default function Reportes() {
       setInventoryLogData(filteredLogs);
 
       if (filteredRes.length === 0 && filteredLogs.length === 0) {
-          toast("No se encontraron datos para los filtros seleccionados", { icon: 'ℹ️' });
+          toast("No se encontraron datos para este rango de fechas", { icon: 'ℹ️' });
       }
 
     } catch (error) {
       console.error("Error en Reportes:", error);
-      toast.error("Error al cargar datos. Verifica la conexión.");
+      toast.error("Error al cargar datos. Verifica la consola F12 si Firebase pide un índice.");
     } finally {
       setLoading(false);
     }
