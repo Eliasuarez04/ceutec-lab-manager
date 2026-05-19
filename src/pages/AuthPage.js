@@ -107,26 +107,23 @@ export default function AuthPage() {
     e.preventDefault();
     if (regPassword !== regConfirm) return toast.error("Las contraseñas no coinciden");
     
-    // 🔥 NUEVA LÓGICA: Validación de PIN Dinámica por ROL
+    // 🔥 LÓGICA: Validación de PIN Dinámica por ROL (Incrustada directamente)
     const isStaff = regEmail.toLowerCase().endsWith('@unitec.edu.hn');
     
     if (isStaff) {
-        // Mapeamos el rol seleccionado con la variable de entorno correspondiente
+        // Matriz de seguridad incrustada directamente
         const pinMap = {
-            "superadmin": process.env.REACT_APP_PIN_SUPERADMIN,
-            "coordinador": process.env.REACT_APP_PIN_COORDINADOR,
-            "coord_labs": process.env.REACT_APP_PIN_COORD_LABS,
-            "coord_aulas": process.env.REACT_APP_PIN_COORD_AULAS,
-            "it_staff": process.env.REACT_APP_PIN_IT_STAFF,
-            "admin_staff": process.env.REACT_APP_PIN_ADMIN_STAFF
+            "superadmin": process.env.PIN_SUPERADMIN,
+            "coordinador": process.env.PIN_COORDINADOR,
+            "coord_labs": process.env.PIN_COORD_LABS,
+            "coord_aulas": process.env.PIN_COORD_AULAS,
+            "it_staff": process.env.PIN_IT_STAFF,
+            "admin_staff": process.env.PIN_ADMIN_STAFF
         };
 
-        const expectedPin = String(pinMap[selectedRole] || "");
+        const expectedPin = pinMap[selectedRole] || "";
 
-        // 👇 AGREGA ESTA LÍNEA PARA ATRAPAR EL ERROR 👇
-        console.log("PIN QUE YO ESCRIBÍ:", regPin, " | PIN QUE REACT LEE DEL .ENV:", expectedPin);
-
-        if (regPin.trim() !== expectedPin.trim()) {
+        if (regPin.trim() !== expectedPin) {
             return toast.error(`PIN de autorización incorrecto para el rol: ${selectedRole}`);
         }
     }
@@ -134,11 +131,8 @@ export default function AuthPage() {
     const loadingToast = toast.loading("Validando...");
     
     try {
-      // 🚀 ¡UNIFICACIÓN TOTAL! Usamos la misma función signup para Staff y Docentes.
-      // El AuthContext ya se encarga de asignar el rol correcto según el correo.
       await signup(regEmail, regPassword, regName, regTh, selectedRole);
       
-      // Actualizamos la ciudad del usuario recién creado
       if (auth.currentUser) {
         await updateDoc(doc(db, 'users', auth.currentUser.uid), { city: regCity });
       }
