@@ -5,10 +5,8 @@ import toast from 'react-hot-toast';
 import Modal from '../components/Modal';
 import './styles/AuthPage.css';
 import ceutecLogoWhite from '../assets/ceutec-logo-white.png';
-import { getFunctions, httpsCallable } from 'firebase/functions';
-import { auth, db } from '../firebaseConfig'; // CAMBIO: db agregado para actualizar ciudad del docente
-import { sendEmailVerification } from 'firebase/auth';
-import { doc, updateDoc } from 'firebase/firestore'; // CAMBIO: Importaciones de firestore
+import { auth, db } from '../firebaseConfig'; 
+import { doc, updateDoc } from 'firebase/firestore'; 
 
 // --- ICONOS ---
 const MailIcon = () => (
@@ -40,7 +38,6 @@ const BriefcaseIcon = () => (
     <path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16" />
   </svg>
 );
-// NUEVO ÍCONO PARA LA CIUDAD
 const MapIcon = () => (
   <svg className="input-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
     <path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z" />
@@ -74,10 +71,7 @@ export default function AuthPage() {
   const [regCity, setRegCity] = useState(''); 
   const [regPassword, setRegPassword] = useState('');
   const [regConfirm, setRegConfirm] = useState('');
-  
-  // 🔥 CORRECCIÓN: Inicializamos en 'superadmin' para que empate con la primera opción del menú
   const [selectedRole, setSelectedRole] = useState('superadmin'); 
-  
   const [showRegPass, setShowRegPass] = useState(false);
   const [regPin, setRegPin] = useState('');
 
@@ -112,35 +106,46 @@ export default function AuthPage() {
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     if (regPassword !== regConfirm) return toast.error("Las contraseñas no coinciden");
+    
+    // 🔥 NUEVA LÓGICA: Validación de PIN Dinámica por ROL
+    const isStaff = regEmail.toLowerCase().endsWith('@unitec.edu.hn');
+    
+    if (isStaff) {
+        // Mapeamos el rol seleccionado con la variable de entorno correspondiente
+        const pinMap = {
+            "superadmin": process.env.REACT_APP_PIN_SUPERADMIN,
+            "coordinador": process.env.REACT_APP_PIN_COORDINADOR,
+            "coord_labs": process.env.REACT_APP_PIN_COORD_LABS,
+            "coord_aulas": process.env.REACT_APP_PIN_COORD_AULAS,
+            "it_staff": process.env.REACT_APP_PIN_IT_STAFF,
+            "admin_staff": process.env.REACT_APP_PIN_ADMIN_STAFF
+        };
+
+        const expectedPin = String(pinMap[selectedRole] || "");
+
+        // 👇 AGREGA ESTA LÍNEA PARA ATRAPAR EL ERROR 👇
+        console.log("PIN QUE YO ESCRIBÍ:", regPin, " | PIN QUE REACT LEE DEL .ENV:", expectedPin);
+
+        if (regPin.trim() !== expectedPin.trim()) {
+            return toast.error(`PIN de autorización incorrecto para el rol: ${selectedRole}`);
+        }
+    }
+
     const loadingToast = toast.loading("Validando...");
     
     try {
-      const isStaff = regEmail.toLowerCase().endsWith('@unitec.edu.hn');
+      // 🚀 ¡UNIFICACIÓN TOTAL! Usamos la misma función signup para Staff y Docentes.
+      // El AuthContext ya se encarga de asignar el rol correcto según el correo.
+      await signup(regEmail, regPassword, regName, regTh, selectedRole);
       
-      if (isStaff) {
-        const functions = getFunctions();
-        const registerStaffSecure = httpsCallable(functions, 'registerStaffSecure');
-        await registerStaffSecure({
-          email: regEmail, password: regPassword, name: regName, th: regTh, role: selectedRole, pin: regPin, city: regCity
-        });
-        
-        const userCred = await login(regEmail, regPassword);
-        await sendEmailVerification(userCred.user);
-
-        toast.success("Registro Exitoso como Staff", { id: loadingToast });
-        navigate('/verificar-email'); 
-
-      } else {
-        await signup(regEmail, regPassword, regName, regTh, 'docente');
-        
-        // CAMBIO: Aseguramos que la ciudad del docente se guarde al momento de registrarse
-        if (auth.currentUser) {
-          await updateDoc(doc(db, 'users', auth.currentUser.uid), { city: regCity });
-        }
-
-        toast.success("Registro Exitoso", { id: loadingToast });
-        navigate('/verificar-email');
+      // Actualizamos la ciudad del usuario recién creado
+      if (auth.currentUser) {
+        await updateDoc(doc(db, 'users', auth.currentUser.uid), { city: regCity });
       }
+
+      toast.success(isStaff ? "Registro Exitoso como Staff" : "Registro Exitoso", { id: loadingToast });
+      navigate('/verificar-email');
+
     } catch (err) { 
       toast.error(err.message, { id: loadingToast }); 
     }
@@ -148,7 +153,6 @@ export default function AuthPage() {
 
   return (
     <div className="modern-auth-body">
-      {/* Estilo inyectado para el scroll interno de los campos y evitar desbordamiento */}
       <style>
         {`
           .scrollable-form-container {
@@ -182,7 +186,6 @@ export default function AuthPage() {
             <h1 className="form-internal-title">Crear Cuenta</h1>
             <p className="subtitle-internal">VALIDACIÓN POR TH DOCENTE</p>
             
-            {/* CONTENEDOR CON SCROLL PARA LOS CAMPOS */}
             <div className="scrollable-form-container">
               <div className="input-group-modern">
                   <MailIcon /><input type="email" placeholder="Correo institucional" value={regEmail} onChange={(e) => setRegEmail(e.target.value)} required />
@@ -194,7 +197,6 @@ export default function AuthPage() {
                   <IDIcon /><input type="text" placeholder="No. Empleado (TH)" value={regTh} onChange={(e) => setRegTh(e.target.value)} required />
               </div>
 
-              {/* CAMBIO: Ciudad disponible para todos (Docentes y Staff) */}
               <div className="input-group-modern">
                   <MapIcon />
                   <select value={regCity} onChange={(e) => setRegCity(e.target.value)} required className="premium-select">
@@ -301,7 +303,6 @@ export default function AuthPage() {
                     setIsResetModalOpen(false); 
                     toast.success("Enlace enviado a tu correo.", {id: toastId}); 
                 } catch (error) {
-                    // Si el correo no existe o hay error, le avisamos sin romper la app
                     toast.error("Error: Verifica que el correo esté registrado.", {id: toastId});
                 }
             }}

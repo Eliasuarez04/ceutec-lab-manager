@@ -4,7 +4,6 @@ import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, orderBy,
 import { useAuth } from '../../context/AuthContext';
 import { Link, useSearchParams } from 'react-router-dom';
 import Modal from '../../components/Modal'; 
-// 🔴 CORRECCIÓN: Importamos el generador de QR
 import RoomQRGenerator from '../../components/RoomQRGenerator'; 
 import '../styles/SpaceManager.css';
 import '../../pages/styles/Dashboard.css';
@@ -92,6 +91,12 @@ export default function SpaceManager() {
       name: '', building: '', floor: '', capacity: 20, type: 'Laboratorio', status: 'Disponible', tags: []
   });
 
+  // 🔥 MEJORA UX: Cambiar automáticamente la pestaña según el rol
+  useEffect(() => {
+    if (userData?.role === 'coord_labs') setActiveType('Laboratorio');
+    else if (userData?.role === 'coord_aulas') setActiveType('Aula');
+  }, [userData]);
+
   const isUserInHisCity = useMemo(() => {
     if (userData?.role === 'superadmin') return true;
     
@@ -126,7 +131,7 @@ export default function SpaceManager() {
 
     const type = (space.type || "").toLowerCase();
     
-    if (userData.role === 'coord_labs' && (type.includes('lab') || type.includes('taller') || type.includes('clinica') || type.includes('clínica'))) return true;
+    if (userData.role === 'coord_labs' && (type.includes('lab') || type.includes('taller') || type.includes('clinica') || type.includes('clínica') || type.includes('centro') || type.includes('cam'))) return true;
     if (userData.role === 'coord_aulas' && (type.includes('aula') || type.includes('teórico') || type.includes('teorico'))) return true;
     
     return false;
@@ -135,11 +140,13 @@ export default function SpaceManager() {
   const fetchSpaces = useCallback(async () => {
     try {
       const snap = await getDocs(collection(db, 'spaces'));
-      const searchTarget = currentSede.toLowerCase().replace('ceutec', '').replace(/[()]/g, '').trim();
+      
+      // 🔥 CORRECCIÓN: Usamos la misma lógica flexible que en AcademicSpaces (sin quitar paréntesis)
+      const sedeBusqueda = currentSede.toLowerCase().replace('ceutec', '').replace('sps', '').trim();
       
       const filtered = snap.docs.map(doc => ({ id: doc.id, ...doc.data() })).filter(s => {
-          const sSede = (s.sede || s.campus || "").toLowerCase();
-          return sSede.includes(searchTarget) || searchTarget.includes(sSede);
+          const sSede = (s.sede || s.campus || s.Sede || s.Campus || "").toLowerCase();
+          return sSede.includes(sedeBusqueda) || sedeBusqueda.includes(sSede);
       });
       setSpaces(filtered);
     } catch (error) { toast.error("Error al sincronizar"); }
@@ -162,7 +169,12 @@ export default function SpaceManager() {
 
   const visibleSpaces = useMemo(() => {
       return spaces
-        .filter(s => s.type === activeType)
+        // 🔥 CORRECCIÓN: Filtro de tipo de espacio flexible para evitar errores por mayúsculas/minúsculas
+        .filter(s => {
+            const sType = (s.type || s.tipo || "").toLowerCase();
+            const targetType = activeType.toLowerCase();
+            return sType.includes(targetType) || targetType.includes(sType);
+        })
         .filter(s => (s.name || "").toLowerCase().includes(sidebarSearch.toLowerCase()));
   }, [spaces, activeType, sidebarSearch]);
 

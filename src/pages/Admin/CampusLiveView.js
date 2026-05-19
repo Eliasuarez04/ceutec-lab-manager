@@ -28,22 +28,24 @@ export default function CampusLiveView() {
     return () => clearInterval(timer);
   }, []);
 
-  // 🔥 PARCHE: Extraemos el número del día (ej: 15). Cuando cambie a 16 a la medianoche, reactivará el useEffect.
+  // Extraemos el número del día (ej: 15). Cuando cambie a 16 a la medianoche, reactivará el useEffect.
   const currentDayNumber = now.getDate();
 
   useEffect(() => {
     if (!currentSede) return;
-    const searchTarget = currentSede.toLowerCase().replace('ceutec', '').replace(/[()]/g, '').trim();
+    
+    // 🔥 CORRECCIÓN: Filtro flexible sin destruir los paréntesis (Misma lógica de SpaceManager)
+    const searchTarget = currentSede.toLowerCase().replace('ceutec', '').replace('sps', '').trim();
 
     const unsubSpaces = onSnapshot(collection(db, 'spaces'), (snap) => {
       setSpaces(snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .filter(s => {
-          const sSede = (s.sede || s.campus || "").toLowerCase();
+          const sSede = (s.sede || s.campus || s.Sede || s.Campus || "").toLowerCase();
           return sSede.includes(searchTarget) || searchTarget.includes(sSede);
         }));
     });
 
-    // Se recalcula automáticamente si el "currentDayNumber" cambia a la medianoche
+    // Se recalcula automáticamente si el "currentDayNumber" cambia a la medianoche (Optimización Firebase)
     const hoyI = Timestamp.fromDate(startOfDay(new Date()));
     const hoyF = Timestamp.fromDate(endOfDay(new Date()));
 
@@ -56,23 +58,21 @@ export default function CampusLiveView() {
     const unsubRes = onSnapshot(qRes, (snap) => {
       setReservations(snap.docs.map(d => ({ id: d.id, ...d.data() }))
         .filter(r => {
-          const rSede = (r.sede || "").toLowerCase();
+          const rSede = (r.sede || r.Campus || r.Sede || "").toLowerCase();
           return (rSede.includes(searchTarget) || searchTarget.includes(rSede));
         }));
     });
 
     return () => { unsubSpaces(); unsubRes(); };
-  }, [currentSede, currentDayNumber]); // 🔴 AÑADIMOS currentDayNumber AQUÍ
+  }, [currentSede, currentDayNumber]);
 
-  // 🔥 VALIDACIÓN CORREGIDA: Exclusiva para Coord. de Aulas y por Ciudad Estricta 🔥
+  // VALIDACIÓN CORREGIDA: Exclusiva para Coord. de Aulas y por Ciudad Estricta
   const canManageAttendance = () => {
     if (!userData) return false;
     if (userData.role === 'superadmin') return true;
 
-    // 1. Exclusividad de Rol: Solo el coordinador de aulas hace el recorrido
     if (userData.role !== 'coord_aulas') return false;
 
-    // 2. Validación Estricta de Ciudad
     const userCity = (userData.city || "").toLowerCase().trim();
     const currentSedeLower = currentSede.toLowerCase().trim();
 
@@ -160,7 +160,8 @@ export default function CampusLiveView() {
   const liveStatus = useMemo(() => {
     const baseList = spaces.map(space => {
       const todayRes = reservations
-        .filter(res => res.labId === space.id && !res.checkOutTime)
+        // 🔥 CORRECCIÓN: Soporte cruzado para labId o spaceId por si acaso hay variables viejas
+        .filter(res => (res.labId === space.id || res.spaceId === space.id) && !res.checkOutTime)
         .sort((a, b) => a.startTime - b.startTime);
       
       const currentRes = todayRes.find(res => isWithinInterval(now, { start: res.startTime.toDate(), end: res.endTime.toDate() }));
@@ -267,7 +268,6 @@ export default function CampusLiveView() {
                       <p className="d-name">{item.currentRes.userName}</p>
                       <p className="t-range">{format(item.currentRes.startTime.toDate(), 'HH:mm')} - {format(item.currentRes.endTime.toDate(), 'HH:mm')}</p>
                       
-                      {/* 🔥 AHORA VALIDAMOS SOLO EL ROL Y LA CIUDAD, NO EL TIPO DE AULA 🔥 */}
                       {canManageAttendance() && (
                         <>
                           {!item.currentRes.attendance ? (
