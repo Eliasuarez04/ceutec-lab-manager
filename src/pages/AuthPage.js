@@ -107,23 +107,25 @@ export default function AuthPage() {
     e.preventDefault();
     if (regPassword !== regConfirm) return toast.error("Las contraseñas no coinciden");
     
-    // 🔥 LÓGICA: Validación de PIN Dinámica por ROL (Incrustada directamente)
+    // 🔥 LÓGICA: Validación de PIN Dinámica por ROL (Segura con Variables de Entorno)
     const isStaff = regEmail.toLowerCase().endsWith('@unitec.edu.hn');
     
     if (isStaff) {
-        // Matriz de seguridad incrustada directamente
+        // Matriz de seguridad leyendo desde el .env
         const pinMap = {
-            "superadmin": process.env.PIN_SUPERADMIN,
-            "coordinador": process.env.PIN_COORDINADOR,
-            "coord_labs": process.env.PIN_COORD_LABS,
-            "coord_aulas": process.env.PIN_COORD_AULAS,
-            "it_staff": process.env.PIN_IT_STAFF,
-            "admin_staff": process.env.PIN_ADMIN_STAFF
+            "superadmin": process.env.REACT_APP_PIN_SUPERADMIN,
+            "coordinador": process.env.REACT_APP_PIN_COORDINADOR,
+            "coord_labs": process.env.REACT_APP_PIN_COORD_LABS,
+            "coord_aulas": process.env.REACT_APP_PIN_COORD_AULAS,
+            "it_staff": process.env.REACT_APP_PIN_IT_STAFF,
+            "admin_staff": process.env.REACT_APP_PIN_ADMIN_STAFF
         };
 
-        const expectedPin = pinMap[selectedRole] || "";
+        // Convertimos a String para evitar errores si la variable viene vacía
+        const expectedPin = String(pinMap[selectedRole] || "");
 
-        if (regPin.trim() !== expectedPin) {
+        // Comparamos limpiando los espacios
+        if (regPin.trim() !== expectedPin.trim()) {
             return toast.error(`PIN de autorización incorrecto para el rol: ${selectedRole}`);
         }
     }
