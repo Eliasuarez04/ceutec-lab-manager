@@ -1,70 +1,28 @@
-# Getting Started with Create React App
+# 🏢 SpaceOne: Enterprise Resource Management Platform
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+![Project Status](https://img.shields.io/badge/Status-In%20Production-success)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Firebase](https://img.shields.io/badge/Firebase-FFCA28?style=for-the-badge&logo=firebase&logoColor=white)
+![Enterprise](https://img.shields.io/badge/Scope-Nationwide-blue?style=for-the-badge)
 
-## Available Scripts
+SpaceOne is a nationwide administrative web platform deployed for CEUTEC/UNITEC. It was engineered from scratch to automate institutional workflows, streamline resource reservations, and manage high-tier administrative operations across multiple university campuses.
 
-In the project directory, you can run:
+🔗 **[Live Production Environment: ceutec-lab-manager.vercel.app](https://ceutec-lab-manager.vercel.app)**
+*(Note: Access may be restricted to authorized university personnel).*
 
-### `npm start`
+## ✨ Enterprise Features
+* **Nationwide Deployment:** Scalable architecture handling operations across multiple campus locations simultaneously.
+* **Automated Workflows:** Replaced manual processes with automated mass data processing and scheduling systems.
+* **Live Monitoring & Optimization:** Implemented advanced search filters and optimized Firebase read queries, significantly reducing operational cloud costs.
+* **Robust Security & Infrastructure:** Direct Firebase configuration for stability, integrated with geo-fencing and enterprise-level security rules (`firestore.rules`).
+* **Real-time Synchronization:** Built on Firebase's NoSQL infrastructure for instant data updates across all active sessions.
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+## 🛠️ Architecture & Tech Stack
+* **Frontend:** React.js, JavaScript (ES6+)
+* **Backend & Database:** Firebase (Firestore, Cloud Functions, Authentication)
+* **Hosting & Deployment:** Vercel (Production) / Firebase Hosting (Preview environments)
+* **Security:** Firebase Security Rules & Enterprise Policies
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+## ⚙️ Development Overview
 
-### `npm test`
-
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
-
-### `npm run build`
-
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
-
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
-
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
-
-### `npm run eject`
-
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
-
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
-
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
-
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+This repository represents the core frontend and Firebase configuration for the SpaceOne platform. Due to the proprietary nature of the institutional data, this repository serves as a technical showcase of the architectural implementation, deployment strategy, and code structure utilized to solve complex B2B (Business-to-Business) operational challenges.
