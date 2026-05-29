@@ -1,6 +1,6 @@
 // src/pages/Reportes.js
 import React, { useState, useEffect, useMemo, useCallback } from 'react';
-import { collection, getDocs, query, where, Timestamp, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, query, where, Timestamp, orderBy } from 'firebase/firestore';
 import { db } from '../firebaseConfig';
 import { Bar } from 'react-chartjs-2';
 import { Chart as ChartJS, CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend } from 'chart.js';
@@ -15,7 +15,7 @@ ChartJS.register(CategoryScale, LinearScale, BarElement, Title, Tooltip, Legend)
 const ReporteUso = ({ data }) => {
   const labUsageData = useMemo(() => {
     const counts = data.reduce((acc, res) => {
-      const name = res.labName || "Sin Nombre";
+      const name = res.labName || res.spaceName || "Sin Nombre";
       acc[name] = (acc[name] || 0) + 1;
       return acc;
     }, {});
@@ -29,9 +29,9 @@ const ReporteUso = ({ data }) => {
   const dayUsageData = useMemo(() => {
     const dayCounts = [0, 0, 0, 0, 0, 0, 0];
     data.forEach(res => {
-      if (res.startTime) {
-        // Convertir Timestamp a Date si es necesario
-        const date = res.startTime instanceof Timestamp ? res.startTime.toDate() : new Date(res.startTime);
+      const sTime = res.startTime || res.start;
+      if (sTime && sTime.toDate) {
+        const date = sTime.toDate();
         const day = getDay(date);
         dayCounts[day]++;
       }
@@ -59,8 +59,9 @@ const ReporteHeatmap = ({ data }) => {
     const grid = Array(16).fill(0).map(() => Array(7).fill(0));
     let maxReservations = 0;
     data.forEach(res => {
-      if (res.startTime) {
-        const date = res.startTime instanceof Timestamp ? res.startTime.toDate() : new Date(res.startTime);
+      const sTime = res.startTime || res.start;
+      if (sTime && sTime.toDate) {
+        const date = sTime.toDate();
         const day = getDay(date);
         const hour = getHours(date);
         const hourIndex = hour - 7;
@@ -110,7 +111,7 @@ const ReporteInventario = ({ logs }) => {
             <tbody>
               {logs.length > 0 ? logs.map(log => (
                 <tr key={log.id}>
-                  <td>{log.timestamp ? format(log.timestamp.toDate(), 'dd/MM/yy HH:mm') : 'N/A'}</td>
+                  <td>{log.timestamp && log.timestamp.toDate ? format(log.timestamp.toDate(), 'dd/MM/yy HH:mm') : 'N/A'}</td>
                   <td>{log.labName}</td>
                   <td>{log.itemName}</td>
                   <td><span className={`change-badge ${log.changeType ? log.changeType.toLowerCase().replace(' ', '-') : ''}`}>{log.changeType}</span></td>
@@ -131,7 +132,6 @@ export default function Reportes() {
   const currentSede = searchParams.get('sede') || "";
 
   const [activeTab, setActiveTab] = useState('uso');
-  // Inicializar fechas (último mes)
   const [startDate, setStartDate] = useState(format(new Date(new Date().setMonth(new Date().getMonth() - 1)), 'yyyy-MM-dd'));
   const [endDate, setEndDate] = useState(format(new Date(), 'yyyy-MM-dd'));
   
@@ -139,23 +139,96 @@ export default function Reportes() {
   const [inventoryLogData, setInventoryLogData] = useState([]);
   const [loading, setLoading] = useState(false);
 
+  // 🔥 EXPORTACIÓN BLINDADA: Filtros agresivos para diferenciar el Origen 🔥
   const handleExportExcel = () => {
-    const reportData = reservationData.map(res => ({
-      'Sede': res.sede,
-      'Espacio': res.labName,
-      'Docente': res.userName,
-      'Materia': res.className || res.purpose,
-      'Fecha': res.startTime ? format(res.startTime.toDate(), 'dd/MM/yyyy') : '',
-      'Hora Programada': res.startTime ? `${format(res.startTime.toDate(), 'HH:mm')} - ${format(res.endTime.toDate(), 'HH:mm')}` : '',
-      'Check-In Real': res.checkInTime ? format(res.checkInTime.toDate(), 'HH:mm:ss') : 'N/A',
-      'Check-Out Real': res.checkOutTime ? format(res.checkOutTime.toDate(), 'HH:mm:ss') : 'N/A',
-      'Estado': res.fulfillmentStatus
-    }));
+    if (reservationData.length === 0) {
+      return toast.error("No hay datos para exportar en estas fechas.");
+    }
+
+    const reportData = reservationData.map(res => {
+      const sTime = res.startTime || res.start;
+      const eTime = res.endTime || res.end;
+      
+      const fechaClase = (sTime && sTime.toDate) ? format(sTime.toDate(), 'dd/MM/yyyy') : 'N/A';
+      const horaInicio = (sTime && sTime.toDate) ? format(sTime.toDate(), 'HH:mm') : '--:--';
+      const horaFin = (eTime && eTime.toDate) ? format(eTime.toDate(), 'HH:mm') : '--:--';
+      
+      // 1. Identificador de Origen (RED DE PESCA MÚLTIPLE)
+      let tipoReserva = 'Carga Académica'; // Asumimos Carga por defecto
+      
+      // Si el campo directo dice Manual (ignora mayúsculas/minúsculas o espacios)
+      if (res.reservationType && String(res.reservationType).trim().toLowerCase() === 'manual') {
+          tipoReserva = 'Reserva Manual';
+      } 
+      // Si no trae el campo, pero trae datos exclusivos de reservas manuales
+      else if (res.reservedByName || res.reservedByEmail || res.purpose) {
+          tipoReserva = 'Reserva Manual';
+      }
+
+      // 2. Extracción de Docente
+      let nombreDocente = res.reservedByName || res.userName || 'Sin Docente';
+      if (nombreDocente === 'Carga Académica') nombreDocente = 'Sin Docente Asignado';
+      
+      // 3. Extracción de Correo
+      let correoDocente = res.reservedByEmail || res.userEmail || 'N/A';
+      if (correoDocente === 'Carga Académica') {
+          correoDocente = res.reservedByEmail ? res.reservedByEmail : 'N/A';
+      }
+
+      // 4. Extracción de TH 
+      const numeroTH = res.thDocente || res.th || res.TH || 'N/A';
+      
+      // 5. Extracción de Alumnos 
+      const cantidadAlumnos = res.studentCount || res.attendees || res.capacity || 0;
+
+      // 6. Limpieza de Motivo / Materia
+      let motivoClase = res.className || res.purpose || res.title || 'Sin especificar';
+      if (motivoClase.trim() === '') motivoClase = 'Sin especificar';
+
+      return {
+        'Origen': tipoReserva, // <- Ahora sí saldrá perfecto
+        'Sede': res.sede || res.campus || 'N/A',
+        'Tipo Espacio': res.spaceType || res.labType || 'N/A',
+        'ID Espacio': res.labId || res.spaceId || 'N/A',
+        'Nombre Espacio': res.labName || res.spaceName || 'N/A',
+        'Docente / Solicitante': nombreDocente,
+        'Correo': correoDocente,
+        'No. Empleado (TH)': numeroTH,
+        'Código Materia': res.subjectCode || res.code || 'N/A',
+        'Clase / Motivo': motivoClase,
+        'Sección': res.section || res.seccion || 'N/A',
+        'Estudiantes': cantidadAlumnos,
+        'Fecha': fechaClase,
+        'Hora Inicio': horaInicio,
+        'Hora Fin': horaFin,
+        'Estado Reserva': res.status || res.fulfillmentStatus || 'Activa',
+        'Estado Asistencia': res.attendance?.status || res.fulfillmentStatus || 'Pendiente',
+        'Check-In Real': (res.checkInTime && res.checkInTime.toDate) ? format(res.checkInTime.toDate(), 'HH:mm:ss') : 'N/A',
+        'Check-Out Real': (res.checkOutTime && res.checkOutTime.toDate) ? format(res.checkOutTime.toDate(), 'HH:mm:ss') : 'N/A',
+        'Notas / Cancelación': res.attendance?.reason || res.cancelReason || '',
+        'Audit (Marcado Por)': res.attendance?.markedBy || res.canceledByAdmin || ''
+      };
+    });
 
     const ws = XLSX.utils.json_to_sheet(reportData);
+    
+    // Auto-ajuste visual de celdas
+    const wscols = [
+      {wch: 18}, {wch: 25}, {wch: 15}, {wch: 12}, {wch: 25}, 
+      {wch: 35}, {wch: 30}, {wch: 18}, {wch: 15}, {wch: 35}, 
+      {wch: 10}, {wch: 12}, {wch: 12}, {wch: 12}, {wch: 12}, 
+      {wch: 15}, {wch: 18}, {wch: 15}, {wch: 15}, {wch: 30}, 
+      {wch: 25}
+    ];
+    ws['!cols'] = wscols;
+
     const wb = XLSX.utils.book_new();
-    XLSX.utils.book_append_sheet(wb, ws, "Reporte Asistencia");
-    XLSX.writeFile(wb, `Reporte_CeuSpaces_${currentSede}.xlsx`);
+    XLSX.utils.book_append_sheet(wb, ws, "Asistencia y Operaciones");
+    
+    const fileName = `Reporte_SpaceOne_${currentSede.replace(/[^a-zA-Z0-9]/g, '')}_${format(new Date(), 'ddMMyyyy')}.xlsx`;
+    XLSX.writeFile(wb, fileName);
+    
+    toast.success("Excel generado correctamente. Origen Diferenciado. 📊");
   };
 
   const fetchData = useCallback(async () => {
@@ -166,36 +239,31 @@ export default function Reportes() {
       const start = Timestamp.fromDate(startOfDay(parseISO(startDate)));
       const end = Timestamp.fromDate(endOfDay(parseISO(endDate)));
 
-      // 1. 🔥 Candado para Reservas (Fecha + Límite) 🔥
       const resQuery = query(
         collection(db, 'reservations'), 
         where('startTime', '>=', start), 
         where('startTime', '<=', end),
-        limit(1000)
+        orderBy('startTime', 'asc') 
       );
 
-      // 2. 🔥 EL PARCHE: Candado para el Inventario (Fecha + Orden + Límite) 🔥
       const logQuery = query(
         collection(db, 'inventory_logs'), 
         where('timestamp', '>=', start),
         where('timestamp', '<=', end),
-        orderBy('timestamp', 'desc'),
-        limit(1000)
+        orderBy('timestamp', 'desc')
       );
 
       const [resSnap, logSnap] = await Promise.all([getDocs(resQuery), getDocs(logQuery)]);
       
-      const sedeNormalizada = currentSede.toLowerCase().replace('ceutec', '').trim();
+      const sedeNormalizada = currentSede.toLowerCase().replace('ceutec', '').replace(/[()]/g, '').trim();
 
-      // Filtrar Reservas por Sede
       const filteredRes = resSnap.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(res => {
-          const resSede = (res.sede || res.campus || "").toLowerCase();
+          const resSede = (res.sede || res.campus || res.Sede || "").toLowerCase();
           return resSede.includes(sedeNormalizada) || sedeNormalizada.includes(resSede);
         });
 
-      // Filtrar Logs por Sede
       const filteredLogs = logSnap.docs
         .map(doc => ({ id: doc.id, ...doc.data() }))
         .filter(log => {
@@ -212,7 +280,7 @@ export default function Reportes() {
 
     } catch (error) {
       console.error("Error en Reportes:", error);
-      toast.error("Error al cargar datos. Verifica la consola F12 si Firebase pide un índice.");
+      toast.error("Error al cargar datos. Verifica la consola.");
     } finally {
       setLoading(false);
     }
@@ -220,7 +288,6 @@ export default function Reportes() {
 
   useEffect(() => { fetchData(); }, [fetchData]);
 
-  
   return (
     <div className="dashboard-wrapper">
       <div className="reports-page-card">
@@ -252,8 +319,8 @@ export default function Reportes() {
                 <input type="date" value={endDate} onChange={e => setEndDate(e.target.value)} />
             </div>
             <button onClick={handleExportExcel} className="export-btn-xlsx" style={{ background: '#1d6f42', color: 'white', padding: '10px 20px', borderRadius: '10px', border: 'none', fontWeight: 'bold', cursor: 'pointer' }}>
-    📊 Exportar Reporte Operativo (Excel)
-</button>
+                📊 Exportar Reporte Operativo (Excel)
+            </button>
           </div>
         </div>
         
